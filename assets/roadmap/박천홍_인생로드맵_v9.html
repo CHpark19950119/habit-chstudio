@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>박천홍 인생 로드맵 v9</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700;900&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+:root{--bg:#f5f0e8;--sf:#ece6d9;--sf2:#e2dbd0;--sf3:#d8d0c3;--bd:#c4b9a8;--tx:#1a1611;--tx2:#5a5347;--dm:#8a8177;--ac:#8b2500;--ac2:#2d5a7b;--gn:#2d6b3f;--gd:#8b6914;--pk:#8b3a5e;--rd:#9b1b1b;--cy:#1a6b6b}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;line-height:1.85;font-size:14px}
+.hd{padding:48px 32px 28px;border-bottom:2px solid var(--ac);background:linear-gradient(175deg,#f5f0e8,#ede4d4 50%,#e8ddc8);position:relative}
+.hd::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--ac) 33%,var(--tx) 33% 66%,var(--ac2) 66%)}
+.hd h1{font-family:'Noto Serif KR',serif;font-size:28px;font-weight:900;letter-spacing:-1px}
+.hd h1 b{color:var(--ac)}
+.hd .sub{color:var(--tx2);font-size:11px;margin-top:6px;font-family:'IBM Plex Mono',monospace;letter-spacing:.5px}
+.hd .ver{display:inline-block;background:var(--ac);color:#fff;font-size:10px;font-weight:700;padding:2px 10px;border-radius:1px;margin-left:8px;letter-spacing:1.5px}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--bd);background:var(--sf);overflow-x:auto;position:sticky;top:0;z-index:100;-webkit-overflow-scrolling:touch}
+.tab{padding:12px 16px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;color:var(--dm);transition:all .2s;border-bottom:2px solid transparent;letter-spacing:.3px}
+.tab:hover{color:var(--tx);background:var(--sf2)}
+.tab.on{color:var(--ac);border-bottom-color:var(--ac);font-weight:700}
+.tab.new{position:relative}.tab.new::after{content:'NEW';position:absolute;top:4px;right:2px;font-size:7px;background:var(--rd);color:#fff;padding:1px 4px;font-weight:700;letter-spacing:.5px}
+.ct{max-width:1100px;margin:0 auto;padding:32px 24px 80px}
+.tc{display:none}.tc.on{display:block}
+.st{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:700;color:var(--tx);margin-bottom:24px;padding-bottom:12px;border-bottom:1px solid var(--bd);letter-spacing:-.5px}
+.st small{font-size:12px;color:var(--dm);font-weight:400;font-family:'Noto Sans KR',sans-serif;display:block;margin-top:4px}
+.tg{display:grid;grid-template-columns:110px 1fr 1fr 1fr;gap:0;border:1px solid var(--bd)}
+.th{background:var(--ac);color:#fff;padding:10px 12px;font-size:11px;font-weight:700;letter-spacing:.5px}
+.tr{display:contents}.tr:nth-child(even) .td{background:var(--sf)}
+.td{padding:11px 13px;border-bottom:1px solid var(--bd);font-size:12px;line-height:1.7;border-right:1px solid var(--bd)}
+.td:first-child{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px;color:var(--ac)}
+.td:last-child{border-right:none}
+.tg b{color:var(--tx)}
+.tag{display:inline-block;padding:1px 7px;border-radius:1px;font-size:10px;font-weight:700;letter-spacing:.3px;margin-bottom:3px;color:#fff}
+.t-c{background:var(--rd)}.t-g{background:var(--gn)}.t-s{background:var(--ac2)}.t-l{background:var(--pk)}
+.cd{background:var(--sf);border:1px solid var(--bd);padding:22px;margin-bottom:18px;border-left:3px solid var(--ac)}
+.cd h3{font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;margin-bottom:6px}
+.cd .sub{font-size:11px;color:var(--dm);margin-bottom:10px;font-family:'IBM Plex Mono',monospace}
+.cd p{font-size:13px;line-height:1.85;color:var(--tx2);margin-bottom:7px}
+.cd b,.cd strong{color:var(--tx)}
+.sr{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+.sc{background:var(--sf);border:1px solid var(--bd);padding:18px;text-align:center}
+.sc .l{font-size:11px;color:var(--dm);letter-spacing:.5px;margin-bottom:4px}
+.sc .v{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--ac)}
+.sc .s{font-size:10px;color:var(--tx2);margin-top:4px}
+.eb{margin-bottom:18px}.eb .nm{font-size:12px;font-weight:600;margin-bottom:4px}
+.eb .tk{height:26px;background:var(--sf2);position:relative;border:1px solid var(--bd)}
+.eb .fl{height:100%;position:absolute;left:0;top:0}.eb .fl.p{background:var(--gn);opacity:.6}.eb .fl.f{background:var(--rd);opacity:.4}
+.eb .cl{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--tx)}
+.eb .sl{font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:4px;color:var(--tx2)}
+blockquote{border-left:3px solid var(--ac);padding:14px 18px;margin:16px 0;background:var(--sf);font-family:'Noto Serif KR',serif;font-size:13px;line-height:1.9;color:var(--tx)}
+blockquote .at{font-size:10px;color:var(--dm);margin-top:6px;font-family:'IBM Plex Mono',monospace}
+.rts{counter-reset:rt}
+.rt{background:var(--sf);border:1px solid var(--bd);padding:18px 22px;margin-bottom:14px;border-left:4px solid var(--ac);counter-increment:rt}
+.rt::before{content:counter(rt);font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:var(--ac);float:left;margin-right:14px;line-height:1}
+.rt h3{font-size:14px;font-weight:700;margin-bottom:5px}.rt p{font-size:12px;color:var(--tx2);line-height:1.8}
+.tl{margin:0;padding-left:0;list-style:none}.tl li{padding:8px 0 8px 18px;border-left:2px solid var(--bd);font-size:13px;color:var(--tx2);position:relative;margin-left:8px}
+.tl li::before{content:'';position:absolute;left:-5px;top:14px;width:8px;height:8px;border-radius:50%;background:var(--ac)}
+.tl li b{color:var(--tx)}.tl li.done::before{background:var(--gn)}.tl li.hi::before{background:var(--rd)}
+/* V8 additions */
+.cmp-tbl{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:12px}
+.cmp-tbl th{background:var(--ac);color:#fff;padding:10px 12px;text-align:left;font-weight:700;font-size:11px;letter-spacing:.3px}
+.cmp-tbl td{padding:10px 12px;border-bottom:1px solid var(--bd);line-height:1.6}
+.cmp-tbl tr:nth-child(even) td{background:var(--sf)}
+.cmp-tbl .me{background:#f5ede0 !important;border-left:3px solid var(--ac)}
+.cmp-tbl .me td{font-weight:600}
+.chart-wrap{background:var(--sf);border:1px solid var(--bd);padding:24px;margin-bottom:24px;overflow-x:auto}
+.chart-wrap h4{font-family:'Noto Serif KR',serif;font-size:14px;margin-bottom:16px}
+.bar-h{display:flex;align-items:center;margin-bottom:8px}
+.bar-h .lb{width:100px;font-size:11px;font-weight:600;flex-shrink:0}
+.bar-h .bk{flex:1;height:22px;background:var(--sf2);position:relative;border:1px solid var(--bd)}
+.bar-h .bf{height:100%;position:absolute;left:0;top:0;transition:width .6s}
+.bar-h .bv{position:absolute;right:6px;top:2px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600}
+.bar-h .cutline{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--tx);z-index:2}
+.vs-box{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;margin-bottom:24px;align-items:start}
+.vs-box .side{background:var(--sf);border:1px solid var(--bd);padding:18px}
+.vs-box .side h4{font-size:13px;font-weight:700;margin-bottom:10px;font-family:'Noto Serif KR',serif}
+.vs-box .side p{font-size:12px;color:var(--tx2);line-height:1.8;margin-bottom:5px}
+.vs-box .mid{font-family:'Noto Serif KR',serif;font-size:24px;font-weight:900;color:var(--ac);align-self:center;padding:0 8px}
+.dx{background:var(--sf);border:1px solid var(--bd);padding:22px;margin-bottom:18px;border-left:4px solid var(--ac2)}
+.dx h3{font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;margin-bottom:6px;color:var(--ac2)}
+.dx p{font-size:13px;line-height:1.85;color:var(--tx2);margin-bottom:7px}
+.dx b{color:var(--tx)}
+.flow{background:var(--sf);border:1px solid var(--bd);padding:20px;margin-bottom:24px;text-align:center;font-size:12px;line-height:2.2}
+.flow .arrow{color:var(--ac);font-weight:700;margin:0 4px}
+.path-card{background:var(--sf);border:1px solid var(--bd);padding:22px;margin-bottom:18px;position:relative;overflow:hidden}
+.path-card::before{content:attr(data-path);position:absolute;top:12px;right:16px;font-family:'IBM Plex Mono',monospace;font-size:32px;font-weight:700;color:var(--bd);letter-spacing:2px}
+.path-card h3{font-family:'Noto Serif KR',serif;font-size:16px;font-weight:700;margin-bottom:8px}
+.path-card p{font-size:13px;color:var(--tx2);line-height:1.85;margin-bottom:6px}
+.verdict{background:var(--tx);color:var(--bg);padding:24px;margin:24px 0;font-family:'Noto Serif KR',serif;font-size:14px;line-height:2}
+.verdict b{color:#e8c87a}
+@media(max-width:768px){.tg{grid-template-columns:80px 1fr}.th:nth-child(3),.th:nth-child(4),.td:nth-child(4n+3),.td:nth-child(4n){display:none}.hd{padding:28px 16px 18px}.hd h1{font-size:22px}.ct{padding:18px 14px 60px}.tab{padding:10px 11px;font-size:11px}.vs-box{grid-template-columns:1fr}.vs-box .mid{text-align:center}.cmp-tbl{font-size:11px}.cmp-tbl th,.cmp-tbl td{padding:7px 8px}}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <h1>박천홍 <b>인생 로드맵</b> <span class="ver">V9</span></h1>
+  <div class="sub">1995.01.19 — 군포 | 13,315건 (2013–2026) | 11호기 — 합격자 9명 정밀 대조 + 성욕 해결 경로</div>
+  <p style="margin-top:14px;padding:10px 16px;border-left:2px solid var(--ac);font-family:'Noto Serif KR',serif;font-size:12px;color:var(--tx2);line-height:1.9;background:rgba(139,37,0,.03)">"합격은 도덕적 자격으로 주어지는 게 아니라 점수로 주어진다."</p>
+</div>
+
+<div class="tabs" id="tabs">
+  <div class="tab on" data-t="timeline">통합 타임라인</div>
+  <div class="tab" data-t="love">연애사</div>
+  <div class="tab" data-t="psych">심리 분석</div>
+  <div class="tab" data-t="exam">공시 분석</div>
+  <div class="tab" data-t="compare">그들과 나</div>
+  <div class="tab" data-t="econ">경제활동</div>
+  <div class="tab" data-t="sexual">성적 기록</div>
+  <div class="tab" data-t="words">육성 기록</div>
+  <div class="tab" data-t="novel">소설 콘티</div>
+  <div class="tab" data-t="todo">미완료 과제</div>
+</div>
+
+<div class="ct">
+
+<!-- ═══ 1. 통합 타임라인 ═══ -->
+<div id="timeline" class="tc on">
+<div class="st">통합 타임라인<small>공적 위치 / 연애 / 심리를 동시에 본다</small></div>
+<div class="tg">
+<div class="th">시기</div><div class="th">공적 위치</div><div class="th">연애 관계</div><div class="th">심리 상태</div>
+
+<div class="tr"><div class="td">1995–2007</div><div class="td">군포초. 내향적, 곤충학자 꿈.</div><div class="td">—</div><div class="td">부모=안전기지 아님. 어머니 사이비 종교. 아버지 방치.</div></div>
+
+<div class="tr"><div class="td">2007–2010</div><div class="td">당동중. 하위40~50%.</div><div class="td">교회 여성(3~4살 위)에 성욕</div><div class="td"><span class="tag t-c">성욕=죄 회로</span> 나쁜 친구 무리. "공범" 의식.</div></div>
+
+<div class="tr"><div class="td">2010–2012</div><div class="td">용호고. 인문2~3/수학6~7. 수능 실패.</div><div class="td">—</div><div class="td">딴지일보. 외부 프레임으로 자기 정의. 학업코칭 전무.</div></div>
+
+<div class="tr"><div class="td">2013.03–05</div><div class="td"><span class="tag t-c">백석대</span> 전과목 F. 제적.</div><div class="td">—</div><div class="td">인생 최저점.</div></div>
+
+<div class="tr"><div class="td">2013–14.03</div><div class="td">이백알바→반수실패→수원대추합→일용직</div><div class="td">—</div><div class="td">방황. PC방+도서관.</div></div>
+
+<div class="tr"><div class="td">2014.03–07</div><div class="td">수원대 프랑스어. GPA 3.96.</div><div class="td">—</div><div class="td">능력 증명. 학벌 열등감.</div></div>
+
+<div class="tr"><div class="td">2014.08–16.04</div><div class="td"><span class="tag t-s">해병대</span> 20개월.</div><div class="td">—</div><div class="td">"남자다워지고 싶었던 거지."</div></div>
+
+<div class="tr"><div class="td">2016.05–06</div><div class="td">롯데시네마 알바 시작</div><div class="td"><span class="tag t-l">정수연</span> 4회→거부</div><div class="td"><span class="tag t-c">정상루트 거부의 기원</span> → 익명루트 전환.</div></div>
+
+<div class="tr"><div class="td">2016.07–17.07</div><div class="td">롯데시네마 알바</div><div class="td"><span class="tag t-l">이예지</span> 1년. 랜챗.</div><div class="td">1년간 진짜 만족한 적 없다. 발각이 탈출구.</div></div>
+
+<div class="tr"><div class="td">2017.07–11</div><div class="td">롯데→서민전복</div><div class="td">건대소녀(08) / 영등포여자(09, 사정못함)</div><div class="td">"내가 그런 일을 한다는 게 이상했다."</div></div>
+
+<div class="tr"><div class="td">2017.11–18.03</div><div class="td">서민전복 알바</div><div class="td"><span class="tag t-l">최민지</span> 대구. 순응적.</div><div class="td">편입 본격화로 자연 종료.</div></div>
+
+<div class="tr"><div class="td">2018.04–19.02</div><div class="td"><span class="tag t-g">편입 준비</span> 10개월. 독학+인강.</div><div class="td">—</div><div class="td"><b>유일하게 독립적으로 성장한 시기. "뭐든 할 수 있다."</b></div></div>
+
+<div class="tr"><div class="td">2019.03–</div><div class="td"><span class="tag t-g">한국외대 편입</span></div><div class="td">02.21 정다영 첫만남</div><div class="td">"소속되면 잘될 줄 알았다. 아니야."</div></div>
+
+<div class="tr"><div class="td">2019.09+12</div><div class="td">점핑파크 알바</div><div class="td"><span class="tag t-l">Olive</span> 한국1~2회/영국0회</div><div class="td">먼저 제안 못함. 외로움 달래러 간 여행.</div></div>
+
+<div class="tr"><div class="td">2020.03–10</div><div class="td">에이원이엠에스 알바</div><div class="td"><span class="tag t-l">Sohui</span> 반동거 8개월</div><div class="td">이별→PC방 월55회. 정신과 2회.</div></div>
+
+<div class="tr"><div class="td">2021.04–07</div><div class="td">디에스케이 알바</div><div class="td">종교여자(2회) / <span class="tag t-l">프랑스인</span></div><div class="td">헬로챗 반복.</div></div>
+
+<div class="tr"><div class="td">2021.08–22.08</div><div class="td"><span class="tag t-c">이문동 자취</span></div><div class="td"><span class="tag t-l">정다영 교제(21.09~)</span></div><div class="td">낮=커플, 밤=마취. <b>"옆에 사람이 있어도 마취가 필요한 1년."</b></div></div>
+
+<div class="tr"><div class="td">2022.08–23.01</div><div class="td">군포 복귀. 외대 PC방 원정.</div><div class="td">정다영→천홍 입금 역전</div><div class="td">방향 없음.</div></div>
+
+<div class="tr"><div class="td">2023</div><div class="td"><span class="tag t-g">행동전환.</span> 오병렬알바. 졸업(08). JLPT N1.</div><div class="td">정다영. 사당=중간지점.</div><div class="td"><span class="tag t-c">토익 착각→1년 손실.</span> 인강 시작.</div></div>
+
+<div class="tr"><div class="td">2024</div><div class="td">공시 전업. 첫 시험.</div><div class="td">정다영 경제지원 본격화.</div><div class="td">입법(02.24)+5급+7급 — <b>전부 70점대.</b></div></div>
+
+<div class="tr"><div class="td">2025</div><div class="td">공시 2년차.</div><div class="td">정다영 지속.</div><div class="td"><b>7급추가 86.66합격 / 5급 70불합 / 외영 90.66불합(-2.67)</b></div></div>
+
+<div class="tr"><div class="td">2026–</div><div class="td">5급+7급 외무영사 응시 예정.</div><div class="td">정다영.</div><div class="td"><b>전환점. "나를 거부하고 새로운 내가 되길 바란다."</b></div></div>
+</div>
+</div>
+
+<!-- ═══ 2. 연애사 ═══ -->
+<div id="love" class="tc">
+<div class="st">연애사 — 10명<small>정수연부터 정다영까지</small></div>
+
+<div class="cd" style="border-left-color:#888"><h3>0. 정수연 — 정상루트 거부의 기원</h3><div class="sub">2016.05~06 | 용호고 동창 | 성관계 없음</div><p>정상적 루트(학교 친구). 군대 중 전화 자주. 4회 만남. 뽕잎마루(현금)+닭발+산책. 롯데시네마에서 카톡 고백 → <b>천홍 거부/도망.</b> 외모 비호감(들창코). "더 나은 여자 원함." → 익명 루트(랜챗) 수용 패턴의 기원.</p></div>
+
+<div class="cd"><h3>1. 이예지 — 1년, 진짜 만족한 적 없었다</h3><div class="sub">2016.07.01~2017.07.07 | 안산 한양대에리카 | 랜챗</div><p>첫만남 07.01 설빙안산. 첫성관계 07.08 화이트캐슬. 구강 가장 빈번(센트럴락+차). 질냄새 불쾌. 차 구입 후 태워다님, 스팽킹. 콘돔파손→사후피임약(12.30). <b>1년간 진짜 만족한 적 없었다. 발각이 탈출구.</b></p></div>
+
+<div class="cd" style="border-left-color:#888"><h3>2. 건대소녀 / 3. 영등포여자</h3><div class="sub">건대: 2017.08 2회 | 영등포: 09.03 당일, 사정못함</div><p>건대소녀=분홍색+성형+신경증. 영등포여자=당일만남, 낮 성관계, <b>사정 못함. "내가 그런 일을 한다는 게 이상했다."</b></p></div>
+
+<div class="cd"><h3>4. 최민지 — 대구, 순응적</h3><div class="sub">2017.11.28~2018.03.14 | 대구 | 랜챗</div><p>첫만남 홍대(파파초밥+르쁘띠푸+알타미라+디파이브). 대구 6회. 천홍 주도, 최민지 순응. 편입 본격화로 자연 종료. 신암동=최민지 생활권.</p></div>
+
+<div class="cd" style="border-left-color:var(--ac2)"><h3>5. Olive — 3주간 먼저 제안 못함</h3><div class="sub">2019.09+12 | 영국인 | 헬로챗</div><p>한국 방문 성관계 1~2회(친구 잠든 아침+친구 귀국 후). 영국 3주 성관계 없음. <b>먼저 제안 못함.</b> Olive 집에서 포르노+자위. 좋은 기억 아님. 귀국 후 자연소멸.</p>
+<p><b>외국인 섹스 = 포르노 실현 감각 + "대단한 일 해냈다" 성취감.</b></p></div>
+
+<div class="cd" style="border-left-color:var(--pk)"><h3>6. Sohui — 가장 격렬, 가장 파괴적</h3><div class="sub">2020.03.21~10.19 | 미한혼혈 | 헬로챗 | 구산/연신내 반동거</div><p>가슴확대. 피임수술(질내사정 일상). 구강내사정 수용(정액 삼킴). 동생통화중오랄. 쉐라톤 통유리 후배위. 이별=천홍회피. <b>이별후 PC방 10월55회, 11월53회.</b> 정신과 2회(연세공감정신건강 09.14, 09.18).</p></div>
+
+<div class="cd" style="border-left-color:#888"><h3>7. 종교여자 / 8. 프랑스교환학생</h3><div class="sub">종교: 21.04~05, 2회, 성관계없음 | 프랑스: 21.05~07, 헬로챗, 성관계있음</div><p>종교여자=삼청동+국립중앙박물관. 프랑스인=고려대교환. 첫성관계 07.13 서대문창천숙소(처녀, 질경련, 콘돔사정). 2회차 07.21 남산. 07.27 귀국.</p></div>
+
+<div class="cd" style="border-left-color:var(--gn)"><h3>9. 정다영 — 현재, 안정, 기반</h3><div class="sub">첫만남 2019.02.21 | 교제 2021.09~ | 강변역</div><p>첫만남~교제 2년 반(정다영 다른 동기 교제 중). 09.07 호텔글로리(술집)=교제직전/직후. <b>09.11 야놀자 18,725=첫성관계.</b> 이문동 매일 방문. 낮=커플오버워치, 밤=정다영귀가후 천홍 혼자 롤밤새. 군포복귀 후 정다영→천홍 경제지원 본격화(아버지 돈). 성적관계="특별한 것 없다" — <b>안정이 핵심.</b> 둘 다 불안정.</p></div>
+</div>
+
+<!-- ═══ 3. 심리 분석 ═══ -->
+<div id="psych" class="tc">
+<div class="st">심리 분석<small>5가지 뿌리 + 허락의 천장 + 10호기 심화</small></div>
+
+<div class="rts">
+<div class="rt"><h3>소속 불가능</h3><p>가정=안전기지 아님. 어머니 사이비(햇빛교회→흰돌산→김용두→JMS). 아버지 방치. 밖에서 소속 찾지만 전부 불안정: 나쁜친구→딴지→해병대→외대→공무원. <b>합격자 전원이 고시반/관리반/스터디에 소속됐다. 천홍은 혼자다. 이건 성격이 아니라 이 뿌리의 직접 결과다.</b></p></div>
+<div class="rt"><h3>성욕 = 죄 회로</h3><p>교회에서 성욕=죄 학습. 나쁜 친구들이 여성 옷 벗기는 것 목격 — "공범" 의식. 정상 루트 접근시 죄책감 → 익명(랜챗/헬로챗)으로만 가능. 포르노 의존. <b>"포르노를 끊지 못하는 나는 그들과 근본적으로 다른 사람 아닌가"</b> — 이 의심이 허락의 천장으로 직결된다.</p></div>
+<div class="rt"><h3>권위 불신</h3><p>목사들 실체 목격 → 멘토/지도 받아들이기 어려움 → 편입 독학, 공시 혼자. <b>합격자 강민우: "혼자서는 안 됐다. 관리반에서야 됐다." 합격자 전원이 외부 강제성을 스스로에게 부여했다. 천홍은 이걸 거부한다.</b></p></div>
+<div class="rt"><h3>아버지 부재 패턴</h3><p>아버지=문제 보고도 행동 안 함. 천홍도 동일: 정수연 도망, Olive 영국 3주 침묵, Sohui 이별 회피, 이예지 발각=탈출구. <b>공시에서의 발현: "공부방법을 바꿔야 한다는 걸 안다. 아직 바꾸지 않았다."</b></p></div>
+<div class="rt"><h3>"원래 이렇게 흘러가던 것"</h3><p>출발점이 달랐다는 인식. 학벌열등감 근원. 수능 전과목 4등급 — 합격자 추정 1~2등급. <b>"나 같은 출발점의 사람이 5급을 감히" — 이 감각이 70점의 천장이다.</b></p></div>
+</div>
+
+<div class="st" style="margin-top:36px">허락의 천장<small>9호기 발견 → 10호기 심화</small></div>
+<div class="cd"><p>5급 PSAT 2년 연속 70점. 7급은 같은 기간 80→90. 능력은 있다. 그런데 5급에서만 안 움직인다.</p><p><b>"나 같은 출발점의 사람이 5급을 준비한다는 것 자체가 염치없다"</b> — 이 감각이 70점에서 멈추게 한다. 실력의 천장이 아니라 <b>자기 허락의 천장</b>이다.</p></div>
+
+<div class="st" style="margin-top:36px">10호기 심화: 성 문제 → 자격 문제 → 70점</div>
+<div class="flow">
+성욕=죄 회로 <span class="arrow">→</span> 포르노/익명루트 의존 <span class="arrow">→</span> "나는 결함 있는 사람" <span class="arrow">→</span> "나 같은 사람이 5급을 감히" <span class="arrow">→</span> 허락의 천장 <span class="arrow">→</span> <b>70점 정체</b>
+</div>
+<div class="cd"><p><b>포르노 자체가 점수를 깎는 게 아니다.</b> 합격자들이 포르노를 안 봤다는 증거는 없다. 합격수기에 안 썼을 뿐이다.</p>
+<p><b>포르노 후에 오는 자기혐오가 허락의 천장을 강화한다.</b> "나는 역시 이런 사람이다" → "이런 사람이 5급을 감히" → 공부에서 손을 놓는 하루가 생긴다.</p>
+<p><b>합격은 도덕적 자격으로 주어지는 게 아니라 점수로 주어진다.</b> 80점을 넘기면 천홍이 어떤 사람이든 1차는 통과한다.</p></div>
+
+<div class="st" style="margin-top:36px">10호기 발견: "확신의 소멸"</div>
+<div class="vs-box">
+<div class="side" style="border-left:3px solid var(--gn)">
+<h4>편입 준비기 (2018)</h4>
+<p>"뭐든 열심히 하면 할 수 있을 거라고 생각했다."</p>
+<p>외로워도 공부했다. 단어를 무한정 외웠다.</p>
+<p>PC방 1시간 제한. 성공.</p>
+<p><b>확신이 있었다.</b></p>
+</div>
+<div class="mid">→</div>
+<div class="side" style="border-left:3px solid var(--rd)">
+<h4>지금 (2026)</h4>
+<p>"지금은 그렇지 않다."</p>
+<p>공부가 고통스럽다. 효율을 따진다. 나이를 의식한다.</p>
+<p>방법을 바꿔야 한다는 걸 안다. 아직 바꾸지 않았다.</p>
+<p><b>확신이 없다.</b></p>
+</div>
+</div>
+<div class="cd"><p><b>"할 수 있다"가 "할 수 없다"로 바뀐 건 실패의 축적 때문이 아니다.</b></p>
+<p>편입에 성공했다. 그런데 편입 성공이 삶을 바꾸지 못했다. "소속되면 잘될 줄 알았다. 아니야." 이문동에서 마취가 필요했고, 돈이 떨어져 군포로 돌아왔다.</p>
+<p>"열심히 하면 된다"를 믿고 해냈는데, 해내도 바뀌지 않았다. <b>그래서 "열심히 해도 안 되는 것"이 생겼다.</b></p>
+<p>그렇다면 5급 합격은? 그것도 삶을 바꾸지 못할 수 있다. 이 두려움이 확신을 잠식한다.</p></div>
+
+<div class="st" style="margin-top:36px">심리 패턴 7가지</div>
+<div class="cd"><p><b>1. 감정 없으면 사정 못함</b> — 영등포여자, Olive 영국.</p><p><b>2. 먼저 제안 못하는 패턴</b> — Olive 영국 3주, 상대가 적극적이지 않으면 행동 못함.</p><p><b>3. 이별 후 PC방 폭주</b> — 이예지→PC방, Sohui→월55회.</p><p><b>4. 독립성 없이 연애로 외로움 달램</b> — 능력개발 없음→회피→이별.</p><p><b>5. 쇼핑 폭발 = 만남 준비</b> — 이예지 전, Sohui 전(03.11~13), 프랑스인 전(04~05).</p><p><b>6. 헬로챗으로 외국인 반복</b> — Olive→Sohui→프랑스인.</p><p><b>7. 외부 프레임으로 자기 정의</b> — 나쁜친구→딴지→해병대→외대→공무원.</p></div>
+
+<!-- V9 핵심 신설: 성욕과 공존하는 공부 -->
+<div class="st" style="margin-top:40px">11호기 신설: 성욕과 공존하는 공부<small>끊는 것이 아니라 회로를 바꾸는 것</small></div>
+
+<div style="background:var(--sf);border:1px solid var(--bd);padding:22px;margin-bottom:18px;border-left:4px solid #1a5c3a">
+<h3 style="font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;margin-bottom:8px;color:#1a5c3a">진단: 포르노는 원인이 아니라 증상이다</h3>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2);margin-bottom:7px">포르노 자체가 점수를 깎지 않는다. 합격자들이 포르노를 안 봤다는 증거는 없다. 합격수기에 안 썼을 뿐이다.</p>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2);margin-bottom:7px"><b>문제는 포르노 이후의 자기혐오 회로다.</b> 시청 → "나는 역시 이런 사람" → "이런 사람이 5급을 감히" → 공부에서 손을 놓는 하루 → 자기혐오 심화 → 다시 포르노. 이 순환이 허락의 천장을 강화한다.</p>
+</div>
+
+<div style="background:var(--sf);border:1px solid var(--bd);padding:22px;margin-bottom:18px;border-left:4px solid #1a5c3a">
+<h3 style="font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;margin-bottom:8px;color:#1a5c3a">원칙 1: 성욕을 적으로 만들지 않는다</h3>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2);margin-bottom:7px">성욕=죄 회로의 핵심은 "성욕이 나쁜 것"이라는 전제. 이 전제가 있는 한 성욕이 생길 때마다 죄책감→자기혐오. <b>성욕은 기능이다.</b> 배고픔처럼. 해소하고 다음 일을 한다.</p>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2);margin-bottom:7px">권대일(36세, 10년 수험 후 합격): 수험 중 결혼 약속. 황정규(12년 수험): 외로움을 사교로 해소하다 실패. 정영미(8년): 아르바이트 병행. <b>장기 수험자들은 전부 성적/관계적 삶이 있었다. 금욕으로 합격한 사람은 없다.</b></p>
+</div>
+
+<div style="background:var(--sf);border:1px solid var(--bd);padding:22px;margin-bottom:18px;border-left:4px solid #1a5c3a">
+<h3 style="font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;margin-bottom:8px;color:#1a5c3a">원칙 2: 회로를 끊는 지점 = "포르노 후 자기혐오"</h3>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2);margin-bottom:7px"><b>기존 회로:</b> 포르노 → "나는 결함 있는 사람" → 공부 중단 → 자기혐오 심화</p>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2);margin-bottom:7px"><b>교체 회로:</b> 포르노 → "해소했다" → 아침에 독서실에 앉는다 → 모의고사 1세트를 푼다</p>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2)"><b>80점을 넘기면 된다. 80점은 어제 밤에 뭘 했는지 묻지 않는다.</b></p>
+</div>
+
+<div style="background:var(--sf);border:1px solid var(--bd);padding:22px;margin-bottom:18px;border-left:4px solid #1a5c3a">
+<h3 style="font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;margin-bottom:8px;color:#1a5c3a">원칙 3: 정다영과의 안정은 자원이다</h3>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2);margin-bottom:7px">"특별한 것 없다"가 가장 특별한 것이다. 9명의 연인 중 유일하게 안정적. 이 안정을 유지하면서 공부하는 것. 경제적 지원은 부채가 아니라 투자.</p>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2)"><b>성적 문제의 해결은 정다영과의 관계 안에서.</b> 익명 루트(포르노/랜챗)는 성욕=죄 회로의 산물. 정다영 루트는 그 회로 밖에 있다.</p>
+</div>
+
+<div style="background:var(--sf);border:1px solid var(--bd);padding:22px;margin-bottom:18px;border-left:4px solid #1a5c3a">
+<h3 style="font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;margin-bottom:8px;color:#1a5c3a">원칙 4: "근본적으로 다른 경로"라는 의심에 대해</h3>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2);margin-bottom:7px">이지연(31, UNIST 기계공학→행시): 근본적으로 다른 경로에서 왔는데 합격. 정영미(8년 사시): 천홍보다 훨씬 가혹한 조건에서 합격. 황정규(12년): 자기 문제를 알고도 12년 걸렸지만 결국 합격.</p>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2)"><b>"나는 그들과 다른 종류다"는 사실이 아니라 감각이다.</b> 이 감각은 성욕=죄 회로에서 파생됐다. 회로를 교체하면 감각도 바뀐다.</p>
+</div>
+
+<blockquote>"나는 법률과 철학 그리고 규칙과 질서에 매력을 느낀다. 동시에 나는 혼돈과 섹스에 강렬한 끌림을 느낀다."<div class="at">— 9호기</div></blockquote>
+<blockquote>"나는 고시를 통해서 나를 극복하고 싶다. 나를 정상화된 사회에 넣고 싶다. 다음 세대에 더 좋은 토양을 주고 싶은 것 뿐이다. 나는 나를 소모하고자 하는 것이다."<div class="at">— 9호기</div></blockquote>
+<blockquote>"5급을 준비할 자격을 가진 사람이 아니라고 느끼기 때문이다. 그래서 숨고 싶다. 그들에게 노출되면 나는 무섭다. 그러나 언젠가는 노출해야 할 날이 온다는 것도 알고 있다."<div class="at">— 9호기</div></blockquote>
+<blockquote>"편입때만해도 나는 뭐든 열심히하면 할 수 있을 거라고 생각했다. 그렇지만 지금은 그렇지 않다. 그때는 외로워도 공부는 했고 단어를 무한정 외웠다. 그러나 지금은 그런것이 고통스럽고 모든지 효율 그리고 나의 나이를 의식하게 된다."<div class="at">— 10호기</div></blockquote>
+<blockquote>"나는 아주 근본적인 물음이 있다 항상. 나의 성문제를 보았을때 나는 그들과 근본적으로 다른 삶의 경로를 그려온것은 아닌지"<div class="at">— 10호기</div></blockquote>
+</div>
+
+<!-- ═══ 4. 공시 분석 ═══ -->
+<div id="exam" class="tc">
+<div class="st">공시 현실성 분석<small>이중 진단 확정 — 방법의 문제 + 허락의 문제</small></div>
+
+<div class="sr">
+<div class="sc"><div class="l">5급 PSAT (2025)</div><div class="v" style="color:var(--rd)">70.00</div><div class="s">합격선 80.00 | -10점</div></div>
+<div class="sc"><div class="l">7급 추가채용</div><div class="v" style="color:var(--gn)">86.66</div><div class="s">합격선 85.33 | 합격</div></div>
+<div class="sc"><div class="l">7급 외무영사</div><div class="v" style="color:var(--gd)">90.66</div><div class="s">합격선 93.33 | -2.67</div></div>
+<div class="sc"><div class="l">5급 정체</div><div class="v">2년</div><div class="s">2024~2025 연속 70점대</div></div>
+</div>
+
+<div class="eb"><div class="nm">5급 공채 PSAT</div><div class="tk"><div class="fl f" style="width:70%"></div><div class="cl" style="left:80%"></div></div><div class="sl">70.00 / 합격선 80.00 — 10점 부족. 2년 연속 정체.</div></div>
+<div class="eb"><div class="nm">7급 추가채용 PSAT</div><div class="tk"><div class="fl p" style="width:86.66%"></div><div class="cl" style="left:85.33%"></div></div><div class="sl">86.66 / 합격선 85.33 — 합격.</div></div>
+<div class="eb"><div class="nm">7급 외무영사직 PSAT</div><div class="tk"><div class="fl f" style="width:90.66%"></div><div class="cl" style="left:93.33%"></div></div><div class="sl">90.66 / 합격선 93.33 — 2.67점 차.</div></div>
+
+<div class="st" style="margin-top:36px">이중 진단: 방법 + 허락</div>
+<div class="vs-box">
+<div class="side" style="border-left:3px solid var(--ac2)">
+<h4>방법의 문제 (증거)</h4>
+<p>자료해석에서 "계산을 많이 한다" — 합격자 BOO: "고득점자 시험지는 깨끗하다"</p>
+<p>오답 분석 체계 미정립 — "아직 정립되지 않음" (천홍 답변)</p>
+<p>유형분류 미착수 — "지금 작업하려고 계획 중"</p>
+<p>실전 모의고사 루틴 미확립</p>
+<p>강제성 구조 부재 — 혼자 도서관</p>
+</div>
+<div class="mid">+</div>
+<div class="side" style="border-left:3px solid var(--rd)">
+<h4>허락의 문제 (증거)</h4>
+<p>7급: 80→90 (10점↑). 같은 기간 5급: 70→70.</p>
+<p>"나 같은 출발점의 사람이 5급을 감히"</p>
+<p>"그들에게 노출되면 무섭다"</p>
+<p>성 문제 → "근본적으로 다른 경로" 감각</p>
+<p>편입 확신 소멸 → "지금은 그렇지 않다"</p>
+</div>
+</div>
+
+<div class="st" style="margin-top:36px">시험 이력 전체</div>
+<div class="cd">
+<p><b>2023년:</b> 토익 유효기간 착각 → PSAT 접수 불가. <b>1년 완전 손실.</b></p>
+<p><b>2024년 (첫 시험):</b> 입법고시(02.24 용산) + 5급 공채 + 7급 — <b>전부 70점대.</b></p>
+<p><b>2025년:</b> 7급 추가채용 86.66(합격, 2차미준비) / 5급 공채 70(불합격, -10) / 7급 외무영사 90.66(불합격, -2.67)</p>
+<p><b>2026년:</b> 5급 + 7급 외무영사 응시 예정.</p>
+</div>
+
+<div class="st" style="margin-top:36px">경로 A / 경로 B</div>
+<div class="path-card" data-path="A">
+<h3>경로 A: 5급 PSAT 70 → 80+</h3>
+<p><b>전제:</b> 습관 교정(SOO 방식) + 자료해석 계산→판별 전환(BOO 방식) + 자기 풀이 객관화(KOO 방식) + 강제성 구조 확보(관리반 또는 스터디)</p>
+<p><b>근거:</b> SOO 1년에 47.5점 상승. 천홍 7급 1년에 10점 상승. 외무영사3 전면 재검토 후 2~3년 합격.</p>
+<p><b>기간:</b> 전환 실행 시 1~2년. 미실행 시 BOO처럼 5~6년 정체 후 전환.</p>
+<p><b>리스크:</b> 허락의 천장이 시험장에서 작동할 경우.</p>
+</div>
+<div class="path-card" data-path="B">
+<h3>경로 B: 7급 외무영사 90.66 → 93.33+</h3>
+<p><b>전제:</b> 5급 습관 교정이 7급 점수에도 전이. 2.67점 = 1~2문제 차이.</p>
+<p><b>근거:</b> 이미 합격 영역 진입. 시험 운 요소가 크게 작동하는 거리.</p>
+<p><b>기간:</b> 병행 가능. 5급 훈련이 7급에도 적용됨.</p>
+</div>
+
+<div class="st" style="margin-top:36px">편입준비기 복제 조건 분석</div>
+<div class="cd">
+<p><b>편입 때 있었던 것:</b> 바닥(백석대 제적, 갈 곳 없음) + 명확한 기한 + 독학(권위불신과 양립) + PC방 1시간 제한 + <b>"이걸 해내면 삶이 바뀐다"는 확신</b></p>
+<p><b>지금 없는 것:</b> 확신. "편입때만해도 뭐든 열심히하면 할 수 있을 거라고 생각했다. 지금은 그렇지 않다." — 이것이 가장 큰 변수.</p>
+<p><b>지금 있는 것:</b> 바닥 아님(정다영 있고 7급 합격도 있다). 기한 있음(시험일). 방법론 재검토 중(이 프로젝트). 데이터 있음(13,315건 + 합격수기 10명분).</p>
+<p><b>핵심 질문:</b> 확신 없이도 전환할 수 있는가? 합격자 BOO는 "스스로에게 실망"한 상태에서 관리반에 들어갔다. 확신이 아니라 구조가 그를 움직였다.</p>
+</div>
+
+<div class="st" style="margin-top:36px">능력 증거</div>
+<div class="cd">
+<p><b>수능: 전과목 4등급.</b> 상위 40~60%. 낮다.</p>
+<p><b>그러나:</b> 수원대 GPA 3.96. 외대 편입 독학 합격. JLPT N1 131/180(백분위 88.4). 7급 PSAT 80→90.66(1년 10점). 편입 준비 10개월.</p>
+<p><b>패턴:</b> "고르게 잘하는 사람"이 아니라 <b>"집중하면 폭발하는 사람."</b> 수능 탐구 백분위 94. N1. 편입. 7급 90.66 — 전부 "이것에 집중하겠다"고 결정한 후 나온 결과.</p>
+<p><b>5급 70점의 의미:</b> 아직 5급에 진짜로 집중하지 않았거나, 집중할 수 있는 조건이 만들어지지 않은 것.</p>
+</div>
+</div>
+
+<!-- ═══ 5. 그들과 나 (V9 전면 재작성) ═══ -->
+<div id="compare" class="tc">
+<div class="st">그들과 나<small>합격자 9명 개별 정밀 해부 — 그들의 단점을 냉철하게, 천홍과의 차이를 정확하게</small></div>
+
+<!-- 합격자 개인 카드 시작 -->
+<div style="background:var(--sf);border:1px solid var(--bd);padding:20px;margin-bottom:28px;border-left:4px solid var(--ac)">
+<h3 style="font-family:'Noto Serif KR',serif;font-size:16px;margin-bottom:10px">합격수기는 그 사람의 삶이 아니다</h3>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2)">합격수기는 삶의 한 단면을 정돈해서 보여주는 문서다. 성 문제를 쓴 사람은 없다. 게임 중독을 쓴 사람은 없다. 자기혐오를 쓴 사람도 없다. <b>합격수기에 안 썼다고 없는 게 아니다.</b> 그러니 그들을 읽을 때 — 겸손 뒤에 숨은 우월감과, 전략 뒤에 숨은 운과, 감사 뒤에 숨은 고통을 동시에 읽어야 한다.</p>
+</div>
+
+<!-- ① 고나연 -->
+<div style="background:#fff;border:1px solid var(--bd);margin-bottom:22px;overflow:hidden">
+<div style="padding:16px 22px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;background:var(--sf)">
+<div><span style="font-family:'Noto Serif KR',serif;font-size:16px;font-weight:700">고나연 (26세)</span></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dm)">2025 외교관후보자 합격 | 안양외고 → 연세대</div>
+</div>
+<div style="padding:20px 22px">
+<p style="font-size:12.5px;line-height:1.85;color:var(--tx2);margin-bottom:10px"><b>수험기간:</b> 2020~2025 (5년). 2020년 교환학생 시기에 진입. 2022~2023 건강 문제로 거의 공부 못함. 본격 시작은 2023.06부터. <b>실질 수험기간 약 2년.</b></p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:14px 0">
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">PSAT 시작</div><b style="color:var(--rd)">전과목 40대</b></div>
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">헌법</div>92→84→<b>96</b></div>
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">언어</div>90→97.5→<b>92.5</b></div>
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">자료</div><span style="color:var(--rd)">70</span>→87.5→<b>82.5</b></div>
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">상황</div><span style="color:var(--rd)">72.5</span>→90→<b>87.5</b></div>
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">2차 국제법</div>61.25→<b style="color:var(--rd)">48.75</b></div>
+</div>
+
+<div style="margin-top:14px;padding:12px 16px;background:rgba(155,27,27,.05);border-left:2px solid var(--rd);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>냉철한 단점 지적:</b> 자료해석 첫해 70점 — 천홍과 같은 점수. 계산특강 교재를 3회독해서 겨우 87.5까지 올림. 2차 국제법은 2년차에 <b>오히려 12.5점 하락</b>(61.25→48.75). 2022~2023 건강 문제로 2년 허비. 합격까지 5년 걸렸지만 자기 수기에서는 "건강 문제"로 퉁쳤다. 그 2년이 정확히 뭐였는지는 안 썼다. <b>연세대+안양외고 = 기본 인지능력 상위 3%. 같은 70점이라도 출발점이 다르다.</b>
+</div>
+<div style="margin-top:10px;padding:12px 16px;background:rgba(45,107,63,.05);border-left:2px solid var(--gn);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>천홍이 가져갈 것:</b> 자료해석 70→87.5의 방법 = 조훈 계산특강 3회독 + 기화펜 반복. 계산 안 하는 법. 천홍 자료해석도 70점대일 가능성 높다. 이것만 해도 5~10점 상승 가능. 또한 "하루 30분 언어논리 꾸준히" — 공부를 못하던 2022년에도 이것만은 했다. <b>최소한의 루틴을 유지하는 것.</b>
+</div>
+</div></div>
+
+<!-- ② 강민우 -->
+<div style="background:#fff;border:1px solid var(--bd);margin-bottom:22px;overflow:hidden">
+<div style="padding:16px 22px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;background:var(--sf)">
+<div><span style="font-family:'Noto Serif KR',serif;font-size:16px;font-weight:700">강민우 (29세)</span></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dm)">2025 5급 공채 일반행정 합격 | 과천고 → 한양대 국문과</div>
+</div>
+<div style="padding:20px 22px">
+<p style="font-size:12.5px;line-height:1.85;color:var(--tx2);margin-bottom:10px"><b>수험기간:</b> 2022.01~2025.07 (3.5년). 비전공(국어국문학). 주변에 시험 준비 지인 없음. 고시반 소속 아님. <b>무작정 한림법학원 찾아가서 상담.</b> 2022 초시 1차 한 문제 차이 합격.</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:14px 0">
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">언어 추이</div>67.5→87.5→90→<b>95</b></div>
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">자료 추이</div><span style="color:var(--rd)">75</span>→X→85→<b>90</b></div>
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">상황 추이</div><span style="color:var(--rd)">70</span>→X→X→<b>87.5</b></div>
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">2025 PSAT</div><b style="color:var(--gn)">95 / 90 / 87.5</b></div>
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">상승폭</div>3년 만에 <b>30점↑</b></div>
+</div>
+
+<div style="margin-top:14px;padding:12px 16px;background:rgba(155,27,27,.05);border-left:2px solid var(--rd);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>냉철한 단점 지적:</b> 2022년 1차 합격 후 2년간 PSAT을 게을리함. 본인 인정: "PSAT은 어차피 붙는다는 자신감에 2차에만 집중. 이게 실수." 2차 시험 첫해 과락 수준. 3년 만에 "3과목 과락이었다"고 인정. 자기관리 실패로 2년을 버림. <b>한양대 국문과 = 독해력 기본 탑재. 천홍의 외대 편입 영어와는 PSAT 적합도가 다르다.</b>
+</div>
+<div style="margin-top:10px;padding:12px 16px;background:rgba(45,107,63,.05);border-left:2px solid var(--gn);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>천홍이 가져갈 것:</b> "혼자서는 안 됐다." 천홍과 가장 비슷한 진입 조건(비전공, 정보 부재)이지만 <b>한 가지가 달랐다 — 한림법학원에 찾아가서 상담했다.</b> 정보가 없으면 찾아가서 얻었다. 천홍의 권위불신이 여기서 충돌한다. 또한 "PSAT은 공부해서 늘지 않는 시험이 아니다" — 자료 75→90, 상황 70→87.5. <b>계산을 본질적으로 푸는 법을 익히니 15점 올랐다.</b>
+</div>
+</div></div>
+
+<!-- ③ 이혜린 -->
+<div style="background:#fff;border:1px solid var(--bd);margin-bottom:22px;overflow:hidden">
+<div style="padding:16px 22px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;background:var(--sf)">
+<div><span style="font-family:'Noto Serif KR',serif;font-size:16px;font-weight:700">이혜린 (한양대 정책학과)</span></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dm)">2025 5급 공채 일반행정 합격 | 5년 수험</div>
+</div>
+<div style="padding:20px 22px">
+<p style="font-size:12.5px;line-height:1.85;color:var(--tx2);margin-bottom:10px"><b>수험기간:</b> 2020~2025 (5년). 학교 고시반 소속. PSAT 매년 90점대 초반. <b>그런데 2024년 2차에서 전년 대비 5점 하락.</b> 체력 저하 + 과목 편중이 원인.</p>
+
+<div style="margin-top:14px;padding:12px 16px;background:rgba(155,27,27,.05);border-left:2px solid var(--rd);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>냉철한 단점 지적:</b> 5년 걸렸다. 한양대 정책학과(관련 전공) + 학교 고시반 + 매년 PSAT 90점대 — 이 조건에서 5년이 걸렸다는 건 <b>2차가 그만큼 어렵다는 뜻이다.</b> 2023년 행정학 46점 (과락 수준). 2024년 금융공기업/로스쿨 고민 = 흔들렸다. 2024년 2차 5점 하락 = "집안 사정으로 공부 시간 확보 어려움." <b>합격자도 흔들린다. 합격수기의 깔끔한 서술 뒤에 5년의 고통이 있다.</b>
+</div>
+<div style="margin-top:10px;padding:12px 16px;background:rgba(45,107,63,.05);border-left:2px solid var(--gn);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>천홍이 가져갈 것:</b> "매주 학습 비중을 객관적으로 점검하고 부족한 과목 즉시 보완." + <b>체력 관리가 성적에 직결된다.</b> 이혜린은 주 2회 아침 코어요가를 시작한 뒤 후반부 성과가 나왔다. 천홍은 체력 관리 데이터가 없다. 또한 법률저널 모의고사 5~6회 응시 — "어려운 환경에서 위기 대응력을 기른다."
+</div>
+</div></div>
+
+<!-- ④ 신재훈 -->
+<div style="background:#fff;border:1px solid var(--bd);margin-bottom:22px;overflow:hidden">
+<div style="padding:16px 22px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;background:var(--sf)">
+<div><span style="font-family:'Noto Serif KR',serif;font-size:16px;font-weight:700">신재훈 (최연소, 대학 1학년)</span></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dm)">2018 5급 공채 최연소 합격 | 대구일과학고 → 고려대 화공생명공학</div>
+</div>
+<div style="padding:20px 22px">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:14px 0">
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">PSAT 시작</div><b style="color:var(--rd)">62.5/65/67.5</b></div>
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">2017 PSAT</div>90/95/90=<b>91.66</b></div>
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">2018 PSAT</div>97.5/80/87.5=<b>88.33</b></div>
+<div style="background:var(--sf);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px"><div style="font-size:8px;color:var(--dm);letter-spacing:.5px">상승폭</div>65→91.66 (<b>+26</b>)</div>
+</div>
+
+<div style="margin-top:14px;padding:12px 16px;background:rgba(155,27,27,.05);border-left:2px solid var(--rd);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>냉철한 단점 지적:</b> 대구일과학고 + 고려대 화공생명 = <b>상위 0.1% 두뇌.</b> PSAT 시작점 65에서 91까지 올린 건 대단하지만, 이 사람의 기본 연산·독해 속도는 천홍과 비교 대상이 아니다. 2018년 자료해석 80점 — <b>전년 95에서 15점 하락.</b> 본인도 "컨디션에 따라 편차" 인정. 경제학 78점 — 1년 만에 90→78 하락. <b>천재도 안정성은 별개 문제다.</b>
+</div>
+<div style="margin-top:10px;padding:12px 16px;background:rgba(45,107,63,.05);border-left:2px solid var(--gn);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>천홍이 가져갈 것:</b> "의도적으로 펜 없이 문제를 풀어보는 것도 도움." 언어논리에서 줄 안 긋고 눈으로만 읽는 훈련. 모의고사 시간을 70분으로 줄여서 연습 → 실전에서 여유. <b>이 전략은 두뇌 수준과 무관하게 적용 가능.</b>
+</div>
+</div></div>
+
+<!-- ⑤ 이지연 -->
+<div style="background:#fff;border:1px solid var(--bd);margin-bottom:22px;overflow:hidden">
+<div style="padding:16px 22px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;background:var(--sf)">
+<div><span style="font-family:'Noto Serif KR',serif;font-size:16px;font-weight:700">이지연 (31세, 공학도)</span></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dm)">2023 5급 공채 재경직 합격 | 포항제철고 → UNIST 기계공학</div>
+</div>
+<div style="padding:20px 22px">
+<p style="font-size:12.5px;line-height:1.85;color:var(--tx2);margin-bottom:10px"><b>핵심:</b> 완전 비전공. 기계공학 → 행정고시 재경직. UNIST에 고시반 없음. 1차 <b>여러 해 연속 낙방.</b> 상황판단 50~60점대에서 탈출 못함. "행시는 내 길이 아닌 것 같다" → 공기업 준비 → 다시 복귀.</p>
+
+<div style="margin-top:14px;padding:12px 16px;background:rgba(155,27,27,.05);border-left:2px solid var(--rd);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>냉철한 단점 지적:</b> 대학 시절 영어 교재만 읽어서 <b>한국어 독해력 자체가 형편없었다.</b> 행시생 평균 커리큘럼이 자기에게 안 통하는데도 2~3년간 같은 방식 반복. "독해력 부족"을 인지하는 데만 수년 걸림. 한자는 잘해서 언어논리가 겉보기 점수는 나왔고, 이게 진짜 문제(독해력)를 가렸다. <b>자기 문제를 정확히 진단하지 못하면 수년을 허비한다.</b>
+</div>
+<div style="margin-top:10px;padding:12px 16px;background:rgba(45,107,63,.05);border-left:2px solid var(--gn);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>천홍과 가장 닮은 점:</b> "출발점이 근본적으로 달랐다." 공학부 출신이 행정고시를 본다는 것 자체가 주변에서 이해 못함. <b>그런데 합격했다.</b> 방법: 하루 10문제라도 완벽히 이해하는 훈련을 1년 내내 매일. 양이 아니라 깊이. 천홍에게 가장 직접적으로 적용 가능한 사례. 또한 "패배감에 젖어 공기업 준비까지 했다가 돌아왔다" — <b>흔들려도 돌아오면 된다.</b>
+</div>
+</div></div>
+
+<!-- ⑥ 권대일 -->
+<div style="background:#fff;border:1px solid var(--bd);margin-bottom:22px;overflow:hidden">
+<div style="padding:16px 22px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;background:var(--sf)">
+<div><span style="font-family:'Noto Serif KR',serif;font-size:16px;font-weight:700">권대일 (36세, 최고령)</span></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dm)">2002 46회 행시 법무행정 합격 | 고려대 영어교육 | 수험 10년+</div>
+</div>
+<div style="padding:20px 22px">
+<p style="font-size:12.5px;line-height:1.85;color:var(--tx2);margin-bottom:10px"><b>경로:</b> 육사 신체검사 낙방 → 고대 입학 → 흥미 없어 재수 포기 → 1년 술 → 행시 결심 → 1차 합격 후 과로로 입원 → 공군 학사장교 40개월 → 제대 후 행시 5번 2차 낙방 → 응시연령 초과 → 사시 전환 → 사시 불합격 → 백수 → 고교 영어교사 → <b>교사하면서 행시 합격.</b></p>
+
+<div style="margin-top:14px;padding:12px 16px;background:rgba(155,27,27,.05);border-left:2px solid var(--rd);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>냉철한 단점 지적:</b> 10년 이상. 2차만 5번 낙방. 응시연령 초과. 사시로 전환했다가 실패. 백수. "최연소를 꿈꾸며 시작한 고시가 최고령 합격." <b>이 사람도 자기 문제가 뭔지 알고도 고치지 못한 케이스다.</b> 다만 차이점: 포기하지 않았고, 교사라는 직업을 가진 상태에서 병행했다. <b>36세에도 합격할 수 있다. 그러나 10년이 걸렸다.</b>
+</div>
+<div style="margin-top:10px;padding:12px 16px;background:rgba(45,107,63,.05);border-left:2px solid var(--gn);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>천홍에 대한 경고:</b> 전환을 실행하지 않으면 10년이 걸린다. 전환을 실행하면 1~2년이 걸린다. <b>차이는 "빨리 전환하느냐"뿐이다.</b> 또한 이 사람은 수험 중 결혼 약속까지 했다. 장기 수험자의 현실: 관계, 직업, 생활이 다 엉킨다.
+</div>
+</div></div>
+
+<!-- ⑦ 황정규 -->
+<div style="background:#fff;border:1px solid var(--bd);margin-bottom:22px;overflow:hidden">
+<div style="padding:16px 22px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;background:var(--sf)">
+<div><span style="font-family:'Noto Serif KR',serif;font-size:16px;font-weight:700">황정규 (12년 수험)</span></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dm)">2018 법원행시 합격 | 여수고 → 중앙대 법대 | 사시 6번 낙방</div>
+</div>
+<div style="padding:20px 22px">
+<p style="font-size:12.5px;line-height:1.85;color:var(--tx2);margin-bottom:10px"><b>12년.</b> 사시 1차 1년 만에 합격 → 2차 6번 낙방 → 노무사 1차 2번 합격하고 2차 포기 → 어머니 뇌종양 투병 15년 후 사망 → 아버지 간암 수술 → "부끄럽지 않은 아들이 되고 싶다"는 간절함.</p>
+
+<div style="margin-top:14px;padding:12px 16px;background:rgba(155,27,27,.05);border-left:2px solid var(--rd);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>냉철한 단점 지적 — 그리고 천홍과의 거울:</b> "간절함 부족이 원인." "장수생이 되자 책을 보지 않아도 아는 단계가 됐고, 처음만큼 자리에 앉아있지 못했다." — <b>이것이 천홍의 미래 가능성이다.</b> "외로움을 핑계로 너무 많은 고시촌 친구를 만났다" — 천홍은 반대로 아무도 안 만난다. 둘 다 극단. "타인의 권유로 노무사를 시작했다가 중간에 포기" — <b>자기 결정이 아닌 것은 완주 못한다.</b>
+</div>
+<div style="margin-top:10px;padding:12px 16px;background:rgba(45,107,63,.05);border-left:2px solid var(--gn);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>핵심 교훈:</b> 아버지 수술 사진을 핸드폰 배경화면으로 — "몸과 마음이 지칠 때마다 보며 마음을 다잡았다." 12년차에 간절함이 생겼다. <b>간절함은 수험 초기에 있는 게 아니라 절박한 순간에 발생한다.</b> 천홍의 "나를 극복하고 싶다"는 이미 그 수준이다.
+</div>
+</div></div>
+
+<!-- ⑧ 정영미 -->
+<div style="background:#fff;border:1px solid var(--bd);margin-bottom:22px;overflow:hidden">
+<div style="padding:16px 22px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;background:var(--sf)">
+<div><span style="font-family:'Noto Serif KR',serif;font-size:16px;font-weight:700">정영미 (8년 사시)</span></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dm)">2008 50회 사법시험 합격 | 숭실대 법대 | 극빈 + 아르바이트 병행</div>
+</div>
+<div style="padding:20px 22px">
+<p style="font-size:12.5px;line-height:1.85;color:var(--tx2);margin-bottom:10px"><b>경제적 지원 완전 부재.</b> 주말 아르바이트 병행. 강의 테이프로 독학. 학원 못 다님. 2차 첫해 전과목 과락(민법 제외). 모의고사 10~20점대. <b>고시원에서 도둑이 민사소송법+행정법 책 훔쳐감.</b> 토익 695점으로 1차 자격 상실(700점 필요).</p>
+
+<div style="margin-top:14px;padding:12px 16px;background:rgba(155,27,27,.05);border-left:2px solid var(--rd);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>냉철한 평가:</b> 이 사람의 수기는 합격 전략이 아니라 생존기다. 모의고사 10점. 책을 도둑맞음. 토익 5점 차로 자격 상실. <b>천홍보다 훨씬 가혹한 조건.</b> 그런데 합격했다. "앞 페이지를 눈 감고 외우지 못하면 다음 페이지로 넘어가지 못하는 이상한 성격" — <b>이것은 강점이 아니라 효율의 적이다.</b> 이 방식 때문에 8년 걸렸을 수 있다.
+</div>
+<div style="margin-top:10px;padding:12px 16px;background:rgba(45,107,63,.05);border-left:2px solid var(--gn);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>천홍에 대한 메시지:</b> "나는 경제적으로 불안정하다"는 천홍의 조건은 정영미에 비하면 <b>안정적이다.</b> 정다영의 지원이 있다. 집이 있다. 인강을 들을 수 있다. <b>조건이 부족해서 못하는 게 아니다.</b>
+</div>
+</div></div>
+
+<!-- ⑨ 서영제 -->
+<div style="background:#fff;border:1px solid var(--bd);margin-bottom:22px;overflow:hidden">
+<div style="padding:16px 22px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;background:var(--sf)">
+<div><span style="font-family:'Noto Serif KR',serif;font-size:16px;font-weight:700">서영제 (입법고시 재경 수석)</span></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dm)">2024 입법고시 재경 수석 | 부산외고 → 서울대 독어독문</div>
+</div>
+<div style="padding:20px 22px">
+<p style="font-size:12.5px;line-height:1.85;color:var(--tx2);margin-bottom:10px"><b>수험기간:</b> 2020.10~2024.07 (3년 9개월). 비전공(독문과). 기출 반복 + 사설 모의고사 안 풀음. "지속 가능한 루틴" 강조. 자료해석에서 "반대해석" — 선지를 뒤집어서 주어진 그림 그대로 활용.</p>
+
+<div style="margin-top:14px;padding:12px 16px;background:rgba(155,27,27,.05);border-left:2px solid var(--rd);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>냉철한 단점 지적:</b> 부산외고 + 서울대 = <b>상위 0.5% 두뇌.</b> 기출만 반복해서 수석을 한 건 기저 능력이 높기 때문이다. 천홍이 같은 방법을 쓰면 같은 결과가 나올 거라는 보장은 없다. 또한 3년 9개월이면 짧은 편이지만, 입법고시 재경직은 5급 일반행정보다 경쟁률이 다르다.
+</div>
+<div style="margin-top:10px;padding:12px 16px;background:rgba(45,107,63,.05);border-left:2px solid var(--gn);font-size:12px;line-height:1.85;color:var(--tx2)">
+<b>천홍이 가져갈 것:</b> "지속 가능한 루틴." 하루 종일 공부하다 번아웃 → 며칠 쉬기보다, <b>매일 일정량을 유지하는 것.</b> 천홍의 편입 때 패턴(단어 무한정 외우기)과 유사. 또한 "기출 반복해 풀며 풀이 방식 개선 노력" — 모의고사를 많이 푸는 것보다 <b>기출 1문제를 여러 방법으로 풀어보는 것</b>이 효과적.
+</div>
+</div></div>
+
+<!-- 종합 비교표 -->
+<div class="st" style="font-size:16px;margin-top:28px">종합 비교: 9명의 출발점 vs 천홍</div>
+<table class="cmp-tbl">
+<tr><th>합격자</th><th>수능 추정</th><th>수험기간</th><th>고시반</th><th>PSAT 시작→최종</th><th>핵심 약점</th></tr>
+<tr><td>고나연</td><td>1~2등급</td><td>5년(실질2년)</td><td>학원</td><td>40대→92.5</td><td>건강문제 2년 공백</td></tr>
+<tr><td>강민우</td><td>1~2등급</td><td>3.5년</td><td>한림법학원</td><td>1차합격→95/90/87.5</td><td>2년 PSAT 게을리</td></tr>
+<tr><td>이혜린</td><td>1~2등급</td><td>5년</td><td>학교</td><td>90대 유지</td><td>과목편중, 체력저하</td></tr>
+<tr><td>신재훈</td><td>상위0.1%</td><td>~2년</td><td>고시반</td><td>65→91.66</td><td>자료해석 편차15점</td></tr>
+<tr><td>이지연</td><td>상위3%</td><td>6년+</td><td>없음→학원</td><td>낙방반복→합격</td><td>독해력부족 진단 늦음</td></tr>
+<tr><td>권대일</td><td>상위10%</td><td>10년+</td><td>없음</td><td>—</td><td>10년 허비</td></tr>
+<tr><td>황정규</td><td>상위10%</td><td>12년</td><td>고시촌</td><td>—</td><td>간절함부족, 사교과다</td></tr>
+<tr><td>정영미</td><td>중위권</td><td>8년</td><td>없음</td><td>—</td><td>극빈, 효율성 부족</td></tr>
+<tr><td>서영제</td><td>상위0.5%</td><td>3년9개월</td><td>학원</td><td>기출반복→수석</td><td>기저능력 의존</td></tr>
+<tr class="me"><td><b>천홍</b></td><td><b>상위40~60%</b></td><td><b>2년</b></td><td><b>없음</b></td><td><b>70→70(5급) / 80→90.66(7급)</b></td><td><b>방법+허락+혼자</b></td></tr>
+</table>
+
+<div class="verdict">
+9명 중 <b>수능 4등급에서 시작한 사람은 0명</b>이다. 천홍의 출발점은 가장 낮다. 이건 사실이다.<br><br>
+그러나 <b>집중 시 폭발력(편입, N1, 7급 90.66)</b>은 이지연·강민우와 대등하거나 그 이상이다.<br>
+<b>정확한 진단은 이것이다:</b> 기본 인지능력은 한 단계 아래. 집중 능력은 대등. <b>차이는 방법론·인프라·허락의 천장.</b><br><br>
+이 중 방법론은 배울 수 있고, 인프라는 돈으로 살 수 있고, 허락의 천장은 <b>천홍 자신만이 열 수 있다.</b>
+</div>
+
+<div class="st" style="font-size:16px;margin-top:28px">전환점 비교 (유지)</div>
+<table class="cmp-tbl">
+<tr><th>합격자</th><th>전환 전</th><th>전환점</th><th>전환 후</th><th>합격까지</th></tr>
+<tr><td>고나연</td><td>전과목40, 건강문제</td><td>2023.06 본격 시작</td><td>90점대</td><td>2년</td></tr>
+<tr><td>강민우</td><td>PSAT 게을리 + 2차 과락</td><td>본격 PSAT 공부 시작</td><td>95/90/87.5</td><td>1~2년</td></tr>
+<tr><td>이지연</td><td>1차 수년 연속 낙방</td><td>독해력 부족 진단 + 하루10문제</td><td>합격</td><td>2~3년</td></tr>
+<tr><td>권대일</td><td>2차 5번 낙방 + 백수</td><td>교사직 + 응시연령 재조정</td><td>합격</td><td>2년</td></tr>
+<tr class="me"><td><b>천홍</b></td><td>2년 70점 정체</td><td><b>지금 (2026.03)</b></td><td><b>?</b></td><td><b>?</b></td></tr>
+</table>
+
+<div class="st" style="font-size:16px;margin-top:28px">방법론 갭 분석 (V9 업데이트)</div>
+<table class="cmp-tbl">
+<tr><th>항목</th><th>합격자 구체적 방법</th><th>천홍 현재</th><th>갭</th></tr>
+<tr><td>자료해석</td><td>고나연: 조훈 계산특강 3회독+기화펜. 강민우: "본질적 푸는 법"+3년 75→90. 이혜린: 분수-비율 전환+근사/정확 구분 훈련</td><td>"계산을 많이 한다"</td><td style="color:var(--rd)"><b>핵심 갭</b></td></tr>
+<tr><td>언어논리</td><td>고나연: 하루30분 꾸준히(공백기에도). 강민우: 3년 67.5→95. 이혜린: 구조분석 읽기. 신재훈: 펜없이 훈련</td><td>구체적 훈련법 미정립</td><td style="color:var(--rd)"><b>큼</b></td></tr>
+<tr><td>상황판단</td><td>고나연: 법조문 먼저→퀴즈. 강민우: 70→87.5 "자기 고유한 방법 체화". 이혜린: 법조문=쟁점문구 중심 읽기</td><td>버릴 문제 전략은 있음</td><td style="color:var(--gd)">중간</td></tr>
+<tr><td>오답분석</td><td>강민우: 오답노트 작성에 시간 투자. 이혜린: "왜 잘못 읽었는지, 정보추출이 왜 늦었는지" 분석</td><td>미정립</td><td style="color:var(--rd)"><b>큼</b></td></tr>
+<tr><td>모의고사</td><td>전원: 법률저널+강사별 모의고사 5~6회+. 매일 1세트 이상</td><td>미정립</td><td style="color:var(--rd)"><b>큼</b></td></tr>
+<tr><td>강제성</td><td>8/9명 관리반/고시반/스터디. 이지연만 혼자→학원으로 전환 후 합격</td><td>혼자 도서관</td><td style="color:var(--rd)"><b>핵심 갭</b></td></tr>
+</table>
+
+<blockquote>"soo의 사고방식과 그의 루트가 비슷하다고 느낀다. 그렇지만 그는 나보다 공부를 더 잘할 것이다."<div class="at">— 10호기</div></blockquote>
+<div class="cd"><p style="font-size:13px"><b>"그는 나보다 공부를 더 잘할 것이다"</b> — 이 문장이 허락의 천장의 직접 발현이다. SOO는 3년간 45점까지 떨어졌다. 그가 천홍보다 공부를 더 잘한다는 근거는 어디에도 없다. <b>있는 건 "그런 느낌"뿐이다.</b> 느낌은 성욕=죄 회로에서 파생된 "나는 근본적으로 결함 있는 사람"이라는 감각이다. 이 감각을 사실로 받아들이면 70점에서 영원히 못 올라간다.</p></div>
+</div>
+
+<!-- ═══ 6. 경제활동 ═══ -->
+<div id="econ" class="tc">
+<div class="st">경제활동 분석<small>2019~2026 실질지출 1억2503만 / 8404건</small></div>
+
+<div class="sr">
+<div class="sc"><div class="l">실질지출</div><div class="v">1.25억</div><div class="s">8,404건 / 월평균 148만</div></div>
+<div class="sc"><div class="l">최대 카테고리</div><div class="v">온라인쇼핑</div><div class="s">4,960만 (39.7%)</div></div>
+<div class="sc"><div class="l">사람 송금</div><div class="v">3,527만</div><div class="s">박준우1428/최영주700/정다영488</div></div>
+<div class="sc"><div class="l">교육 관련</div><div class="v">1,088만</div><div class="s">서적+인강+스터디카페+시험</div></div>
+</div>
+
+<div class="st" style="margin-top:24px">PC방 — 마취의 도구<small>방문일수 기준 (같은 날 여러 건 = 1일)</small></div>
+<div class="cd">
+<p><b>총 PC방 지출: 225.7만 / 714건.</b></p>
+<p><b>폭주-절제 4회 반복:</b></p>
+<p>이예지 이별(2017.07) → PC방 / Sohui 이별(2020.10) → 월55회+53회 / 이문동 자취(2022) → 193회/연(추정) / 2023.01 행동전환 → 끊음.</p>
+<p>2024.09~ = 정다영과 커플데이트(폭주 아님).</p>
+<p><b>"게임을 해야만 진정되는 감정들이 있었어. 멍해지고 생각이 멈춰."</b></p>
+</div>
+
+<div class="st" style="margin-top:24px">소비 패턴 특징</div>
+<div class="cd">
+<p>카페: 매머드106회, 컴포즈65, 스타벅스26 / 맥도날드 82회(압도적) / 편의점: 이마트24군포67회 / 다이소 86만/113회 / 노래방 8.9만/19회(2020~22만) / 서적: 알라딘101만/41건(2021피크47.5만) / 심야(00~06시): PC방+편의점+맥도날드 패턴.</p>
+</div>
+
+<div class="st" style="margin-top:24px">가짜지출 (필터링 필수)</div>
+<div class="cd">
+<p>인덕전력+박춘우=통장빌려줌 / 오경화+김진원(현대종)=아버지통장공유 / 오산대410만+박준우405만=등록금환불경유 / 백석대장학금→박인정100만 / 국가장학→최영주247만 / <b>2022.01 카카오페이304만=비상금대출</b> / <b>2022.01.04 박천홍325만=계좌간이체</b></p>
+</div>
+
+<div class="st" style="margin-top:24px">상호명 해독</div>
+<div class="cd">
+<p>동래해물파전=서울(부산아님) / 코레일유통=역편의점(KTX아님) / 금나윤=친구(수원대,연인아님) / 리얼피시방=외대근처 / 박미애=미용실(월16,000커트,170,000펌) / 리코=의왕PC방 / 헤비스모커=물담배술집 / 노블클래식의원=보톡스 / 토마토PC=구산PC방 / 주식회사밤새=프린트(공시용) / 우주런랭귀지=스터디카페(강남역) / 게임이너스강남=Sohui랑볼링 / 앤유PC=군포태광PC방 / GS25N김포1연본=해병대시기</p>
+</div>
+</div>
+
+<!-- ═══ 7. 성적 기록 ═══ -->
+<div id="sexual" class="tc">
+<div class="st">성적 기록<small>구체적 기록. 순화 없음.</small></div>
+
+<div class="cd"><h3>이예지 (2016.07~2017.07)</h3>
+<p>구강관계 가장 빈번한 상대. 센트럴락 영화관(2017.06.01) + 차 안 구강. 이예지가 서투름. 질냄새 불쾌. 정액: 이예지 안 삼킴. 스팽킹. 콘돔 파손→산부인과 사후피임약(2016.12.30).</p>
+<p>장소: 화이트캐슬×3(07.08,08.13,01.09,14000원), ROOMHI(07.10), 와호텔(10.03,20000), 안산중앙호텔(10.13,23000), 프로방스22번가모텔수원(02.18,20000), 니모룸카페(04.23), DVD방홍대(03.23추정,현금).</p></div>
+
+<div class="cd"><h3>영등포여자 (2017.09.03)</h3>
+<p>랜챗 당일만남. 낮 성관계. <b>사정 못함.</b> "내가 그런 일을 한다는 게 이상했다." → 감정 없으면 사정 못하는 패턴의 최초 사례.</p></div>
+
+<div class="cd"><h3>최민지 (2017.12~2018.03)</h3>
+<p>천홍 주도적. 최민지 순응적. 대구 모텔(현금 추정). 첫성관계 대구 1차 방문(12.08~10).</p></div>
+
+<div class="cd"><h3>Olive (2019.09+12)</h3>
+<p>한국: 친구 잠든 아침 콘돔없이 삽입 사정없음 + 친구 귀국 후 1회. 구강 없음. 신체감각=차갑고 무색무취 피부 다름. 영국 3주: <b>성관계 없음.</b> 먼저 제안 못함. Olive 집에서 포르노+자위.</p>
+<p><b>외국인 섹스 = 포르노 실현 감각 + "대단한 일 해냈다" 성취감.</b></p></div>
+
+<div class="cd"><h3>Sohui (2020.03~10)</h3>
+<p>가슴확대수술. 피임수술→질내사정 일상적. 구강내사정 수용(정액 삼킴). 동생 통화 중 오랄. Sohui 출근시 포르노+자위+전자담배. 쉐라톤(08.07) 통유리 후배위. 질염→천홍 자극증상.</p>
+<p><b>Sohui 백인 친구들에 대한 성적 관심.</b></p></div>
+
+<div class="cd"><h3>프랑스교환학생 (2021.05~07)</h3>
+<p>07.13 서대문창천 숙소: 첫성관계. 처녀. 질경련. 콘돔사정. 07.14 새벽 05:23 GS25서대문창 7,800원=콘돔 구매 추정.</p>
+<p>07.21 남산: 2회차. 구강 시도("예의").</p></div>
+
+<div class="cd"><h3>정다영 (2021.09~)</h3>
+<p>첫성관계 2021.09.11 야놀자 18,725원. 성적 관계="특별한 것 없다." 이전 연인들과 대조적. <b>안정이 핵심.</b></p></div>
+
+<div class="cd"><h3>성적 취향 구조</h3>
+<p>구강성교=충격→끌림. 항문=판타지(미경험). 야동=중학교~현재. 감정 없으면 사정 못함(영등포, Olive영국). 먼저 제안 못함(Olive 3주). 외국인=포르노 실현+성취감. 쇼핑폭발=만남준비(이예지전, Sohui전, 프랑스인전).</p></div>
+</div>
+
+<!-- ═══ 8. 육성 기록 ═══ -->
+<div id="words" class="tc">
+<div class="st">육성 기록<small>천홍이 직접 한 말. 원문 그대로.</small></div>
+
+<blockquote>"모든 문제는 과거에 존재한다. 그러므로 과거는 완전히 분석되어야 한다."<div class="at">— 프로젝트 시작시</div></blockquote>
+
+<blockquote>"내가 거기에 소속되면 내가 잘되는 줄 알았지. 하지만 아니야 완전 잘못된 판단이었어."<div class="at">— 외대 편입에 대해</div></blockquote>
+
+<blockquote>"나를 멋있게 치장하려고. 남자다워지고 싶었던 거지."<div class="at">— 해병대 선택 이유</div></blockquote>
+
+<blockquote>"아름답지 않은 여자는 여자로 볼 수가 없는 거야."<div class="at">— 정수연 거부에 대해</div></blockquote>
+
+<blockquote>"게임을 해야만 진정되는 감정들이 있었어. 멍해지고 생각이 멈춰."<div class="at">— PC방에 대해</div></blockquote>
+
+<blockquote>"가족이 아니라도 어쩔 수 없다."<div class="at">— 정다영 경제적 지원에 대해</div></blockquote>
+
+<blockquote>"정신이 아픈 것을 잠재우려고 철학책과 심리학책을 읽었어. 효과가 있었다."<div class="at">— 이문동 자취기, 9호기</div></blockquote>
+
+<blockquote>"나는 법률과 철학 그리고 규칙과 질서에 매력을 느낀다. 동시에 나는 혼돈과 섹스에 강렬한 끌림을 느낀다."<div class="at">— 9호기</div></blockquote>
+
+<blockquote>"나는 나의 인생의 전반부를 통째로 불규칙한 생활에 나를 맡겨버렸다. 그게 나의 의도였든 아니든 고통스러운 시간이었다."<div class="at">— 9호기</div></blockquote>
+
+<blockquote>"나는 고시를 통해서 나를 극복하고 싶다. 나를 정상화된 사회에 넣고 싶다. 그래서 다음 세대에 더 좋은 토양을 주고 싶은 것 뿐이다. 나는 나를 소모하고자 하는 것이다. 소모하는 것이 내가 원하는 것이다."<div class="at">— 9호기</div></blockquote>
+
+<blockquote>"사람들이 원하는 즐기는 삶이 나에게는 의미를 지니지 않는다. 자본주의와 자유주의는 타당하나 나에게는 매력적이지 않은 것이다."<div class="at">— 9호기</div></blockquote>
+
+<blockquote>"나는 5급을 준비할 자격을 가진 사람이 아니라고 느끼기 때문이다. 그래서 숨고 싶다. 그러나 숨어서 나는 공부하려고 했다. 그리고 지금도 숨어서 공부하려고 하는 것이다."<div class="at">— 9호기</div></blockquote>
+
+<blockquote>"그들에게 노출되면 나는 무섭다. 그러나 언젠가는 노출해야 할 날이 온다는 것도 알고 있다."<div class="at">— 9호기</div></blockquote>
+
+<blockquote>"내가 그런 일을 한다는 게 이상했다."<div class="at">— 영등포여자 당일만남에 대해</div></blockquote>
+
+<blockquote>"편입때만해도 나는 뭐든 열심히하면 할 수 있을 거라고 생각했다. 그렇지만 지금은 그렇지 않다. 그때는 외로워도 공부는 했고 단어를 무한정 외웠다. 그러나 지금은 그런것이 고통스럽고 모든지 효율 그리고 나의 나이를 의식하게 된다."<div class="at">— 10호기</div></blockquote>
+
+<blockquote>"나는 아주 근본적인 물음이 있다 항상. 나의 성문제를 보았을때 나는 그들과 근본적으로 다른 삶의 경로를 그려온것은 아닌지"<div class="at">— 10호기</div></blockquote>
+
+<blockquote>"soo의 사고방식과 그의 루트가 비슷하다고 느낀다. 그렇지만 그는 나보다 공부를 더 잘할 것이다."<div class="at">— 10호기, SOO에 대해</div></blockquote>
+
+<blockquote>"나를 대변하는 소설을 읽고 나는 나를 거부하고 새로운 내가 되길 바란다."<div class="at">— 10호기</div></blockquote>
+</div>
+
+<!-- ═══ 소설 콘티 ═══ -->
+<div id="novel" class="tc">
+<div class="st">소설 콘티 — 「허락」<small>300페이지 자전적 소설 | 1인칭 "나" | 미화 없음, 변호 없음</small></div>
+
+<blockquote>"나를 대변하는 소설을 읽고 나는 나를 거부하고 새로운 내가 되길 바란다."<div class="at">— 10호기</div></blockquote>
+
+<div class="cd" style="border-left-color:var(--ac)">
+<h3>제1부: 흙 (1995~2018) — 100p</h3>
+<p><b>1장. 곤충학자 (15p)</b> — 군포. 아파트. 곤충도감. 어머니 교회편력. 아버지 침묵.</p>
+<p><b>2장. 공범 (20p)</b> — 당동중. 나쁜 친구. 여학생 옷 벗기는 것 목격. 교회 성욕=죄. "보기만 했다. 그것으로 충분히 공범."</p>
+<p><b>3장. 딴지 (15p)</b> — 용호고. 수능 4등급. 백석대 전과목 F. 제적.</p>
+<p><b>4장. 바닥 (10p)</b> — 이백알바. 수원대 GPA 3.96. "나도 할 수 있구나"의 첫 증거.</p>
+<p><b>5장. 해병 (15p)</b> — "남자다워지고 싶었던 거지." 몸은 변했고 마음은 변하지 않았다.</p>
+<p><b>6장. 정수연 (10p)</b> — 4번의 만남. 카톡 고백→거부/도망. 정상루트의 문이 닫힌다.</p>
+<p><b>7장. 단어 (15p)</b> — 편입 10개월. PC방 1시간 제한. "뭐든 할 수 있다." 외대 합격.</p>
+</div>
+
+<div class="cd" style="border-left-color:var(--ac2)">
+<h3>제2부: 유리 (2019~2023) — 120p</h3>
+<p><b>8장. 소속 (15p)</b> — 외대 첫날. "소속되면 잘될 줄 알았다. 아니야."</p>
+<p><b>9장. Olive (15p)</b> — 영국 3주. 먼저 제안 못함. Olive 집에서 포르노+자위.</p>
+<p><b>10장. Sohui (25p)</b> — 가장 격렬, 가장 파괴적. 이별→PC방 월55회. 정신과 2회.</p>
+<p><b>11장. 이문동 (25p)</b> — 낮=커플, 밤=마취. 롤 밤새. 돈이 떨어진다.</p>
+<p><b>12장. 행동전환 (15p)</b> — PC방을 끊는다. 토익 착각→1년 손실.</p>
+<p><b>13장. 야놀자 18,725원 (10p)</b> — [시간역순 삽입] 첫 성관계. 안정이 처음인 이유.</p>
+<p><b>14장. 앵무새 (15p)</b> — 럭키, 애쉬, 벨라. 돌볼 수 있는 존재. [인터뷰 필요]</p>
+</div>
+
+<div class="cd" style="border-left-color:#1a5c3a">
+<h3>제3부: 허락 (2024~) — 80p</h3>
+<p><b>15장. 70점 (20p)</b> — 첫 시험. 70점. 또 70점. 7급은 올랐다. 5급은 움직이지 않는다.</p>
+<p><b>16장. 그들의 수기 (20p)</b> — 합격수기를 읽는다. 데이터를 겹친다. 같은 점, 다른 점.</p>
+<p><b>17장. 근본적 물음 (15p)</b> — "나의 성문제를 보았을때..." 합격수기에는 이런 이야기가 한 줄도 없다.</p>
+<p><b>18장. 허락 (25p)</b> — 질문이 바뀐다. "나는 그들과 같은 종류인가"가 아니라 "나의 경로에서 80점을 넘기는가." 허락. 자기 자신에게. <b>마지막 문장: 아직 쓰지 않는다.</b></p>
+</div>
+
+<div class="cd">
+<h3>문체 원칙</h3>
+<p>건조하고 무겁다. 감정을 설명하지 않고 행동과 숫자로 보여준다.</p>
+<p>은행 거래내역을 소설 안에 삽입: "2020.10.15 토마토PC 2,000원. 2020.10.16 토마토PC 2,000원." — 이 나열이 감정보다 더 많은 것을 말한다.</p>
+<p>성적 장면: 순화 없음. 자극적이지 않게. 냉정한 기술.</p>
+<p><b>이 소설의 목적은 "나를 거부하고 새로운 내가 되는 것"이므로 — 미화 없이, 변호 없이, 있는 그대로.</b></p>
+</div>
+
+<div style="background:var(--tx);color:var(--bg);padding:20px;margin:20px 0;font-family:'Noto Serif KR',serif;font-size:13px;line-height:2">
+<b style="color:#e8c87a">소설 제작 상태:</b> 콘티 확정. 킵 상태. 용량이 클 수 있으므로 별도 파일로 제작 예정. 인터뷰 데이터(해병대, 앵무새, 외대 생활) 확보 후 착수.
+</div>
+</div>
+
+<!-- ═══ 9. 미완료 과제 ═══ -->
+<div id="todo" class="tc">
+<div class="st">미완료 과제<small>10호기 이후 작업 목록</small></div>
+
+<div class="st" style="font-size:16px;margin-top:12px">최우선 — 전환 실행</div>
+<ul class="tl">
+<li class="hi"><b>자료해석 "계산 안 하는 법" 훈련 시작</b> — BOO 방식. 석치수·조훈 계산특강.</li>
+<li class="hi"><b>유형분류 착수</b> — SOO/KOO 방식. 기출 유형을 자기만의 기준으로.</li>
+<li class="hi"><b>오답 분석 체계 수립</b> — SOO 방식. "왜 이렇게 접근했는지" 글로 적기.</li>
+<li class="hi"><b>강제성 구조 확보 검토</b> — 관리반 or 스터디 or 온라인 첨삭. 권위불신과의 충돌 예상.</li>
+<li class="hi"><b>실전 모의고사 루틴 확립</b> — 매일 1세트. 80분 세트 연습(외무영사3 방식).</li>
+</ul>
+
+<div class="st" style="font-size:16px;margin-top:28px">소설 프로젝트</div>
+<ul class="tl">
+<li class="hi"><b>「허락」 — 300페이지 자전적 소설</b></li>
+<li>제1부: 흙 (1995~2018) — 100p. 곤충학자→공범→백석대→편입</li>
+<li>제2부: 유리 (2019~2023) — 120p. 편입 후 환멸→이문동→행동전환</li>
+<li>제3부: 허락 (2024~) — 80p. 70점→합격수기→근본적 물음→허락</li>
+</ul>
+
+<div class="st" style="font-size:16px;margin-top:28px">미완료 인터뷰</div>
+<ul class="tl">
+<li><b>해병대 20개월 상세</b> — 훈련, 복무, 관계, 심리</li>
+<li><b>앵무새 3마리</b> 입양 시기 (럭키/애쉬/벨라, 벨라=장애개체 치료비74.8만)</li>
+<li><b>외대 학교생활</b> (2019.03~2023.08) — 수업, 교우, 일상</li>
+<li><b>정다영 관계 전환 과정</b> — 2021.09 전후 구체적 계기</li>
+<li><b>SOO와 비슷하다고 느낀 "사고방식"과 "루트"의 구체적 내용</b></li>
+</ul>
+
+<div class="st" style="font-size:16px;margin-top:28px">미확인 인물/사건</div>
+<ul class="tl">
+<li>공병익 56.5만 (2025) — 05.07 20만 + 05.20 24.5만 + 08.19 12만</li>
+<li>이선재 2023년 3회 정기송금</li>
+<li>장인덕 4회 (5,000~8,000원)</li>
+<li>종교여자 이름 / 프랑스교환학생 이름</li>
+<li>amira 2021.04 48.3만 입금</li>
+<li>2013.04.03 딴지그룹 10,200원</li>
+<li>신암가톨릭비뇨기과 2018.02.19 4,500원 (최민지 생활권 시기)</li>
+<li>2021.03.20 디에이263,000 + AK109,000</li>
+<li>광화문선치과 10만 (2024)</li>
+</ul>
+
+<div class="st" style="font-size:16px;margin-top:28px">완료 항목</div>
+<ul class="tl">
+<li class="done">유년기~고등학교 심층분석</li>
+<li class="done">연애사 10명 전원 완전 복원</li>
+<li class="done">5가지 뿌리 문제 확정</li>
+<li class="done">성욕=죄 회로 확정</li>
+<li class="done">이문동 자취기 완전 복원</li>
+<li class="done">정다영 관계 구조 확정</li>
+<li class="done">공시 타임라인 확정</li>
+<li class="done">허락의 천장 개념 발견 (9호기)</li>
+<li class="done">2022.01 가짜지출 해명</li>
+<li class="done"><b>합격수기 9명 개별 정밀 분석 (11호기)</b></li>
+<li class="done"><b>합격자별 과목점수 대조 완료 (11호기)</b></li>
+<li class="done"><b>합격자 단점 냉철 지적 완료 (11호기)</b></li>
+<li class="done"><b>이중 진단 확정: 방법 + 허락 (10호기)</b></li>
+<li class="done"><b>성욕 해결 경로 4원칙 수립 (11호기)</b></li>
+<li class="done"><b>확신 소멸 구조 분석 (10호기)</b></li>
+<li class="done"><b>소설 「허락」 18장 콘티 확정 (10호기)</b></li>
+</ul>
+</div>
+
+</div><!-- /ct -->
+
+<script>
+document.getElementById('tabs').addEventListener('click',function(e){
+  const t=e.target.closest('.tab');if(!t)return;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tc').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');
+  document.getElementById(t.dataset.t).classList.add('on');
+  window.scrollTo(0,0);
+});
+</script>
+</body>
+</html>

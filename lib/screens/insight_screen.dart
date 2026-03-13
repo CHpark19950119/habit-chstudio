@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/botanical_theme.dart';
 import '../services/firebase_service.dart';
+import '../utils/study_date_utils.dart';
 
 /// ═══════════════════════════════════════════════
 ///  CHEONHONG STUDIO — 데일리 인사이트 기록
@@ -16,7 +18,8 @@ class InsightScreen extends StatefulWidget {
   State<InsightScreen> createState() => _InsightScreenState();
 }
 
-class _InsightScreenState extends State<InsightScreen> {
+class _InsightScreenState extends State<InsightScreen>
+    with TickerProviderStateMixin {
   final _fb = FirebaseService();
   bool _dk = true;
   bool _loading = true;
@@ -34,15 +37,37 @@ class _InsightScreenState extends State<InsightScreen> {
 
   static const _moods = ['😊', '😤', '😴', '🤔', '😰', '🔥', '😌', '💪'];
 
+  // ── Stagger entrance animation ──
+  late AnimationController _staggerCtrl;
+  final List<Animation<double>> _fadeAnims = [];
+  final List<Animation<Offset>> _slideAnims = [];
+  static const _cardCount = 6;
+  bool _playedEntry = false;
+
   @override
   void initState() {
     super.initState();
+    _staggerCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1200));
+    for (int i = 0; i < _cardCount; i++) {
+      final start = i * 0.08;
+      final end = (start + 0.3).clamp(0.0, 1.0);
+      _fadeAnims.add(CurvedAnimation(
+          parent: _staggerCtrl,
+          curve: Interval(start, end, curve: Curves.easeOut)));
+      _slideAnims.add(Tween<Offset>(
+              begin: const Offset(0, 0.15), end: Offset.zero)
+          .animate(CurvedAnimation(
+              parent: _staggerCtrl,
+              curve: Interval(start, end, curve: Curves.easeOutCubic))));
+    }
     _selectedDate = _studyDate(DateTime.now());
     _loadInsights();
   }
 
   @override
   void dispose() {
+    _staggerCtrl.dispose();
     _todayLearnCtrl.dispose();
     _todayInsightCtrl.dispose();
     _tomorrowPlanCtrl.dispose();
@@ -51,18 +76,37 @@ class _InsightScreenState extends State<InsightScreen> {
     super.dispose();
   }
 
-  /// 4AM 학습일 기준
-  String _studyDate(DateTime dt) {
-    final adj = dt.hour < 4 ? dt.subtract(const Duration(days: 1)) : dt;
-    return DateFormat('yyyy-MM-dd').format(adj);
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
+    }
   }
 
+  Widget _staggered(int index, Widget child) {
+    final i = index.clamp(0, _cardCount - 1);
+    return FadeTransition(
+      opacity: _fadeAnims[i],
+      child: SlideTransition(position: _slideAnims[i], child: child),
+    );
+  }
+
+  /// 4AM 학습일 기준
+  String _studyDate(DateTime dt) => StudyDateUtils.todayKey(dt);
+
   Future<void> _loadInsights() async {
-    setState(() => _loading = true);
+    _safeSetState(() => _loading = true);
     try {
       final doc = await FirebaseFirestore.instance
           .collection('users').doc(_fb.uid)
-          .collection('insights').doc(_selectedDate).get();
+          .collection('insights').doc(_selectedDate).get()
+          .timeout(const Duration(seconds: 5));
       if (doc.exists) {
         final d = doc.data()!;
         final insight = DailyInsight.fromMap(d);
@@ -88,7 +132,8 @@ class _InsightScreenState extends State<InsightScreen> {
         try {
           final snap = await FirebaseFirestore.instance
               .collection('users').doc(_fb.uid)
-              .collection('insights').doc(d).get();
+              .collection('insights').doc(d).get()
+              .timeout(const Duration(seconds: 3));
           if (snap.exists) {
             _insights[d] = DailyInsight.fromMap(snap.data()!);
           }
@@ -97,7 +142,7 @@ class _InsightScreenState extends State<InsightScreen> {
     } catch (e) {
       debugPrint('[Insight] Load error: $e');
     }
-    if (mounted) setState(() => _loading = false);
+    if (mounted) _safeSetState(() => _loading = false);
   }
 
   Future<void> _save() async {
@@ -114,7 +159,8 @@ class _InsightScreenState extends State<InsightScreen> {
       await FirebaseFirestore.instance
           .collection('users').doc(_fb.uid)
           .collection('insights').doc(_selectedDate)
-          .set(insight.toMap(), SetOptions(merge: true));
+          .set(insight.toMap(), SetOptions(merge: true))
+          .timeout(const Duration(seconds: 5));
       _insights[_selectedDate] = insight;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -134,6 +180,13 @@ class _InsightScreenState extends State<InsightScreen> {
     final bg = _dk ? const Color(0xFF0d1f16) : const Color(0xFFFCF9F3);
     final textMain = _dk ? Colors.white : const Color(0xFF1e293b);
     final textSub = _dk ? Colors.white54 : Colors.grey;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_playedEntry && mounted) {
+        _playedEntry = true;
+        _staggerCtrl.forward();
+      }
+    });
 
     return Scaffold(
       backgroundColor: bg,
@@ -158,33 +211,33 @@ class _InsightScreenState extends State<InsightScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               // ── 날짜 선택 ──
-              _datePicker(textMain, textSub),
+              _staggered(0, _datePicker(textMain, textSub)),
               const SizedBox(height: 20),
 
               // ── 기분 + 에너지 ──
-              _moodSection(textMain, textSub),
+              _staggered(1, _moodSection(textMain, textSub)),
               const SizedBox(height: 20),
 
               // ── 오늘 배운 것 ──
-              _inputCard(
+              _staggered(2, _inputCard(
                 '📖 오늘 배운 것', '무엇을 공부했나요?', _todayLearnCtrl,
-                textMain, textSub, maxLines: 3),
+                textMain, textSub, maxLines: 3)),
               const SizedBox(height: 16),
 
               // ── 오늘의 인사이트 ──
-              _inputCard(
+              _staggered(3, _inputCard(
                 '💡 오늘의 인사이트', '깨달은 점, 느낀 점을 적어보세요', _todayInsightCtrl,
-                textMain, textSub, maxLines: 4),
+                textMain, textSub, maxLines: 4)),
               const SizedBox(height: 16),
 
               // ── 내일 계획 ──
-              _inputCard(
+              _staggered(4, _inputCard(
                 '🎯 내일 계획', '내일 집중할 과목과 목표', _tomorrowPlanCtrl,
-                textMain, textSub, maxLines: 2),
+                textMain, textSub, maxLines: 2)),
               const SizedBox(height: 24),
 
               // ── 최근 인사이트 타임라인 ──
-              _recentTimeline(textMain, textSub),
+              _staggered(5, _recentTimeline(textMain, textSub)),
               const SizedBox(height: 40),
             ]),
           ),
@@ -208,7 +261,7 @@ class _InsightScreenState extends State<InsightScreen> {
 
           return GestureDetector(
             onTap: () {
-              setState(() => _selectedDate = d);
+              _safeSetState(() => _selectedDate = d);
               _loadInsights();
             },
             child: Container(
@@ -259,7 +312,7 @@ class _InsightScreenState extends State<InsightScreen> {
           children: _moods.map((m) {
             final selected = m == _selectedMood;
             return GestureDetector(
-              onTap: () => setState(() => _selectedMood = m),
+              onTap: () => _safeSetState(() => _selectedMood = m),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 width: 38, height: 38,
@@ -288,7 +341,7 @@ class _InsightScreenState extends State<InsightScreen> {
             final level = i + 1;
             final active = level <= _energyLevel;
             return GestureDetector(
-              onTap: () => setState(() => _energyLevel = level),
+              onTap: () => _safeSetState(() => _energyLevel = level),
               child: Container(
                 width: 32, height: 12, margin: const EdgeInsets.only(left: 4),
                 decoration: BoxDecoration(

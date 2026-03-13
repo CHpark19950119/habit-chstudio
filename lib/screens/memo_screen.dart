@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 import '../theme/botanical_theme.dart';
 import '../models/models.dart';
@@ -17,13 +18,12 @@ class _MemoScreenState extends State<MemoScreen> {
   bool _showCompleted = false;
   bool _loading = true;
   StreamSubscription? _sub;
+  int _retryDelay = 5;
 
   @override
   void initState() {
     super.initState();
-    _sub = FirebaseService().watchMemos().listen((memos) {
-      if (mounted) setState(() { _memos = memos; _loading = false; });
-    });
+    _startStream();
     _loadAll();
   }
 
@@ -33,9 +33,38 @@ class _MemoScreenState extends State<MemoScreen> {
     super.dispose();
   }
 
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
+    }
+  }
+
+  void _startStream() {
+    _sub?.cancel();
+    _sub = FirebaseService().watchMemos().listen((memos) {
+      _retryDelay = 5;
+      if (mounted) _safeSetState(() { _memos = memos; _loading = false; });
+    }, onError: (e) {
+      debugPrint('[Memo] stream error: $e — retry ${_retryDelay}s');
+      if (mounted) {
+        Future.delayed(Duration(seconds: _retryDelay), () {
+          _retryDelay = (_retryDelay * 2).clamp(5, 60);
+          if (mounted) _startStream();
+        });
+      }
+    });
+  }
+
   Future<void> _loadAll() async {
     final memos = await FirebaseService().getMemos(includeCompleted: _showCompleted);
-    if (mounted) setState(() { _memos = memos; _loading = false; });
+    if (mounted) _safeSetState(() { _memos = memos; _loading = false; });
   }
 
   bool get _dk => Theme.of(context).brightness == Brightness.dark;
@@ -55,7 +84,7 @@ class _MemoScreenState extends State<MemoScreen> {
               size: 20, color: _textMuted),
             tooltip: _showCompleted ? '완료 숨기기' : '완료 보기',
             onPressed: () {
-              setState(() => _showCompleted = !_showCompleted);
+              _safeSetState(() => _showCompleted = !_showCompleted);
               _loadAll();
             },
           ),

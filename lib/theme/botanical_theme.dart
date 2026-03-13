@@ -45,9 +45,15 @@ class BotanicalColors {
   static const lanternGold = Color(0xFFDAAA4E);       // 따뜻한 골드
 
   // ─── 과목 컬러 (밝고 부드러운 톤) ───
+  // 1차 PSAT
   static const subjectData = Color(0xFF4A8A60);       // 자료해석: 밝은 세이지
   static const subjectVerbal = Color(0xFF5B6ABF);     // 언어논리: 라벤더 블루
   static const subjectSituation = Color(0xFFD4893B);  // 상황판단: 앰버
+  // 2차 전공
+  static const subjectEcon = Color(0xFF2D7D9A);       // 경제학: 딥 틸
+  static const subjectIntlLaw = Color(0xFF7A5195);    // 국제법: 퍼플 와인
+  static const subjectIntlPol = Color(0xFF3B7A57);    // 국제정치학: 포레스트
+  // 공통
   static const subjectConst = Color(0xFF8B5A72);      // 헌법: 로즈우드
   static const subjectEnglish = Color(0xFF4A90A8);    // 영어: 스카이 틸
 
@@ -71,8 +77,20 @@ class BotanicalColors {
       case '자료해석': return subjectData;
       case '언어논리': return subjectVerbal;
       case '상황판단': return subjectSituation;
+      case '경제학': return subjectEcon;
+      case '국제법': return subjectIntlLaw;
+      case '국제정치학': return subjectIntlPol;
       case '헌법': return subjectConst;
       case '영어': return subjectEnglish;
+      default: return primaryMuted;
+    }
+  }
+
+  /// 시험 라운드별 대표 컬러
+  static Color examRoundColor(String round) {
+    switch (round) {
+      case '1차': return const Color(0xFF3B6BA5); // 블루 계열
+      case '2차': return const Color(0xFF7A5195); // 퍼플 계열
       default: return primaryMuted;
     }
   }

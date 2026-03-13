@@ -151,17 +151,6 @@ extension _HomeDailyLog on _HomeScreenState {
       return false;
     });
 
-    // GPS 보조
-    if (segments.isEmpty) {
-      for (final e in _todayTimeline.take(8)) {
-        final isStay = e.type == 'stay';
-        segments.add(_DaySegment(
-          start: e.startTime, end: e.endTime,
-          label: e.label, emoji: e.emoji ?? (isStay ? '📍' : '🚶'),
-          color: isStay ? const Color(0xFF6366F1) : const Color(0xFF3B8A6B)));
-      }
-    }
-
     if (segments.isEmpty) return const SizedBox.shrink();
 
     // ★ B2 FIX: 자정 넘김을 고려한 duration 계산
@@ -437,7 +426,6 @@ extension _HomeDailyLog on _HomeScreenState {
                     color: _textSub, height: 1.4))),
                   GestureDetector(
                     onTap: () async {
-                      await AiCalendarService().deleteMemoForDate(_studyDate(), memo);
                       _load();
                     },
                     child: Padding(

@@ -36,8 +36,6 @@ class OrderHabitsTab extends StatelessWidget {
         const SizedBox(height: 16),
         _growthStageOverview(),
         const SizedBox(height: 16),
-        _weekHeatmap(),
-        const SizedBox(height: 16),
         _settledSection(context),
         const SizedBox(height: 16),
         _unrankedSection(context),
@@ -57,213 +55,214 @@ class OrderHabitsTab extends StatelessWidget {
   }
 
   // ═══════════════════════════════════════════════════
-  // ██ 1. FOCUS HABIT — 대형 Blob 카드
+  // ██ 1. FOCUS HABITS — 최대 3개 집중 카드
   // ═══════════════════════════════════════════════════
   Widget _focusHabitBlob(BuildContext context) {
-    final focus = data.focusHabit;
+    final focusList = data.focusHabits;
 
-    if (focus == null) {
+    if (focusList.isEmpty) {
       return _emptyFocusCard(context);
     }
 
+    return Column(children: [
+      // 헤더
+      Row(children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: OC.amber.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: OC.amber.withOpacity(0.25))),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Text('🔥', style: TextStyle(fontSize: 11)),
+            const SizedBox(width: 4),
+            Text('집중 습관 (${focusList.length}/3)', style: const TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w800,
+              color: OC.amber, letterSpacing: 0.5)),
+          ]),
+        ),
+        const Spacer(),
+        if (focusList.any((h) => h.canSettle))
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.heavyImpact();
+              onUpdate(() { data.promoteNextHabit(); });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: OC.success.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10)),
+              child: const Text('🎉 정착 처리', style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700, color: OC.success)),
+            ),
+          ),
+      ]),
+      const SizedBox(height: 12),
+      // 각 집중 습관 카드
+      ...focusList.map((focus) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _singleFocusCard(context, focus),
+      )),
+    ]);
+  }
+
+  Widget _singleFocusCard(BuildContext context, OrderHabit focus) {
     final done = focus.isDoneOn(_today);
     final progress = focus.settlementProgress;
+    final prevStreak = focus.previousStreak;
 
-    return AnimatedBuilder(
-      animation: blobCtrl,
-      builder: (_, __) {
-        final t = blobCtrl.value;
-        final gradColors = done
-            ? [const Color(0xFFa8edea), const Color(0xFFfed6e3)]
-            : [const Color(0xFFfbc2eb), const Color(0xFFa6c1ee)];
-
-        return GestureDetector(
-          onTap: () {
-            HapticFeedback.mediumImpact();
-            onUpdate(() { focus.toggleDate(_today); });
-          },
-          onLongPress: () => _openHabitSheet(context, editing: focus),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: OC.card,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: done
-                  ? OC.success.withOpacity(0.3)
-                  : OC.border.withOpacity(0.5)),
-              boxShadow: [
-                BoxShadow(
-                  color: done
-                      ? OC.success.withOpacity(0.1)
-                      : OC.accent.withOpacity(0.06),
-                  blurRadius: 24, offset: const Offset(0, 8)),
-              ],
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        onUpdate(() { focus.toggleDate(_today); });
+      },
+      onLongPress: () => _openHabitSheet(context, editing: focus),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: OC.card,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: done
+              ? OC.success.withOpacity(0.3) : OC.border.withOpacity(0.5)),
+          boxShadow: [BoxShadow(
+            color: done ? OC.success.withOpacity(0.08)
+                : OC.accent.withOpacity(0.04),
+            blurRadius: 16, offset: const Offset(0, 6))],
+        ),
+        child: Column(children: [
+          // 상단: 이모지 + 이름 + 체크
+          Row(children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: done
+                    ? OC.success.withOpacity(0.12)
+                    : OC.accentBg,
+                borderRadius: BorderRadius.circular(14)),
+              child: Center(child: Text(focus.emoji,
+                style: const TextStyle(fontSize: 22))),
             ),
-            child: Column(children: [
-              // 상단 라벨
-              Row(children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: OC.amber.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        color: OC.amber.withOpacity(0.25))),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Text('🔥', style: TextStyle(fontSize: 11)),
-                    const SizedBox(width: 4),
-                    const Text('현재 집중', style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w800,
-                      color: OC.amber, letterSpacing: 0.5)),
-                  ]),
-                ),
-                const Spacer(),
-                if (focus.canSettle)
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.heavyImpact();
-                      onUpdate(() { data.promoteNextHabit(); });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: OC.success.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10)),
-                      child: const Text('🎉 정착 완료!', style: TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w700,
-                        color: OC.success)),
-                    ),
-                  ),
-              ]),
-              const SizedBox(height: 20),
-
-              // Blob + 숫자
-              SizedBox(
-                width: 180, height: 180,
-                child: Stack(alignment: Alignment.center, children: [
-                  // Blob shape
-                  Container(
-                    width: 160, height: 160,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: gradColors),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(
-                            60 + sin(t * 2 * pi) * 20),
-                        topRight: Radius.circular(
-                            40 + cos(t * 2 * pi) * 15),
-                        bottomLeft: Radius.circular(
-                            30 + cos(t * 2 * pi + 1) * 20),
-                        bottomRight: Radius.circular(
-                            70 + sin(t * 2 * pi + 2) * 15)),
-                      boxShadow: [BoxShadow(
-                        color: gradColors[0].withOpacity(0.35),
-                        blurRadius: 30, offset: const Offset(0, 10))]),
-                  ),
-                  // 컨텐츠
-                  Column(mainAxisSize: MainAxisSize.min, children: [
-                    Text(focus.emoji,
-                        style: const TextStyle(fontSize: 26)),
-                    const SizedBox(height: 4),
-                    Text('${focus.currentStreak}',
-                      style: const TextStyle(
-                        fontSize: 42, fontWeight: FontWeight.w900,
-                        color: Color(0xFF1a5f7a))),
-                    Text('연속 일', style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1a5f7a).withOpacity(0.6))),
-                  ]),
-                  // 체크 오버레이
-                  if (done)
-                    Positioned(bottom: 10, right: 10,
-                      child: Container(
-                        width: 32, height: 32,
-                        decoration: BoxDecoration(
-                          color: OC.success,
-                          shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(
-                            color: OC.success.withOpacity(0.4),
-                            blurRadius: 8)]),
-                        child: const Icon(Icons.check_rounded,
-                            color: Colors.white, size: 18)),
-                    ),
-                ]),
+            const SizedBox(width: 12),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(focus.title, style: const TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.w800, color: OC.text1)),
+                const SizedBox(height: 2),
+                Text('${focus.growthEmoji} ${focus.growthLabel} · '
+                    '목표 ${focus.targetDays}일',
+                  style: const TextStyle(fontSize: 11, color: OC.text3)),
+              ],
+            )),
+            // 연속일 뱃지
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: done
+                      ? OC.success.withOpacity(0.12)
+                      : OC.amber.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10)),
+                child: Text('🔥${focus.currentStreak}일', style: TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w900,
+                  color: done ? OC.success : OC.amber)),
               ),
-              const SizedBox(height: 18),
-
-              // 습관 이름
-              Text(focus.title, style: const TextStyle(
-                fontSize: 18, fontWeight: FontWeight.w800,
-                color: OC.text1)),
-              const SizedBox(height: 4),
-              Text('${focus.growthEmoji} ${focus.growthLabel} · '
-                  '목표 ${focus.targetDays}일 중 ${focus.currentStreak}일',
-                style: const TextStyle(fontSize: 12, color: OC.text3)),
-              const SizedBox(height: 14),
-
-              // 프로그레스 바
-              Column(children: [
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                  Text('정착 진행률', style: const TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w600,
-                    color: OC.text2)),
-                  Text('${(progress * 100).toInt()}%', style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w900,
-                    color: done ? OC.success : OC.accent)),
-                ]),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: OC.bgSub,
-                    valueColor: AlwaysStoppedAnimation(
-                        done ? OC.success : OC.accent),
-                    minHeight: 8)),
-                const SizedBox(height: 4),
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                  Text('최고 ${focus.maxStreak}일',
-                    style: const TextStyle(fontSize: 10, color: OC.text4)),
-                  Text(focus.daysToSettle > 0
-                      ? '${focus.daysToSettle}일 남음'
-                      : '🎉 정착 가능!',
-                    style: TextStyle(fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: focus.daysToSettle > 0
-                          ? OC.text3 : OC.success)),
-                ]),
-              ]),
-
-              // 오늘 체크 안내
-              if (!done) ...[
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 10, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: OC.accentBg,
-                    borderRadius: BorderRadius.circular(14)),
-                  child: Row(mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                    const Icon(Icons.touch_app_rounded,
-                        size: 16, color: OC.accent),
-                    const SizedBox(width: 6),
-                    const Text('탭하여 오늘 완료', style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w700,
-                      color: OC.accent)),
-                  ]),
-                ),
+              if (prevStreak != null) ...[
+                const SizedBox(height: 3),
+                Text('이전: ${prevStreak.length}일', style: const TextStyle(
+                  fontSize: 9, fontWeight: FontWeight.w600, color: OC.text4)),
               ],
             ]),
-          ),
-        );
-      },
+          ]),
+          const SizedBox(height: 12),
+
+          // 프로그레스 바
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('정착 ${(progress * 100).toInt()}%', style: const TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w600, color: OC.text2)),
+            Text(focus.daysToSettle > 0
+                ? '${focus.daysToSettle}일 남음'
+                : '🎉 정착 가능!',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                color: focus.daysToSettle > 0 ? OC.text3 : OC.success)),
+          ]),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: OC.bgSub,
+              valueColor: AlwaysStoppedAnimation(
+                  done ? OC.success : OC.accent),
+              minHeight: 6)),
+          const SizedBox(height: 4),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              const Text('👑 ', style: TextStyle(fontSize: 10)),
+              Text('최고 ${focus.bestStreak}일',
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                  color: OC.amber)),
+            ]),
+            if (!done)
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.touch_app_rounded,
+                  size: 12, color: OC.accent),
+                const SizedBox(width: 3),
+                const Text('탭하여 완료', style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w600, color: OC.accent)),
+              ]),
+          ]),
+
+          // ── 연속일 이력 (최근 3개) ──
+          if (focus.streakHistory.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: OC.bgSub,
+                borderRadius: BorderRadius.circular(12)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  const Text('📊 연속일 이력', style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w700, color: OC.text2)),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => _showStreakHistorySheet(context, focus),
+                    child: const Text('전체보기 →', style: TextStyle(
+                      fontSize: 9, fontWeight: FontWeight.w600, color: OC.accent)),
+                  ),
+                ]),
+                const SizedBox(height: 6),
+                ...focus.streakHistory.reversed.take(3).map((r) => Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Row(children: [
+                    Text('${r.length}일', style: const TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w800, color: OC.text1)),
+                    const SizedBox(width: 6),
+                    Text('${r.startDate.substring(5)} ~ ${r.endDate.substring(5)}',
+                      style: const TextStyle(fontSize: 10, color: OC.text3)),
+                    if (r.breakReason != null) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: OC.error.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(4)),
+                        child: Text(r.breakReason!, style: const TextStyle(
+                          fontSize: 8, fontWeight: FontWeight.w600,
+                          color: OC.error),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                  ]),
+                )),
+              ]),
+            ),
+          ],
+        ]),
+      ),
     );
   }
 
@@ -304,7 +303,7 @@ class OrderHabitsTab extends StatelessWidget {
   // ═══════════════════════════════════════════════════
   Widget _queueSection(BuildContext context) {
     final queue = data.rankedHabits.where((h) => h.rank > 1).toList();
-    if (queue.isEmpty && data.focusHabit != null) {
+    if (queue.isEmpty && data.focusHabits.isNotEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -467,55 +466,6 @@ class OrderHabitsTab extends StatelessWidget {
           child: _GrowthStageCell(
             emoji: s.$1, label: s.$2, range: s.$3, count: s.$4),
         )).toList()),
-      ],
-    );
-  }
-
-  // ═══════════════════════════════════════════════════
-  // ██ 4. WEEK HEATMAP
-  // ═══════════════════════════════════════════════════
-  Widget _weekHeatmap() {
-    final days = ['월', '화', '수', '목', '금', '토', '일'];
-    final now = DateTime.now();
-    final weekStart = now.subtract(Duration(days: now.weekday - 1));
-    final active = data.habits.where((h) => !h.archived).toList();
-
-    return orderSectionCard(
-      title: '주간 히트맵', icon: Icons.grid_on_rounded,
-      children: [
-        Row(children: [
-          const SizedBox(width: 50),
-          ...days.map((d) => Expanded(child: Center(
-            child: Text(d, style: const TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w600,
-              color: OC.text3))))),
-        ]),
-        const SizedBox(height: 6),
-        ...active.map((h) => Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Row(children: [
-            SizedBox(width: 50, child: Text('${h.emoji}${h.title}',
-              style: const TextStyle(fontSize: 9, color: OC.text2),
-              maxLines: 1, overflow: TextOverflow.ellipsis)),
-            ...List.generate(7, (i) {
-              final d = weekStart.add(Duration(days: i));
-              final ds = '${d.year}-${d.month.toString().padLeft(2, '0')}'
-                  '-${d.day.toString().padLeft(2, '0')}';
-              final done = h.isDoneOn(ds);
-              return Expanded(child: Center(child: Container(
-                width: 22, height: 22,
-                decoration: BoxDecoration(
-                  color: done
-                      ? OC.success.withOpacity(.7) : OC.bgSub,
-                  borderRadius: BorderRadius.circular(6)),
-                child: done
-                    ? const Icon(Icons.check_rounded,
-                        size: 12, color: Colors.white)
-                    : null,
-              )));
-            }),
-          ]),
-        )),
       ],
     );
   }
@@ -709,8 +659,8 @@ class OrderHabitsTab extends StatelessWidget {
   void _showRankAssignSheet(BuildContext context, OrderHabit h) {
     final ranked = data.rankedHabits;
     final nextRank = ranked.isEmpty ? 1 : ranked.last.rank + 1;
-    // 포커스가 비어있으면 1순위로 직접 배정
-    final suggestedRank = data.focusHabit == null ? 1 : nextRank;
+    // 포커스 슬롯 여유가 있으면 1순위로 직접 배정
+    final suggestedRank = data.focusHabits.length < 3 ? 1 : nextRank;
 
     showModalBottomSheet(
       context: context, isScrollControlled: true,
@@ -733,11 +683,11 @@ class OrderHabitsTab extends StatelessWidget {
           const SizedBox(height: 16),
 
           // 순위 선택 버튼들
-          if (data.focusHabit == null)
+          if (data.focusHabits.length < 3)
             _rankBtn(ctx, h, 1, '🔥 1순위 (집중)', OC.amber, true),
           _rankBtn(ctx, h, suggestedRank > 1 ? suggestedRank : 2,
             '⏳ ${suggestedRank > 1 ? suggestedRank : 2}순위 (대기)',
-            OC.accent, data.focusHabit != null),
+            OC.accent, data.focusHabits.length >= 3),
           if (ranked.length > 1)
             _rankBtn(ctx, h, ranked.last.rank + 1,
               '📋 ${ranked.last.rank + 1}순위 (마지막)',
@@ -795,6 +745,141 @@ class OrderHabitsTab extends StatelessWidget {
     );
   }
 
+  /// 연속일 이력 전체보기 시트
+  void _showStreakHistorySheet(BuildContext context, OrderHabit h) {
+    showModalBottomSheet(
+      context: context, isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.6),
+        decoration: const BoxDecoration(color: OC.card,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(28))),
+        padding: EdgeInsets.fromLTRB(
+          20, 8, 20, sheetBottomPad(ctx)),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          sheetHandle(),
+          Text('${h.emoji} ${h.title} — 연속일 이력', style: const TextStyle(
+            fontSize: 16, fontWeight: FontWeight.w800, color: OC.text1)),
+          const SizedBox(height: 4),
+          Text('👑 최고 ${h.bestStreak}일 · 현재 🔥${h.currentStreak}일',
+            style: const TextStyle(fontSize: 12, color: OC.text3)),
+          const SizedBox(height: 16),
+          Expanded(
+            child: h.streakHistory.isEmpty
+              ? const Center(child: Text('이력이 없습니다',
+                  style: TextStyle(fontSize: 13, color: OC.text4)))
+              : ListView.builder(
+                  itemCount: h.streakHistory.length,
+                  itemBuilder: (_, i) {
+                    final r = h.streakHistory[h.streakHistory.length - 1 - i];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: OC.cardHi,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: OC.border)),
+                      child: Row(children: [
+                        // 연속일 뱃지
+                        Container(
+                          width: 44, height: 44,
+                          decoration: BoxDecoration(
+                            color: r.length >= 21
+                                ? OC.success.withOpacity(0.12)
+                                : r.length >= 7
+                                    ? OC.amber.withOpacity(0.12)
+                                    : OC.bgSub,
+                            borderRadius: BorderRadius.circular(12)),
+                          child: Center(child: Text('${r.length}',
+                            style: TextStyle(fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: r.length >= 21 ? OC.success
+                                  : r.length >= 7 ? OC.amber : OC.text2))),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${r.length}일 연속',
+                              style: const TextStyle(fontSize: 14,
+                                fontWeight: FontWeight.w700, color: OC.text1)),
+                            Text('${r.startDate} ~ ${r.endDate}',
+                              style: const TextStyle(
+                                fontSize: 11, color: OC.text3)),
+                            if (r.breakReason != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 3),
+                                child: Row(children: [
+                                  const Text('💬 ', style: TextStyle(fontSize: 10)),
+                                  Flexible(child: Text(r.breakReason!,
+                                    style: const TextStyle(fontSize: 11,
+                                      color: OC.error),
+                                    maxLines: 2, overflow: TextOverflow.ellipsis)),
+                                ]),
+                              ),
+                          ],
+                        )),
+                        // 끊김 이유 추가/수정 버튼
+                        GestureDetector(
+                          onTap: () => _editBreakReason(ctx, h, r),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: OC.accentBg,
+                              borderRadius: BorderRadius.circular(8)),
+                            child: Icon(
+                              r.breakReason != null
+                                  ? Icons.edit_rounded : Icons.add_rounded,
+                              size: 16, color: OC.accent),
+                          ),
+                        ),
+                      ]),
+                    );
+                  },
+                ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  /// 끊김 이유 기록/수정
+  void _editBreakReason(BuildContext ctx, OrderHabit h, StreakRecord r) {
+    final ctrl = TextEditingController(text: r.breakReason ?? '');
+    showDialog(
+      context: ctx,
+      builder: (dc) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('끊김 이유', style: TextStyle(
+          fontSize: 16, fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: ctrl, autofocus: true,
+          maxLines: 3, minLines: 1,
+          decoration: const InputDecoration(
+            hintText: '왜 연속일이 끊겼나요?',
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dc),
+            child: const Text('취소')),
+          TextButton(
+            onPressed: () {
+              onUpdate(() {
+                r.breakReason = ctrl.text.trim().isEmpty
+                    ? null : ctrl.text.trim();
+              });
+              Navigator.pop(dc);
+            },
+            child: const Text('저장')),
+        ],
+      ),
+    );
+  }
+
   /// 습관 추가/수정 시트
   void _openHabitSheet(BuildContext context, {OrderHabit? editing}) {
     final isEdit = editing != null;
@@ -802,8 +887,8 @@ class OrderHabitsTab extends StatelessWidget {
     final emojiC = TextEditingController(text: editing?.emoji ?? '✅');
     var freq = editing?.freq ?? HabitFreq.daily;
     var targetDays = editing?.targetDays ?? 21;
-    // ★ Fix: 포커스 습관이 없으면 기본 rank=1 (집중)으로 자동 배정
-    var rank = editing?.rank ?? (data.focusHabit == null ? 1 : 0);
+    // ★ v5: 집중 슬롯 3개 미만이면 기본 rank=1
+    var rank = editing?.rank ?? (data.focusHabits.length < 3 ? 1 : 0);
 
     final targetOptions = [7, 14, 21, 30, 66];
 
@@ -942,19 +1027,16 @@ class OrderHabitsTab extends StatelessWidget {
                         editing.emoji = emojiC.text;
                         editing.freq = freq;
                         editing.targetDays = targetDays;
-                        // 순위 변경 시 중복 방지
-                        if (rank == 1 && editing.rank != 1) {
-                          final oldFocus = data.focusHabit;
-                          if (oldFocus != null) {
-                            oldFocus.rank = editing.rank > 0
-                                ? editing.rank : 2;
-                          }
+                        // ★ v5: 집중 3개 제한 검증
+                        if (rank == 1 && editing.rank != 1 &&
+                            data.focusHabits.length >= 3) {
+                          rank = 0; // 이미 3개 → 미지정으로 강제
                         }
                         editing.rank = rank;
                       } else {
-                        if (rank == 1) {
-                          final oldFocus = data.focusHabit;
-                          if (oldFocus != null) oldFocus.rank = 2;
+                        // ★ v5: 집중 3개 제한
+                        if (rank == 1 && data.focusHabits.length >= 3) {
+                          rank = 0;
                         }
                         data.habits.add(OrderHabit(
                           id: 'h_${DateTime.now().millisecondsSinceEpoch}',

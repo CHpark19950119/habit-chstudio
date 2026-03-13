@@ -1,16 +1,14 @@
 /// ═══════════════════════════════════════════════════════════
 /// CHEONHONG STUDIO — Plan · Feedback · Growth Firestore Service
-/// Batch 3: #3 + #4 데이터 계층
+/// study 문서에서 읽기/쓰기
 /// ═══════════════════════════════════════════════════════════
-///
-/// 기존 firebase_service.dart를 건드리지 않고
-/// 계획/피드백/성장 관련 CRUD를 별도 서비스로 분리
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import '../models/plan_models.dart';
 import '../models/models.dart';
+import '../utils/study_date_utils.dart';
 import 'firebase_service.dart';
 
 class PlanService {
@@ -19,8 +17,8 @@ class PlanService {
   PlanService._internal();
 
   final _db = FirebaseFirestore.instance;
-  static const String _uid = 'sJ8Pxusw9gR0tNR44RhkIge7OiG2';
-  static const String _studyDoc = 'users/$_uid/data/study';
+  static const _uid = 'sJ8Pxusw9gR0tNR44RhkIge7OiG2';
+  String get _planDoc => 'users/$_uid/data/study';
 
   // 캐시
   StudyPlan? _cachedPlan;
@@ -32,7 +30,6 @@ class PlanService {
   //  학습 계획 (StudyPlan) CRUD
   // ═══════════════════════════════════════════
 
-  /// 학습 계획 전체 로드 (5분 캐시)
   Future<StudyPlan?> getStudyPlan({bool forceRefresh = false}) async {
     if (!forceRefresh &&
         _cachedPlan != null &&
@@ -43,8 +40,8 @@ class PlanService {
     }
 
     try {
-      final doc = await _db.doc(_studyDoc).get();
-      final data = doc.data();
+      // 새 plan 문서에서 먼저 시도
+      final data = await FirebaseService().getPlanData();
       if (data == null || data['studyPlan'] == null) return null;
 
       _cachedPlan = StudyPlan.fromMap(
@@ -57,19 +54,18 @@ class PlanService {
     }
   }
 
-  /// 학습 계획 전체 저장
   Future<void> saveStudyPlan(StudyPlan plan) async {
     final data = plan.toMap();
     data['updatedAt'] = DateTime.now().toIso8601String();
 
     try {
-      await _db.doc(_studyDoc).update({
+      await _db.doc(_planDoc).update({
         'studyPlan': data,
         'lastModified': DateTime.now().millisecondsSinceEpoch,
         'lastDevice': 'android',
       });
     } catch (e) {
-      await _db.doc(_studyDoc).set({
+      await _db.doc(_planDoc).set({
         'studyPlan': data,
         'lastModified': DateTime.now().millisecondsSinceEpoch,
         'lastDevice': 'android',
@@ -80,7 +76,6 @@ class PlanService {
     _planCacheTime = DateTime.now();
   }
 
-  /// 기간 상태 업데이트 (개별 필드)
   Future<void> updatePeriodStatus(String periodId, String status) async {
     final plan = await getStudyPlan();
     if (plan == null) return;
@@ -114,7 +109,6 @@ class PlanService {
     ));
   }
 
-  /// 캐시 무효화
   void invalidatePlanCache() {
     _cachedPlan = null;
     _planCacheTime = null;
@@ -124,18 +118,11 @@ class PlanService {
   //  일간 피드백 (DailyFeedback) CRUD
   // ═══════════════════════════════════════════
 
-  /// 4AM 경계 적용된 오늘 날짜 반환
-  static String _todayDate() {
-    var n = DateTime.now();
-    if (n.hour < 4) n = n.subtract(const Duration(days: 1));
-    return DateFormat('yyyy-MM-dd').format(n);
-  }
+  static String _todayDate() => StudyDateUtils.todayKey();
 
-  /// 일간 피드백 로드
   Future<DailyFeedback?> getDailyFeedback(String date) async {
     try {
-      final doc = await _db.doc(_studyDoc).get();
-      final data = doc.data();
+      final data = await FirebaseService().getPlanData();
       if (data == null) return null;
 
       final feedbacks =
@@ -150,12 +137,10 @@ class PlanService {
     }
   }
 
-  /// 오늘 피드백 로드 (4AM 경계)
   Future<DailyFeedback?> getTodayFeedback() async {
     return getDailyFeedback(_todayDate());
   }
 
-  /// 일간 피드백 저장
   Future<void> saveDailyFeedback(DailyFeedback feedback) async {
     final map = feedback.toMap();
     if (map['createdAt'] == null) {
@@ -163,13 +148,13 @@ class PlanService {
     }
 
     try {
-      await _db.doc(_studyDoc).update({
+      await _db.doc(_planDoc).update({
         'dailyFeedback.${feedback.date}': map,
         'lastModified': DateTime.now().millisecondsSinceEpoch,
         'lastDevice': 'android',
       });
     } catch (e) {
-      await _db.doc(_studyDoc).set({
+      await _db.doc(_planDoc).set({
         'dailyFeedback': {feedback.date: map},
         'lastModified': DateTime.now().millisecondsSinceEpoch,
         'lastDevice': 'android',
@@ -177,11 +162,10 @@ class PlanService {
     }
   }
 
-  /// AI 분석 결과만 업데이트 (피드백에 병합)
   Future<void> saveAiDailyAnalysis(
       String date, AiDailyAnalysis analysis) async {
     try {
-      await _db.doc(_studyDoc).update({
+      await _db.doc(_planDoc).update({
         'dailyFeedback.$date.aiAnalysis': analysis.toMap(),
         'lastModified': DateTime.now().millisecondsSinceEpoch,
       });
@@ -190,12 +174,10 @@ class PlanService {
     }
   }
 
-  /// 최근 N일 피드백 맵 로드
   Future<Map<String, DailyFeedback>> getRecentFeedbacks(
       {int days = 7}) async {
     try {
-      final doc = await _db.doc(_studyDoc).get();
-      final data = doc.data();
+      final data = await FirebaseService().getPlanData();
       if (data == null || data['dailyFeedback'] == null) return {};
 
       final raw = data['dailyFeedback'] as Map<String, dynamic>;
@@ -221,150 +203,19 @@ class PlanService {
   }
 
   // ═══════════════════════════════════════════
-  //  일일 계획 (DailyPlan) CRUD
-  // ═══════════════════════════════════════════
-
-  /// 일일 계획 로드
-  Future<DailyPlan?> getDailyPlan(String date) async {
-    try {
-      final doc = await _db.doc(_studyDoc).get();
-      final data = doc.data();
-      if (data == null) return null;
-      final plans = data['dailyPlans'] as Map<String, dynamic>?;
-      if (plans == null || plans[date] == null) return null;
-      return DailyPlan.fromMap(
-          Map<String, dynamic>.from(plans[date] as Map));
-    } catch (e) {
-      debugPrint('[PlanService] getDailyPlan error: $e');
-      return null;
-    }
-  }
-
-  /// 오늘 계획 로드 (4AM 경계)
-  Future<DailyPlan?> getTodayPlan() async {
-    return getDailyPlan(_todayDate());
-  }
-
-  /// 일일 계획 저장
-  Future<void> saveDailyPlan(DailyPlan plan) async {
-    final map = plan.toMap();
-    if (map['createdAt'] == null) {
-      map['createdAt'] = DateTime.now().toIso8601String();
-    }
-    map['updatedAt'] = DateTime.now().toIso8601String();
-
-    try {
-      await _db.doc(_studyDoc).update({
-        'dailyPlans.${plan.date}': map,
-        'lastModified': DateTime.now().millisecondsSinceEpoch,
-        'lastDevice': 'android',
-      });
-    } catch (e) {
-      await _db.doc(_studyDoc).set({
-        'dailyPlans': {plan.date: map},
-        'lastModified': DateTime.now().millisecondsSinceEpoch,
-        'lastDevice': 'android',
-      }, SetOptions(merge: true));
-    }
-  }
-
-  /// 일일 계획 삭제
-  Future<void> deleteDailyPlan(String date) async {
-    try {
-      await _db.doc(_studyDoc).update({
-        'dailyPlans.$date': FieldValue.delete(),
-        'lastModified': DateTime.now().millisecondsSinceEpoch,
-        'lastDevice': 'android',
-      });
-    } catch (e) {
-      debugPrint('[PlanService] deleteDailyPlan error: $e');
-    }
-  }
-
-  /// 개별 태스크 완료 토글 (빠른 업데이트)
-  Future<void> toggleTaskCompletion(
-      String date, String taskId, bool completed) async {
-    final plan = await getDailyPlan(date);
-    if (plan == null) return;
-
-    final tasks = plan.tasks.map((t) {
-      if (t.id == taskId) {
-        return t.copyWith(
-          completed: completed,
-          completedAt:
-              completed ? DateTime.now().toIso8601String() : null,
-        );
-      }
-      return t;
-    }).toList();
-
-    await saveDailyPlan(DailyPlan(
-      id: plan.id,
-      date: plan.date,
-      tasks: tasks,
-      memo: plan.memo,
-      tomorrowNotes: plan.tomorrowNotes,
-      createdAt: plan.createdAt,
-    ));
-  }
-
-  /// 최근 N일 계획 맵 로드 (히스토리용)
-  Future<Map<String, DailyPlan>> getRecentPlans({int days = 90}) async {
-    try {
-      final doc = await _db.doc(_studyDoc).get();
-      final data = doc.data();
-      if (data == null || data['dailyPlans'] == null) return {};
-
-      final raw = data['dailyPlans'] as Map<String, dynamic>;
-      final cutoff = DateFormat('yyyy-MM-dd')
-          .format(DateTime.now().subtract(Duration(days: days)));
-
-      final result = <String, DailyPlan>{};
-      for (final entry in raw.entries) {
-        if (entry.key.compareTo(cutoff) >= 0) {
-          try {
-            result[entry.key] = DailyPlan.fromMap(
-                Map<String, dynamic>.from(entry.value as Map));
-          } catch (_) {}
-        }
-      }
-      return result;
-    } catch (e) {
-      debugPrint('[PlanService] getRecentPlans error: $e');
-      return {};
-    }
-  }
-
-  /// 어제의 내일준비 노트 가져오기 (오늘 계획 작성 시 참조)
-  Future<String?> getYesterdayTomorrowNotes() async {
-    var yesterday = DateTime.now();
-    if (yesterday.hour < 4) {
-      yesterday = yesterday.subtract(const Duration(days: 1));
-    }
-    yesterday = yesterday.subtract(const Duration(days: 1));
-    final ds = DateFormat('yyyy-MM-dd').format(yesterday);
-    final plan = await getDailyPlan(ds);
-    return plan?.tomorrowNotes;
-  }
-
-  // ═══════════════════════════════════════════
   //  주간 리뷰 (WeeklyReview) CRUD
   // ═══════════════════════════════════════════
 
-  /// ISO 주 ID 계산 (yyyy-Www)
   static String weekIdForDate(DateTime date) {
-    // ISO 8601 주 번호
     final dayOfYear =
         date.difference(DateTime(date.year, 1, 1)).inDays + 1;
     final weekNum = ((dayOfYear - date.weekday + 10) / 7).floor();
     return '${date.year}-W${weekNum.toString().padLeft(2, '0')}';
   }
 
-  /// 주간 리뷰 로드
   Future<WeeklyReview?> getWeeklyReview(String weekId) async {
     try {
-      final doc = await _db.doc(_studyDoc).get();
-      final data = doc.data();
+      final data = await FirebaseService().getPlanData();
       if (data == null) return null;
 
       final reviews =
@@ -379,16 +230,15 @@ class PlanService {
     }
   }
 
-  /// 주간 리뷰 저장
   Future<void> saveWeeklyReview(WeeklyReview review) async {
     try {
-      await _db.doc(_studyDoc).update({
+      await _db.doc(_planDoc).update({
         'weeklyReview.${review.weekId}': review.toMap(),
         'lastModified': DateTime.now().millisecondsSinceEpoch,
         'lastDevice': 'android',
       });
     } catch (e) {
-      await _db.doc(_studyDoc).set({
+      await _db.doc(_planDoc).set({
         'weeklyReview': {review.weekId: review.toMap()},
         'lastModified': DateTime.now().millisecondsSinceEpoch,
         'lastDevice': 'android',
@@ -396,7 +246,6 @@ class PlanService {
     }
   }
 
-  /// 주간 통계 자동 집계
   Future<WeeklyStats> buildWeeklyStats(
       String startDate, String endDate) async {
     final fb = FirebaseService();
@@ -456,7 +305,6 @@ class PlanService {
   //  성장 지표 (GrowthMetrics) CRUD
   // ═══════════════════════════════════════════
 
-  /// 성장 지표 로드 (5분 캐시)
   Future<GrowthMetrics?> getGrowthMetrics(
       {bool forceRefresh = false}) async {
     if (!forceRefresh &&
@@ -468,8 +316,7 @@ class PlanService {
     }
 
     try {
-      final doc = await _db.doc(_studyDoc).get();
-      final data = doc.data();
+      final data = await FirebaseService().getPlanData();
       if (data == null || data['growthMetrics'] == null) return null;
 
       _cachedGrowth = GrowthMetrics.fromMap(
@@ -482,17 +329,16 @@ class PlanService {
     }
   }
 
-  /// 일별 스냅샷 업데이트
   Future<void> updateDailySnapshot(
       String date, DailySnapshot snapshot) async {
     try {
-      await _db.doc(_studyDoc).update({
+      await _db.doc(_planDoc).update({
         'growthMetrics.dailySnapshots.$date': snapshot.toMap(),
         'growthMetrics.lastUpdated': DateTime.now().toIso8601String(),
         'lastModified': DateTime.now().millisecondsSinceEpoch,
       });
     } catch (e) {
-      await _db.doc(_studyDoc).set({
+      await _db.doc(_planDoc).set({
         'growthMetrics': {
           'dailySnapshots': {date: snapshot.toMap()},
           'lastUpdated': DateTime.now().toIso8601String(),
@@ -501,16 +347,14 @@ class PlanService {
       }, SetOptions(merge: true));
     }
 
-    // 캐시 무효화
     _cachedGrowth = null;
     _growthCacheTime = null;
   }
 
-  /// 주간 스냅샷 업데이트
   Future<void> updateWeeklySnapshot(
       String weekId, WeeklySnapshot snapshot) async {
     try {
-      await _db.doc(_studyDoc).update({
+      await _db.doc(_planDoc).update({
         'growthMetrics.weeklySnapshots.$weekId': snapshot.toMap(),
         'growthMetrics.lastUpdated': DateTime.now().toIso8601String(),
         'lastModified': DateTime.now().millisecondsSinceEpoch,
@@ -520,10 +364,9 @@ class PlanService {
     }
   }
 
-  /// 성장 마일스톤 추가
   Future<void> addGrowthMilestone(GrowthMilestone milestone) async {
     try {
-      await _db.doc(_studyDoc).update({
+      await _db.doc(_planDoc).update({
         'growthMetrics.milestones':
             FieldValue.arrayUnion([milestone.toMap()]),
         'growthMetrics.lastUpdated': DateTime.now().toIso8601String(),
@@ -534,10 +377,9 @@ class PlanService {
     }
   }
 
-  /// AI 장기 인사이트 갱신
   Future<void> updateLongTermInsight(LongTermInsight insight) async {
     try {
-      await _db.doc(_studyDoc).update({
+      await _db.doc(_planDoc).update({
         'growthMetrics.longTermInsight': insight.toMap(),
         'growthMetrics.lastUpdated': DateTime.now().toIso8601String(),
         'lastModified': DateTime.now().millisecondsSinceEpoch,
@@ -551,7 +393,6 @@ class PlanService {
   //  일일 성장 스냅샷 자동 빌드
   // ═══════════════════════════════════════════
 
-  /// 하루 종료 시 자동 스냅샷 생성 (수면 태깅 or 자정+4AM)
   Future<DailySnapshot> buildDailySnapshot(String date) async {
     final fb = FirebaseService();
     final timeRecords = await fb.getTimeRecords();
@@ -563,7 +404,6 @@ class PlanService {
 
     final effectiveMin = sr?.effectiveMinutes ?? 0;
 
-    // 기존 DailyGrade 계산 활용
     final grade = DailyGrade.calculate(
       date: date,
       wakeTime: tr?.wake,
@@ -571,12 +411,10 @@ class PlanService {
       effectiveMinutes: effectiveMin,
     );
 
-    // 피드백 기반 점수
     final taskComp = feedback?.execution?.completionRate ?? 0.0;
-    final focusScore = DailyFeedback._focusQualityScore(
+    final focusScore = DailyFeedback.focusQualityScore(
         feedback?.selfAssessment?.focusQuality ?? 'fair');
 
-    // 연속일 계산 (간이)
     int streak = 0;
     var d = DateTime.parse(date);
     for (int i = 0; i < 365; i++) {
@@ -591,13 +429,11 @@ class PlanService {
     }
     final consistencyScore = (streak / 30.0).clamp(0.0, 1.0) * 100;
 
-    // 종합 성장 점수
     final growthScore = feedback?.calcGrowthScore(
           effectiveMin: effectiveMin,
           wakeOnTime: grade.wakeScore >= 20,
           bedOnTime: tr?.bedTime != null,
         ) ??
-        // 피드백 없으면 기본 계산
         ((effectiveMin / 480.0).clamp(0.0, 1.0) * 30 +
             grade.wakeScore +
             focusScore);
@@ -607,7 +443,7 @@ class PlanService {
       grade: grade.grade,
       gradeScore: grade.totalScore,
       taskCompletion: taskComp,
-      habitCompletion: 0, // 습관 데이터는 별도 연동 필요
+      habitCompletion: 0,
       wakeScore: grade.wakeScore,
       focusScore: focusScore,
       consistencyScore: consistencyScore,
@@ -616,10 +452,9 @@ class PlanService {
   }
 
   // ═══════════════════════════════════════════
-  //  패턴 탐지 (규칙 기반, AI 호출 전 선행)
+  //  패턴 탐지
   // ═══════════════════════════════════════════
 
-  /// 최근 데이터에서 패턴 탐지 → AI 프롬프트 보강용
   Future<List<DetectedPattern>> detectPatterns({int days = 7}) async {
     final fb = FirebaseService();
     final timeRecords = await fb.getTimeRecords();
@@ -627,9 +462,7 @@ class PlanService {
 
     final patterns = <DetectedPattern>[];
     final now = DateTime.now();
-    if (now.hour < 4) {}
 
-    // 데이터 수집
     final List<_DayData> recentData = [];
     for (int i = 0; i < days; i++) {
       var d = now.subtract(Duration(days: i));
@@ -641,11 +474,10 @@ class PlanService {
         date: ds,
         wakeTime: tr?.wake,
         studyMin: sr?.effectiveMinutes ?? 0,
-        hasFeedback: false, // 간이 — 실제로는 피드백 체크
+        hasFeedback: false,
       ));
     }
 
-    // ── 1. 기상 지각 연속 ──
     int lateWakeStreak = 0;
     for (final d in recentData) {
       if (d.wakeTime != null) {
@@ -673,7 +505,6 @@ class PlanService {
       ));
     }
 
-    // ── 2. 학습량 하락세 ──
     if (recentData.length >= 3) {
       bool declining = true;
       for (int i = 0; i < recentData.length - 1 && i < 3; i++) {
@@ -692,7 +523,6 @@ class PlanService {
       }
     }
 
-    // ── 3. 학습 없는 날 ──
     int zeroDays = recentData.where((d) => d.studyMin == 0).length;
     if (zeroDays >= 2) {
       patterns.add(DetectedPattern(
@@ -703,7 +533,6 @@ class PlanService {
       ));
     }
 
-    // ── 4. 연속 공부 (긍정) ──
     int studyStreak = 0;
     for (final d in recentData) {
       if (d.studyMin >= 60) {
@@ -721,7 +550,6 @@ class PlanService {
       ));
     }
 
-    // ── 5. 주간 평균 대비 ──
     if (recentData.length >= 7) {
       final weekAvg = recentData.map((d) => d.studyMin).reduce((a, b) => a + b) ~/
           recentData.length;
@@ -739,8 +567,6 @@ class PlanService {
   }
 }
 
-// ── 내부 헬퍼 ──
-
 class _DayData {
   final String date;
   final String? wakeTime;
@@ -755,12 +581,11 @@ class _DayData {
   });
 }
 
-/// 탐지된 패턴
 class DetectedPattern {
-  final String type; // "positive" | "warning" | "concern" | "insight"
+  final String type;
   final String code;
   final String desc;
-  final String severity; // "none" | "low" | "medium" | "high"
+  final String severity;
 
   DetectedPattern({
     required this.type,

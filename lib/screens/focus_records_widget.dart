@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 import '../theme/botanical_theme.dart';
 import '../models/models.dart';
@@ -28,22 +29,52 @@ class FocusRecordsWidget extends StatefulWidget {
 class _FocusRecordsWidgetState extends State<FocusRecordsWidget> {
   DateTime _selectedDate = DateTime.now();
   List<FocusCycle> _cycles = [];
-  bool _loading = true;
+  bool _loading = false;
+
+  // static 캐시: 위젯 state 재생성되어도 데이터 유지
+  static List<FocusCycle>? _cachedCycles;
+  static String? _cachedDate;
 
   static const _subjects = ['자료해석', '언어논리', '상황판단', '헌법', '영어'];
 
   @override
   void initState() {
     super.initState();
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    // 캐시된 데이터가 있으면 즉시 사용 (스피너 없이)
+    if (_cachedDate == dateStr && _cachedCycles != null) {
+      _cycles = _cachedCycles!;
+      _loading = false;
+    } else {
+      _loading = true;
+    }
     _loadData();
   }
 
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
+    }
+  }
+
   Future<void> _loadData() async {
-    setState(() => _loading = true);
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    // 캐시 없을 때만 스피너 표시
+    if (_cachedDate != dateStr || _cachedCycles == null) {
+      _safeSetState(() => _loading = true);
+    }
     final fb = FirebaseService();
     final cycles = await fb.getFocusCycles(dateStr);
-    if (mounted) setState(() { _cycles = cycles; _loading = false; });
+    _cachedCycles = cycles;
+    _cachedDate = dateStr;
+    _safeSetState(() { _cycles = cycles; _loading = false; });
   }
 
   void _changeDate(int delta) {

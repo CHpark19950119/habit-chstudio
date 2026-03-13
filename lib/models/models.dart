@@ -2,6 +2,7 @@
 /// v8.5: NFC 4태그 토글 + 이동시간 + 수면관리
 
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─── 시간 기록 (기상/공부시작/외출/귀가/공부종료) ───
@@ -367,113 +368,6 @@ class FocusCycle {
       };
 }
 
-// ─── 알람 설정 ───
-class AlarmSettings {
-  final String targetWakeTime;
-  final bool enabled;
-  final List<int> activeDays;
-  final int snoozeMinutes;
-  final String ringtone;
-  final bool vibrate;
-  final bool qrWakeEnabled;
-  final String qrSecret;
-  final bool nfcWakeEnabled;
-
-  AlarmSettings({
-    this.targetWakeTime = '07:00',
-    this.enabled = true,
-    this.activeDays = const [1, 2, 3, 4, 5, 6],
-    this.snoozeMinutes = 5,
-    this.ringtone = 'default',
-    this.vibrate = true,
-    this.qrWakeEnabled = false,
-    this.qrSecret = 'CHEONHONG_WAKE_VERIFY_2026',
-    this.nfcWakeEnabled = false,
-  });
-
-  factory AlarmSettings.fromMap(Map<String, dynamic> map) {
-    return AlarmSettings(
-      targetWakeTime: map['targetWakeTime'] ?? '07:00',
-      enabled: map['enabled'] ?? true,
-      activeDays: List<int>.from(map['activeDays'] ?? [1, 2, 3, 4, 5, 6]),
-      snoozeMinutes: map['snoozeMinutes'] ?? 5,
-      ringtone: map['ringtone'] ?? 'default',
-      vibrate: map['vibrate'] ?? true,
-      qrWakeEnabled: map['qrWakeEnabled'] ?? false,
-      qrSecret: map['qrSecret'] ?? 'CHEONHONG_WAKE_VERIFY_2026',
-      nfcWakeEnabled: map['nfcWakeEnabled'] ?? false,
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-        'targetWakeTime': targetWakeTime,
-        'enabled': enabled,
-        'activeDays': activeDays,
-        'snoozeMinutes': snoozeMinutes,
-        'ringtone': ringtone,
-        'vibrate': vibrate,
-        'qrWakeEnabled': qrWakeEnabled,
-        'qrSecret': qrSecret,
-        'nfcWakeEnabled': nfcWakeEnabled,
-      };
-}
-
-// ─── 집중모드 설정 ───
-class FocusModeConfig {
-  final bool enabled;
-  final List<String> blockedPackages;
-  final bool enableDnd;
-  final bool showOverlay;
-
-  FocusModeConfig({
-    this.enabled = false,
-    this.blockedPackages = const [],
-    this.enableDnd = true,
-    this.showOverlay = true,
-  });
-
-  factory FocusModeConfig.fromMap(Map<String, dynamic> map) {
-    return FocusModeConfig(
-      enabled: map['enabled'] ?? false,
-      blockedPackages: List<String>.from(map['blockedPackages'] ?? []),
-      enableDnd: map['enableDnd'] ?? true,
-      showOverlay: map['showOverlay'] ?? true,
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-        'enabled': enabled,
-        'blockedPackages': blockedPackages,
-        'enableDnd': enableDnd,
-        'showOverlay': showOverlay,
-      };
-}
-
-// ─── 앱 사용 통계 ───
-class AppUsageStat {
-  final String date;
-  final String packageName;
-  final String appName;
-  final int usageMinutes;
-  final String category;
-
-  AppUsageStat({
-    required this.date,
-    required this.packageName,
-    required this.appName,
-    required this.usageMinutes,
-    this.category = 'other',
-  });
-
-  Map<String, dynamic> toMap() => {
-        'date': date,
-        'packageName': packageName,
-        'appName': appName,
-        'usageMinutes': usageMinutes,
-        'category': category,
-      };
-}
-
 // ─── 데일리 그레이딩 (v8.0) ───
 class DailyGrade {
   final String date;
@@ -571,59 +465,6 @@ class DailyGrade {
   }
 }
 
-// ══════════════════════════════════════════
-//  위치 상태 모델
-// ══════════════════════════════════════════
-
-enum LocationState {
-  idle,
-  preparing,
-  traveling,
-  staying,
-  returning,
-}
-
-enum MotionState {
-  stationary,
-  moving,
-  unknown,
-}
-
-class NearbyPlaceResult {
-  final String name;
-  final String? vicinity;
-  final double lat;
-  final double lng;
-  final List<String> types;
-
-  NearbyPlaceResult({
-    required this.name,
-    this.vicinity,
-    required this.lat,
-    required this.lng,
-    this.types = const [],
-  });
-
-  factory NearbyPlaceResult.fromJson(Map<String, dynamic> json) {
-    final loc = json['geometry']?['location'] ?? {};
-    return NearbyPlaceResult(
-      name: json['name'] ?? '',
-      vicinity: json['vicinity'],
-      lat: (loc['lat'] ?? 0).toDouble(),
-      lng: (loc['lng'] ?? 0).toDouble(),
-      types: List<String>.from(json['types'] ?? []),
-    );
-  }
-
-  String get guessedCategory {
-    if (types.any((t) => t.contains('library'))) return 'library';
-    if (types.any((t) => t.contains('cafe') || t.contains('coffee'))) return 'cafe';
-    if (types.any((t) => t.contains('school') || t.contains('university'))) return 'school';
-    if (types.any((t) => t.contains('office') || t.contains('company'))) return 'work';
-    return 'other';
-  }
-}
-
 // ─── 위치 기록 ───
 class LocationRecord {
   final String id;
@@ -677,81 +518,6 @@ class LocationRecord {
         'wifiSsid': wifiSsid,
         'durationMinutes': durationMinutes,
       };
-}
-
-// ─── 등록 장소 (지오펜스) ───
-class KnownPlace {
-  final String id;
-  final String name;
-  final String emoji;
-  final String category;
-  final double latitude;
-  final double longitude;
-  final int radiusMeters;
-  final String? wifiSsid;
-  final bool autoStudyStart;
-
-  KnownPlace({
-    required this.id,
-    required this.name,
-    required this.emoji,
-    required this.category,
-    required this.latitude,
-    required this.longitude,
-    this.radiusMeters = 100,
-    this.wifiSsid,
-    this.autoStudyStart = false,
-  });
-
-  factory KnownPlace.fromMap(Map<String, dynamic> map) {
-    return KnownPlace(
-      id: map['id'] ?? '',
-      name: map['name'] ?? '',
-      emoji: map['emoji'] ?? '📍',
-      category: map['category'] ?? 'other',
-      latitude: (map['latitude'] ?? 0).toDouble(),
-      longitude: (map['longitude'] ?? 0).toDouble(),
-      radiusMeters: map['radiusMeters'] ?? 100,
-      wifiSsid: map['wifiSsid'],
-      autoStudyStart: map['autoStudyStart'] ?? false,
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'name': name,
-        'emoji': emoji,
-        'category': category,
-        'latitude': latitude,
-        'longitude': longitude,
-        'radiusMeters': radiusMeters,
-        'wifiSsid': wifiSsid,
-        'autoStudyStart': autoStudyStart,
-      };
-
-  static String categoryEmoji(String cat) {
-    switch (cat) {
-      case 'home': return '🏠';
-      case 'library': return '📚';
-      case 'cafe': return '☕';
-      case 'school': return '🏫';
-      case 'work': return '💼';
-      case 'restaurant': return '🍽️';
-      default: return '📍';
-    }
-  }
-
-  static String categoryLabel(String cat) {
-    switch (cat) {
-      case 'home': return '집';
-      case 'library': return '도서관';
-      case 'cafe': return '카페';
-      case 'school': return '학교/학원';
-      case 'work': return '직장';
-      case 'restaurant': return '음식점';
-      default: return '기타';
-    }
-  }
 }
 
 // ─── 행동 타임라인 ───
@@ -812,10 +578,26 @@ class BehaviorTimelineEntry {
 // ─── 과목 설정 ───
 class SubjectConfig {
   static const Map<String, SubjectInfo> _factoryDefaults = {
-    '자료해석': SubjectInfo('자료해석', '📊', 0xFF6366F1),
-    '언어논리': SubjectInfo('언어논리', '📝', 0xFF10B981),
-    '상황판단': SubjectInfo('상황판단', '🧩', 0xFFF59E0B),
+    // 1차 PSAT
+    '자료해석': SubjectInfo('자료해석', '📊', 0xFF4A8A60),
+    '언어논리': SubjectInfo('언어논리', '📝', 0xFF5B6ABF),
+    '상황판단': SubjectInfo('상황판단', '🧩', 0xFFD4893B),
+    // 2차 전공
+    '경제학': SubjectInfo('경제학', '💰', 0xFF2D7D9A),
+    '국제법': SubjectInfo('국제법', '⚖️', 0xFF7A5195),
+    '국제정치학': SubjectInfo('국제정치학', '🌏', 0xFF3B7A57),
   };
+
+  // ── 시험 라운드 분류 ──
+  static const round1Subjects = {'자료해석', '언어논리', '상황판단'};
+  static const round2Subjects = {'경제학', '국제법', '국제정치학'};
+  static const sharedSubjects = {'헌법', '영어'};
+
+  static String examRound(String subject) {
+    if (round1Subjects.contains(subject)) return '1차';
+    if (round2Subjects.contains(subject)) return '2차';
+    return '공통';
+  }
 
   static Map<String, SubjectInfo> _subjects = {};
   static bool _loaded = false;
@@ -880,6 +662,48 @@ class SubjectConfig {
       }).toList();
       await p.setString('subject_list_v2', jsonEncode(list));
     } catch (_) {}
+    _syncToFirestore();
+  }
+
+  /// Firestore에 과목 목록 동기화 (비동기, 에러 무시)
+  static Future<void> _syncToFirestore() async {
+    try {
+      final list = _subjects.values.map((s) => {
+        'name': s.name, 'emoji': s.emoji, 'color': s.colorValue,
+      }).toList();
+      await FirebaseFirestore.instance
+        .doc('users/sJ8Pxusw9gR0tNR44RhkIge7OiG2/data/meta')
+        .set({'subjects': list}, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
+  /// Firestore에서 과목 목록 동기화 (다른 기기 대비)
+  static Future<void> syncFromFirestore() async {
+    try {
+      final snap = await FirebaseFirestore.instance
+        .doc('users/sJ8Pxusw9gR0tNR44RhkIge7OiG2/data/meta')
+        .get(const GetOptions(source: Source.server))
+        .timeout(const Duration(seconds: 5));
+      final data = snap.data();
+      if (data == null || data['subjects'] == null) return;
+      final list = List<dynamic>.from(data['subjects']);
+      final newSubjects = <String, SubjectInfo>{};
+      for (final item in list) {
+        final m = Map<String, dynamic>.from(item as Map);
+        final name = m['name'] ?? '';
+        if (name.isEmpty) continue;
+        newSubjects[name] = SubjectInfo(name, m['emoji'] ?? '📚', m['color'] ?? 0xFF6366F1);
+      }
+      if (newSubjects.isNotEmpty) {
+        _subjects = newSubjects;
+        _loaded = true;
+        final p = await SharedPreferences.getInstance();
+        final saveList = _subjects.values.map((s) => {
+          'name': s.name, 'emoji': s.emoji, 'color': s.colorValue,
+        }).toList();
+        await p.setString('subject_list_v2', jsonEncode(saveList));
+      }
+    } catch (_) {}
   }
 }
 
@@ -894,12 +718,11 @@ class SubjectInfo {
 //  v8.5: NFC 태그 모델 (4태그 토글 시스템)
 // ══════════════════════════════════════════
 
-/// NFC 태그 역할 — 4종
+/// NFC 태그 역할 — 5종
 enum NfcTagRole {
   wake,     // 욕실 → 기상시간
-  ready,    // 책상 → 음성 브리핑만
   outing,   // 현관 → 토글: 외출 ↔ 귀가
-  study,    // 독서대 → 토글: 공부시작 ↔ 공부종료
+  study,    // 독서대 → 공부시작 / 재개 / 종료
   sleep,    // 침대 → 취침시간 기록
   meal,     // 식탁 → 토글: 식사시작 ↔ 식사종료
 }
@@ -909,6 +732,7 @@ class NfcTagConfig {
   final String name;
   final NfcTagRole role;
   final String? nfcId;
+  final String? placeName;
   final String createdAt;
 
   NfcTagConfig({
@@ -916,6 +740,7 @@ class NfcTagConfig {
     required this.name,
     required this.role,
     this.nfcId,
+    this.placeName,
     required this.createdAt,
   });
 
@@ -928,6 +753,7 @@ class NfcTagConfig {
         orElse: () => NfcTagRole.wake,
       ),
       nfcId: map['nfcId'],
+      placeName: map['placeName'] as String?,
       createdAt: map['createdAt'] ?? '',
     );
   }
@@ -937,13 +763,13 @@ class NfcTagConfig {
         'name': name,
         'role': role.name,
         'nfcId': nfcId,
+        if (placeName != null) 'placeName': placeName,
         'createdAt': createdAt,
       };
 
   String get emoji {
     switch (role) {
       case NfcTagRole.wake: return '🚿';
-      case NfcTagRole.ready: return '📖';
       case NfcTagRole.outing: return '🚪';
       case NfcTagRole.study: return '📚';
       case NfcTagRole.sleep: return '🛏️';
@@ -954,9 +780,8 @@ class NfcTagConfig {
   String get roleLabel {
     switch (role) {
       case NfcTagRole.wake: return '기상 인증';
-      case NfcTagRole.ready: return '준비 완료 + 브리핑';
       case NfcTagRole.outing: return '외출 ↔ 귀가 (토글)';
-      case NfcTagRole.study: return '공부시작 ↔ 공부종료 (토글)';
+      case NfcTagRole.study: return '공부 시작 / 재개 / 종료';
       case NfcTagRole.sleep: return '수면시작';
       case NfcTagRole.meal: return '식사시작 ↔ 식사종료 (토글)';
     }
@@ -965,9 +790,8 @@ class NfcTagConfig {
   static String roleDescription(NfcTagRole role) {
     switch (role) {
       case NfcTagRole.wake: return '욕실 NFC → 기상시간 기록';
-      case NfcTagRole.ready: return '책상 NFC → 음성 브리핑';
-      case NfcTagRole.outing: return '현관 NFC → 외출/귀가 토글 + GPS';
-      case NfcTagRole.study: return '독서대 NFC → 공부시작/종료 토글';
+      case NfcTagRole.outing: return '현관 NFC → 외출/귀가 토글';
+      case NfcTagRole.study: return '독서대 NFC → 공부시작/재개/종료';
       case NfcTagRole.sleep: return '침대 NFC → 취침시간 기록';
       case NfcTagRole.meal: return '식탁 NFC → 식사시작/종료 토글';
     }
@@ -1000,200 +824,6 @@ class NfcEvent {
         'tagName': tagName,
         'action': action,
       };
-}
-
-// ══════════════════════════════════════════
-//  v8.5: 수면 관리 모델 (#32~38)
-// ══════════════════════════════════════════
-
-/// 수면 설정
-class SleepSettings {
-  final String targetBedTime;    // 목표 취침 시간 (예: "23:30")
-  final bool enabled;
-  final bool appLockEnabled;     // #33: 야간 앱 잠금
-  final bool screenMonitor;      // #34: 화면 켜짐 감지
-  final List<String> allowedApps; // 잠금 시 허용 앱
-  final int warningMinBefore;    // 취침 몇 분 전 예고 (기본 30)
-
-  SleepSettings({
-    this.targetBedTime = '23:30',
-    this.enabled = true,
-    this.appLockEnabled = false,
-    this.screenMonitor = false,
-    this.allowedApps = const [
-      'com.kakao.talk',           // 카카오톡 (통화)
-      'com.samsung.android.dialer', // 전화
-      'com.samsung.android.messaging', // 문자
-    ],
-    this.warningMinBefore = 30,
-  });
-
-  factory SleepSettings.fromMap(Map<String, dynamic> map) {
-    return SleepSettings(
-      targetBedTime: map['targetBedTime'] ?? '23:30',
-      enabled: map['enabled'] ?? true,
-      appLockEnabled: map['appLockEnabled'] ?? false,
-      screenMonitor: map['screenMonitor'] ?? false,
-      allowedApps: List<String>.from(map['allowedApps'] ?? [
-        'com.kakao.talk',
-        'com.samsung.android.dialer',
-        'com.samsung.android.messaging',
-      ]),
-      warningMinBefore: map['warningMinBefore'] ?? 30,
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-        'targetBedTime': targetBedTime,
-        'enabled': enabled,
-        'appLockEnabled': appLockEnabled,
-        'screenMonitor': screenMonitor,
-        'allowedApps': allowedApps,
-        'warningMinBefore': warningMinBefore,
-      };
-}
-
-/// 수면 기록 (일별)
-class SleepRecord {
-  final String date;
-  final String? bedTime;         // 실제 취침 시간
-  final String? wakeTime;        // 기상 시간
-  final int? sleepMinutes;       // 수면 시간 (분)
-  final int screenOnCount;       // #34: 수면 중 화면 켜짐 횟수
-  final int screenOnMinutes;     // 수면 중 화면 켜진 총 시간 (분)
-
-  SleepRecord({
-    required this.date,
-    this.bedTime,
-    this.wakeTime,
-    this.sleepMinutes,
-    this.screenOnCount = 0,
-    this.screenOnMinutes = 0,
-  });
-
-  factory SleepRecord.fromMap(String date, Map<String, dynamic> map) {
-    return SleepRecord(
-      date: date,
-      bedTime: map['bedTime'] as String?,
-      wakeTime: map['wakeTime'] as String?,
-      sleepMinutes: map['sleepMinutes'] as int?,
-      screenOnCount: map['screenOnCount'] ?? 0,
-      screenOnMinutes: map['screenOnMinutes'] ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-        'bedTime': bedTime,
-        'wakeTime': wakeTime,
-        'sleepMinutes': sleepMinutes,
-        'screenOnCount': screenOnCount,
-        'screenOnMinutes': screenOnMinutes,
-      };
-}
-
-/// #35: 수면 스코어 (100점)
-class SleepGrade {
-  final String date;
-  final double bedTimeScore;     // 25점 (목표 시간 준수)
-  final double wakeTimeScore;    // 25점 (목표 기상)
-  final double durationScore;    // 25점 (7~8시간 적정)
-  final double phoneScore;       // 25점 (화면 이탈 감점)
-  final double totalScore;
-  final String grade;
-
-  SleepGrade({
-    required this.date,
-    required this.bedTimeScore,
-    required this.wakeTimeScore,
-    required this.durationScore,
-    required this.phoneScore,
-    required this.totalScore,
-    required this.grade,
-  });
-
-  factory SleepGrade.calculate({
-    required String date,
-    SleepSettings? settings,
-    SleepRecord? record,
-    String? targetWakeTime,
-  }) {
-    final targetBed = settings?.targetBedTime ?? '23:30';
-
-    // 취침 점수 (25점)
-    double bedScore = 0;
-    if (record?.bedTime != null) {
-      final diff = _absTimeDiff(record!.bedTime!, targetBed);
-      bedScore = (25.0 - diff * 0.5).clamp(0, 25); // 분당 0.5점 감점
-    }
-
-    // 기상 점수 (25점)
-    double wakeScore = 0;
-    if (record?.wakeTime != null) {
-      final tw = targetWakeTime ?? '07:00';
-      final diff = _absTimeDiff(record!.wakeTime!, tw);
-      wakeScore = (25.0 - diff / 4.0).clamp(0, 25); // 4분당 1점 감점
-    }
-
-    // 수면시간 점수 (25점) — 7~8시간이 만점
-    double durScore = 0;
-    if (record?.sleepMinutes != null) {
-      final sm = record!.sleepMinutes!;
-      if (sm >= 420 && sm <= 480) {
-        durScore = 25;
-      } else if (sm >= 360 && sm < 420) {
-        durScore = 25.0 - (420 - sm) / 4.0;
-      } else if (sm > 480 && sm <= 540) {
-        durScore = 25.0 - (sm - 480) / 4.0;
-      } else {
-        durScore = (25.0 - ((sm - 450).abs() / 3.0)).clamp(0, 25);
-      }
-    }
-
-    // 폰 이탈 점수 (25점)
-    double phoneScore = 25;
-    if (record != null) {
-      // 화면 켜짐 횟수당 3점 감점, 최대 10점
-      phoneScore -= (record.screenOnCount * 3.0).clamp(0, 10);
-      // 화면 켜진 시간 분당 1.5점 감점
-      phoneScore -= (record.screenOnMinutes * 1.5).clamp(0, 15);
-      phoneScore = phoneScore.clamp(0, 25);
-    }
-
-    final total = bedScore + wakeScore + durScore + phoneScore;
-
-    String grade;
-    if (total >= 95) grade = 'S+';
-    else if (total >= 90) grade = 'S';
-    else if (total >= 80) grade = 'A';
-    else if (total >= 70) grade = 'B';
-    else if (total >= 60) grade = 'C';
-    else if (total >= 40) grade = 'D';
-    else grade = 'F';
-
-    return SleepGrade(
-      date: date,
-      bedTimeScore: bedScore,
-      wakeTimeScore: wakeScore,
-      durationScore: durScore,
-      phoneScore: phoneScore,
-      totalScore: total,
-      grade: grade,
-    );
-  }
-
-  static double _absTimeDiff(String time1, String time2) {
-    try {
-      final p1 = time1.split(':');
-      final p2 = time2.split(':');
-      final m1 = int.parse(p1[0]) * 60 + int.parse(p1[1]);
-      final m2 = int.parse(p2[0]) * 60 + int.parse(p2[1]);
-      final diff = (m1 - m2).abs();
-      // ★ FIX: 자정 넘김 — 720분(12시간) 이상이면 반대편이 더 가까움
-      return diff > 720 ? (1440 - diff).toDouble() : diff.toDouble();
-    } catch (_) {
-      return 0;
-    }
-  }
 }
 
 // ══════════════════════════════════════════

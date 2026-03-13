@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/order_models.dart';
+import '../../utils/study_date_utils.dart';
 
 /// ═══════════════════════════════════════════════════════════
 /// ORDER — SHARED THEME & UTILITIES
@@ -175,11 +176,7 @@ Widget areaBtn(String label, GoalArea a, GoalArea sel, Function(GoalArea) onTap)
 }
 
 /// 오늘 날짜 문자열 (4AM 경계 적용)
-String todayStr() {
-  var n = DateTime.now();
-  if (n.hour < 4) n = n.subtract(const Duration(days: 1));
-  return '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
-}
+String todayStr() => StudyDateUtils.todayKey();
 
 /// 바텀시트 안전 하단 패딩 계산
 /// viewInsets(키보드) + viewPadding(시스템 네비바) 중 큰 값 + 여유

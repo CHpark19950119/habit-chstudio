@@ -5,6 +5,7 @@ plugins {
     // END: FlutterFire Configuration
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.firebase.appdistribution")
 }
 
 android {
@@ -33,6 +34,10 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
+            firebaseAppDistribution {
+                artifactType = "APK"
+                groups = "testers"
+            }
         }
     }
 }

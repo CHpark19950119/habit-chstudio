@@ -19,7 +19,6 @@ extension _CalendarDayDetail on _CalendarScreenState {
     final now = DateTime.now();
     final diff = _selectedDate.difference(DateTime(now.year, now.month, now.day)).inDays;
     final diffLabel = diff == 0 ? '오늘' : diff > 0 ? 'D-$diff' : 'D+${-diff}';
-    final events = _selectedEvents;
     final memos = _selectedMemos;
     final journals = _journalsForDate(_selectedDateStr);
 
@@ -29,12 +28,10 @@ extension _CalendarDayDetail on _CalendarScreenState {
     final planEval = StudyPlanData.evaluationForDate(_selectedDateStr);
     final dailyPlan = StudyPlanData.dailyPlanForDate(_selectedDateStr);
 
-    final ticketsForDay = _examTicketsByDate[_selectedDateStr] ?? [];
-
-    final isEmpty = events.isEmpty && memos.isEmpty && journals.isEmpty
+    final isEmpty = memos.isEmpty && journals.isEmpty
         && _selectedStudyRecord == null && planDDays.isEmpty && planSub == null
-        && dailyPlan == null && _selectedDailyPlan == null
-        && _selectedCustomTasks.isEmpty && ticketsForDay.isEmpty;
+        && dailyPlan == null
+        && _selectedCustomTasks.isEmpty;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -65,7 +62,7 @@ extension _CalendarDayDetail on _CalendarScreenState {
               final ds = _selectedDateStr;
               final isNowRest = await _fb.toggleRestDay(ds);
               if (isNowRest) { _restDays.add(ds); } else { _restDays.remove(ds); }
-              if (mounted) setState(() {});
+              _safeSetState(() {});
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -107,58 +104,14 @@ extension _CalendarDayDetail on _CalendarScreenState {
           )),
         ],
 
-        // ── ★ R2: 수험표 시험일정 ──
-        if ((_examTicketsByDate[_selectedDateStr] ?? []).isNotEmpty) ...[
-          const SizedBox(height: 10),
-          ...(_examTicketsByDate[_selectedDateStr] ?? []).map((t) => Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [
-                const Color(0xFFEF4444).withOpacity(0.08),
-                const Color(0xFFEF4444).withOpacity(0.02)]),
-              borderRadius: BorderRadius.circular(12),
-              border: const Border(
-                left: BorderSide(color: Color(0xFFEF4444), width: 3))),
-            child: Row(children: [
-              const Text('📋', style: TextStyle(fontSize: 16)),
-              const SizedBox(width: 10),
-              Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(t.examName, style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w800,
-                    color: Color(0xFFEF4444))),
-                  if (t.examTime != null || t.location != null)
-                    Text([
-                      if (t.examTime != null) '⏰ ${t.examTime}',
-                      if (t.location != null) '📍 ${t.location}',
-                    ].join('  '), style: TextStyle(
-                      fontSize: 11, color: _textSub)),
-                  if (t.examNumber != null)
-                    Text('수험번호: ${t.examNumber}', style: TextStyle(
-                      fontSize: 10, color: _textMuted)),
-                ],
-              )),
-              if (t.dDayLabel.isNotEmpty)
-                Text(t.dDayLabel, style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w900,
-                  color: Color(0xFFEF4444))),
-            ]),
-          )),
-        ],
-
-        // ── ★ Dynamic Daily Plan ──
-        const SizedBox(height: 10),
-        _buildDynamicPlanSection(),
-
-        // ── ★ 2-B: 일일계획 카드 (정적 시드 — 동적 계획 없을 때만) ──
-        if (_selectedDailyPlan == null && dailyPlan != null) ...[
+        // ── ★ 2-B: 일일계획 카드 (정적 시드) ──
+        if (dailyPlan != null) ...[
           const SizedBox(height: 10),
           _buildDailyPlanCard(dailyPlan),
         ],
 
         // ── ★ Plan: 현재 기간/서브기간 ──
-        if (planSub != null && dailyPlan == null && _selectedDailyPlan == null) ...[
+        if (planSub != null && dailyPlan == null) ...[
           const SizedBox(height: 10),
           _buildSubPeriodCard(planSub),
         ],
@@ -187,14 +140,6 @@ extension _CalendarDayDetail on _CalendarScreenState {
           _buildTimeRecordRow(),
         ],
 
-        // ── 일정 ──
-        if (events.isNotEmpty) ...[
-          const SizedBox(height: 14),
-          _sectionLabel('📅', '일정'),
-          const SizedBox(height: 6),
-          ...events.map(_eventTile),
-        ],
-
         // ── 메모 ──
         if (memos.isNotEmpty) ...[
           const SizedBox(height: 14),
@@ -218,10 +163,6 @@ extension _CalendarDayDetail on _CalendarScreenState {
         // ── ★ 학습 계획 전체보기 버튼 ──
         const SizedBox(height: 14),
         _buildPlanOverviewButton(),
-
-        // ── ★ 계획 기록 보기 버튼 ──
-        const SizedBox(height: 8),
-        _buildPlanHistoryButton(),
 
         if (isEmpty && _selectedCustomTasks.isEmpty) ...[
           const SizedBox(height: 20),
@@ -332,165 +273,6 @@ extension _CalendarDayDetail on _CalendarScreenState {
     }
   }
 
-  // ══════════════════════════════════════════
-  //  ★ Dynamic Daily Plan Section
-  // ══════════════════════════════════════════
-
-  Widget _buildDynamicPlanSection() {
-    final plan = _selectedDailyPlan;
-    if (plan != null) return _buildDynamicPlanCard(plan);
-    return _buildCreatePlanButton();
-  }
-
-  Widget _buildDynamicPlanCard(DailyPlan plan) {
-    final rate = plan.completionRate;
-    final rateColor = rate >= 0.8
-        ? const Color(0xFF34C759)
-        : rate >= 0.5
-            ? const Color(0xFFF5A623)
-            : const Color(0xFFEF5350);
-
-    return GestureDetector(
-      onTap: () => DailyPlanSheet.show(context,
-          date: _selectedDateStr,
-          plan: plan,
-          onSaved: () async {
-            await _loadSelectedDay();
-            if (mounted) setState(() {});
-          }),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [
-            const Color(0xFF5B5FE6).withOpacity(_dk ? 0.08 : 0.05),
-            const Color(0xFF5B5FE6).withOpacity(0.02),
-          ]),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: const Color(0xFF5B5FE6).withOpacity(0.15)),
-        ),
-        child: Column(children: [
-          Row(children: [
-            const Text('📋', style: TextStyle(fontSize: 16)),
-            const SizedBox(width: 8),
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text('일일 계획',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: _textMain)),
-                  Text(
-                      '${plan.completedCount}/${plan.totalCount} 완료 · ${(rate * 100).round()}%',
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: _textSub)),
-                ])),
-            // 진행률 뱃지
-            Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: rateColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text('${(rate * 100).round()}%',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: rateColor)),
-            ),
-          ]),
-          const SizedBox(height: 10),
-          // 미니 진행바
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: rate,
-              backgroundColor: _dk
-                  ? Colors.white.withOpacity(0.06)
-                  : Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation(rateColor),
-              minHeight: 5,
-            ),
-          ),
-          // must 과제 미리보기
-          if (plan.tasks
-              .where((t) => t.priority == 'must')
-              .isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ...plan.tasks
-                .where((t) => t.priority == 'must')
-                .take(3)
-                .map((t) => Padding(
-                      padding: const EdgeInsets.only(bottom: 3),
-                      child: Row(children: [
-                        Icon(
-                          t.completed
-                              ? Icons.check_circle_rounded
-                              : Icons.radio_button_unchecked_rounded,
-                          size: 14,
-                          color: t.completed
-                              ? const Color(0xFF34C759)
-                              : _textMuted,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                            child: Text(t.title,
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    color: t.completed
-                                        ? _textMuted
-                                        : _textMain,
-                                    decoration: t.completed
-                                        ? TextDecoration.lineThrough
-                                        : null),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis)),
-                      ]),
-                    )),
-          ],
-        ]),
-      ),
-    );
-  }
-
-  Widget _buildCreatePlanButton() {
-    return GestureDetector(
-      onTap: () => DailyPlanSheet.show(context,
-          date: _selectedDateStr,
-          onSaved: () async {
-            await _loadSelectedDay();
-            if (mounted) setState(() {});
-          }),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: _dk
-              ? Colors.white.withOpacity(0.03)
-              : const Color(0xFFF8F7FF),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-              color: const Color(0xFF5B5FE6).withOpacity(0.15)),
-        ),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.add_circle_outline_rounded,
-              size: 18,
-              color: const Color(0xFF5B5FE6).withOpacity(0.6)),
-          const SizedBox(width: 8),
-          Text('일일 계획 만들기',
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF5B5FE6).withOpacity(0.7))),
-        ]),
-      ),
-    );
-  }
 
   Widget _buildSubPeriodCard(PlanSubPeriod planSub) {
     return Container(
@@ -629,7 +411,7 @@ extension _CalendarDayDetail on _CalendarScreenState {
     if (result != null && result.trim().isNotEmpty) {
       await _fb.addCustomStudyTask(_selectedDateStr, result.trim());
       _selectedCustomTasks = await _fb.getCustomStudyTasks(_selectedDateStr);
-      if (mounted) setState(() {});
+      _safeSetState(() {});
     }
   }
 
@@ -639,14 +421,14 @@ extension _CalendarDayDetail on _CalendarScreenState {
     if (result != null && result.trim().isNotEmpty) {
       await _fb.editCustomStudyTask(_selectedDateStr, index, result.trim());
       _selectedCustomTasks = await _fb.getCustomStudyTasks(_selectedDateStr);
-      if (mounted) setState(() {});
+      _safeSetState(() {});
     }
   }
 
   Future<void> _deleteCustomTask(int index) async {
     await _fb.deleteCustomStudyTask(_selectedDateStr, index);
     _selectedCustomTasks = await _fb.getCustomStudyTasks(_selectedDateStr);
-    if (mounted) setState(() {});
+    _safeSetState(() {});
   }
 
   Future<String?> _showTaskDialog(String title, TextEditingController ctrl) {
@@ -724,39 +506,5 @@ extension _CalendarDayDetail on _CalendarScreenState {
     );
   }
 
-  Widget _buildPlanHistoryButton() {
-    return GestureDetector(
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(
-              builder: (_) => const DailyPlanHistoryScreen())),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: _dk
-              ? Colors.white.withOpacity(0.02)
-              : const Color(0xFFF9FAFB),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _border.withOpacity(0.15))),
-        child: Row(children: [
-          const Text('📊', style: TextStyle(fontSize: 16)),
-          const SizedBox(width: 10),
-          Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-            Text('계획 기록 보기', style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: _textMain)),
-            Text('히트맵 · 통계 · 히스토리', style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                color: _textMuted)),
-          ])),
-          Icon(Icons.chevron_right_rounded, size: 20,
-              color: _textMuted),
-        ]),
-      ),
-    );
-  }
 
 }

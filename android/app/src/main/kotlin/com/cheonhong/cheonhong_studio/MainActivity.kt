@@ -1,23 +1,18 @@
 package com.cheonhong.cheonhong_studio
 
-import android.app.AlarmManager
 import android.app.AppOpsManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.usage.UsageStatsManager
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
-import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
 import android.Manifest
@@ -28,6 +23,8 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.util.Calendar
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.nfc.NfcAdapter
 import android.util.Log
 import android.nfc.NdefMessage
@@ -40,15 +37,15 @@ class MainActivity : FlutterActivity() {
     private val FOCUS_CHANNEL = "com.cheonhong.cheonhong_studio/focus_mode"
     private val USAGE_CHANNEL = "com.cheonhong.cheonhong_studio/usage_stats"
     private val WIFI_CHANNEL = "com.cheonhong.cheonhong_studio/wifi"
-    private val ALARM_CHANNEL = "com.cheonhong.cheonhong_studio/alarm"
     private val VOLUME_CHANNEL = "com.cheonhong.cheonhong_studio/volume"
     private val NFC_CHANNEL = "com.cheonhong.cheonhong_studio/nfc"
     private val BROWSER_CHANNEL = "com.cheonhong.cheonhong_studio/browser"
+    private val SLEEP_CHANNEL = "com.cheonhong.cheonhong_studio/sleep"
     private var nfcChannel: MethodChannel? = null
+    private var screenReceiver: android.content.BroadcastReceiver? = null
     private var flutterReadyForNfc: Boolean = false
     private var pendingNfcPayload: HashMap<String, Any>? = null
     private var silentReaderEnabled: Boolean = false
-    private var _activeVibrator: android.os.Vibrator? = null
     private var _bgmPlayer: MediaPlayer? = null
     private var _bgmFocusRequest: android.media.AudioFocusRequest? = null
 
@@ -128,182 +125,6 @@ handleNfcIntent(intent)?.let { payload ->
             }
         }
 
-        // ─── Kotlin 알람 채널 (Bug #3 Fix) ───
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ALARM_CHANNEL).setMethodCallHandler { call, result ->
-            when (call.method) {
-                "scheduleAlarm" -> {
-                    val hour = call.argument<Int>("hour") ?: 7
-                    val minute = call.argument<Int>("minute") ?: 0
-                    val activeDays = call.argument<List<Int>>("activeDays") ?: listOf(1,2,3,4,5,6)
-                    val label = call.argument<String>("label") ?: "⏰ 기상 시간!"
-                    scheduleNativeAlarm(hour, minute, activeDays, label)
-                    result.success(true)
-                }
-                "cancelAlarm" -> {
-                    cancelNativeAlarm()
-                    result.success(true)
-                }
-                "requestBatteryOptExemption" -> {
-                    requestBatteryOptimizationExemption()
-                    result.success(true)
-                }
-                "isBatteryOptExempt" -> {
-                    result.success(isBatteryOptimized())
-                }
-                "openBatterySettings" -> {
-                    // Samsung 배터리 최적화 설정 직접 열기
-                    try {
-                        val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                        startActivity(intent)
-                    } catch (e: Exception) {
-                        try {
-                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = Uri.parse("package:$packageName")
-                            }
-                            startActivity(intent)
-                        } catch (_: Exception) {}
-                    }
-                    result.success(true)
-                }
-                "canScheduleExactAlarms" -> {
-                    result.success(canScheduleExactAlarms())
-                }
-                "requestExactAlarmPermission" -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                            data = Uri.parse("package:$packageName")
-                        }
-                        startActivity(intent)
-                    }
-                    result.success(true)
-                }
-                // ═══ F2: 볼륨 MAX 설정 ═══
-                "setVolumeMax" -> {
-                    try {
-                        val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-                        // 현재 볼륨 저장 (복원용)
-                        getSharedPreferences("alarm_prefs", MODE_PRIVATE).edit().apply {
-                            putInt("prev_alarm_vol", am.getStreamVolume(AudioManager.STREAM_ALARM))
-                            putInt("prev_ring_vol", am.getStreamVolume(AudioManager.STREAM_RING))
-                            putInt("prev_music_vol", am.getStreamVolume(AudioManager.STREAM_MUSIC))
-                            putInt("prev_notif_vol", am.getStreamVolume(AudioManager.STREAM_NOTIFICATION))
-                            apply()
-                        }
-                        // 모든 스트림 MAX
-                        am.setStreamVolume(AudioManager.STREAM_ALARM, am.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0)
-                        am.setStreamVolume(AudioManager.STREAM_RING, am.getStreamMaxVolume(AudioManager.STREAM_RING), 0)
-                        am.setStreamVolume(AudioManager.STREAM_MUSIC, am.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0)
-                        am.setStreamVolume(AudioManager.STREAM_NOTIFICATION, am.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION), 0)
-                        // 벨소리 모드 강제
-                        am.ringerMode = AudioManager.RINGER_MODE_NORMAL
-                    } catch (_: Exception) {}
-                    result.success(true)
-                }
-                // ═══ F2: 볼륨 복원 ═══
-                "restoreVolume" -> {
-                    try {
-                        val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-                        val prefs = getSharedPreferences("alarm_prefs", MODE_PRIVATE)
-                        val prevAlarm = prefs.getInt("prev_alarm_vol", -1)
-                        val prevRing = prefs.getInt("prev_ring_vol", -1)
-                        val prevMusic = prefs.getInt("prev_music_vol", -1)
-                        val prevNotif = prefs.getInt("prev_notif_vol", -1)
-                        if (prevAlarm >= 0) am.setStreamVolume(AudioManager.STREAM_ALARM, prevAlarm, 0)
-                        if (prevRing >= 0) am.setStreamVolume(AudioManager.STREAM_RING, prevRing, 0)
-                        if (prevMusic >= 0) am.setStreamVolume(AudioManager.STREAM_MUSIC, prevMusic, 0)
-                        if (prevNotif >= 0) am.setStreamVolume(AudioManager.STREAM_NOTIFICATION, prevNotif, 0)
-                    } catch (_: Exception) {}
-                    result.success(true)
-                }
-                // ═══ F3: 반복 진동 시작 ═══
-                "startVibration" -> {
-                    try {
-                        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager
-                            vm.defaultVibrator
-                        } else {
-                            @Suppress("DEPRECATION")
-                            getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
-                        }
-                        // 반복 진동 패턴: 대기-진동-대기-진동... (-1이 아닌 0=무한반복)
-                        val pattern = longArrayOf(0, 1000, 500, 1000, 500, 1500, 800)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            vibrator.vibrate(android.os.VibrationEffect.createWaveform(pattern, 0))
-                        } else {
-                            @Suppress("DEPRECATION")
-                            vibrator.vibrate(pattern, 0)
-                        }
-                        // 진동 객체 저장
-                        _activeVibrator = vibrator
-                    } catch (_: Exception) {}
-                    result.success(true)
-                }
-                // ═══ F3: 진동 중지 (NFC 해제용) ═══
-                "stopVibration" -> {
-                    try {
-                        _activeVibrator?.cancel()
-                        _activeVibrator = null
-                    } catch (_: Exception) {}
-                    result.success(true)
-                }
-                // ═══ F3: 소리만 끄기 ═══
-                "muteAlarmSound" -> {
-                    try {
-                        val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-                        am.setStreamVolume(AudioManager.STREAM_ALARM, 0, 0)
-                        am.setStreamVolume(AudioManager.STREAM_NOTIFICATION, 0, 0)
-                    } catch (_: Exception) {}
-                    result.success(true)
-                }
-                // ═══ 1순위: NFC로 알람 ForegroundService 종료 ═══
-                "stopAlarmService" -> {
-                    AlarmForegroundService.stop(this@MainActivity)
-                    // 기존 알림도 정리
-                    try {
-                        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                        nm.cancel(AlarmForegroundService.NOTIF_ID)
-                        nm.cancel(ALARM_REQUEST_CODE)
-                        _activeVibrator?.cancel()
-                        _activeVibrator = null
-                    } catch (_: Exception) {}
-                    result.success(true)
-                }
-                // ═══ 1순위: 브리핑 데이터 캐시 (Flutter → SharedPreferences) ═══
-                "cacheBriefingData" -> {
-                    try {
-                        val prefs = getSharedPreferences("briefing_cache", MODE_PRIVATE).edit()
-                        call.argument<String>("exam_date")?.let { prefs.putString("exam_date", it) }
-                        call.argument<String>("yesterday_grade")?.let { prefs.putString("yesterday_grade", it) }
-                        call.argument<String>("yesterday_study_time")?.let { prefs.putString("yesterday_study_time", it) }
-                        call.argument<String>("weather_desc")?.let { prefs.putString("weather_desc", it) }
-                        call.argument<String>("weather_temp")?.let { prefs.putString("weather_temp", it) }
-                        call.argument<String>("weather_city")?.let { prefs.putString("weather_city", it) }
-                        prefs.apply()
-                    } catch (_: Exception) {}
-                    result.success(true)
-                }
-                // ═══ 1순위: OpenAI API 키 캐시 ═══
-                "cacheOpenAiKey" -> {
-                    try {
-                        val key = call.argument<String>("key") ?: ""
-                        getSharedPreferences("alarm_prefs", MODE_PRIVATE).edit()
-                            .putString("openai_api_key", key).apply()
-                    } catch (_: Exception) {}
-                    result.success(true)
-                }
-                // ═══ BGM 타입 캐시 ═══
-                "cacheBgmType" -> {
-                    try {
-                        val type = call.argument<String>("type") ?: "piano"
-                        getSharedPreferences("alarm_prefs", MODE_PRIVATE).edit()
-                            .putString("bgm_type", type).apply()
-                    } catch (_: Exception) {}
-                    result.success(true)
-                }
-                else -> result.notImplemented()
-            }
-        }
-
         // ─── 앱 사용 통계 채널 ───
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, USAGE_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
@@ -354,6 +175,31 @@ handleNfcIntent(intent)?.let { payload ->
                 "showBlockOverlay" -> {
                     // TODO: SYSTEM_ALERT_WINDOW 오버레이
                     result.success(true)
+                }
+                "moveTaskToBack" -> {
+                    moveTaskToBack(true)
+                    result.success(true)
+                }
+                "lockScreen" -> {
+                    val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                    val adminComp = ComponentName(this, AdminReceiver::class.java)
+                    if (dpm.isAdminActive(adminComp)) {
+                        moveTaskToBack(true)
+                        dpm.lockNow()
+                        result.success(true)
+                    } else {
+                        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComp)
+                            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "포커스 모드에서 화면 잠금에 사용됩니다")
+                        }
+                        startActivity(intent)
+                        result.success(false)
+                    }
+                }
+                "isAdminActive" -> {
+                    val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                    val adminComp = ComponentName(this, AdminReceiver::class.java)
+                    result.success(dpm.isAdminActive(adminComp))
                 }
                 else -> result.notImplemented()
             }
@@ -471,9 +317,36 @@ handleNfcIntent(intent)?.let { payload ->
         }
 
 
-        // 알람 알림 채널 생성
-        createAlarmNotificationChannel()
         createNfcNotificationChannel()
+
+        // ─── 수면 감지 채널 ───
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SLEEP_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "startMonitoring" -> {
+                    startScreenMonitoring()
+                    result.success(true)
+                }
+                "stopMonitoring" -> {
+                    stopScreenMonitoring()
+                    result.success(true)
+                }
+                "consumeSleepDetection" -> {
+                    val prefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
+                    val detected = prefs.getBoolean("flutter.sleep_detected", false)
+                    if (detected) {
+                        val time = prefs.getString("flutter.sleep_detected_time", null)
+                        prefs.edit()
+                            .remove("flutter.sleep_detected")
+                            .remove("flutter.sleep_detected_time")
+                            .apply()
+                        result.success(hashMapOf("detected" to true, "time" to time))
+                    } else {
+                        result.success(null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 
 // ══════════════════════════════════════════
@@ -481,6 +354,7 @@ handleNfcIntent(intent)?.let { payload ->
 // ══════════════════════════════════════════
 
 override fun onDestroy() {
+    stopScreenMonitoring()
     try {
         _bgmPlayer?.release()
         _bgmPlayer = null
@@ -491,6 +365,60 @@ override fun onDestroy() {
         }
     } catch (_: Exception) {}
     super.onDestroy()
+}
+
+// ══════════════════════════════════════════
+//  수면 감지: 화면 꺼짐/켜짐 모니터링
+// ══════════════════════════════════════════
+
+private fun startScreenMonitoring() {
+    if (screenReceiver != null) return
+    val prefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
+    if (!prefs.getBoolean("flutter.sleep_detect_enabled", false)) return
+
+    SleepAlarmReceiver.createChannel(this)
+
+    screenReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(ctx: Context, intent: Intent) {
+            val p = ctx.getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
+            if (!p.getBoolean("flutter.sleep_detect_enabled", false)) return
+
+            when (intent.action) {
+                Intent.ACTION_SCREEN_OFF -> {
+                    val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                    if (hour >= 22 || hour < 4) {
+                        p.edit().putString("flutter.screen_off_time",
+                            System.currentTimeMillis().toString()).apply()
+                        SleepAlarmReceiver.scheduleSleepCheck(ctx, 30 * 60 * 1000L)
+                        Log.d("SleepDetect", "Screen off at night — 30min alarm set")
+                    }
+                }
+                Intent.ACTION_SCREEN_ON -> {
+                    SleepAlarmReceiver.cancelSleepCheck(ctx)
+                    Log.d("SleepDetect", "Screen on — alarm cancelled")
+                }
+            }
+        }
+    }
+
+    val filter = android.content.IntentFilter().apply {
+        addAction(Intent.ACTION_SCREEN_OFF)
+        addAction(Intent.ACTION_SCREEN_ON)
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        registerReceiver(screenReceiver, filter, RECEIVER_NOT_EXPORTED)
+    } else {
+        registerReceiver(screenReceiver, filter)
+    }
+    Log.d("SleepDetect", "Screen monitoring started")
+}
+
+private fun stopScreenMonitoring() {
+    screenReceiver?.let {
+        try { unregisterReceiver(it) } catch (_: Exception) {}
+    }
+    screenReceiver = null
+    SleepAlarmReceiver.cancelSleepCheck(this)
 }
 
 override fun onNewIntent(intent: Intent) {
@@ -684,43 +612,10 @@ private fun disableSilentReaderMode() {
 }
 
 
-    // ══════════════════════════════════════════
-    //  Bug #3: Kotlin AlarmManager (Samsung 호환)
-    // ══════════════════════════════════════════
-
     companion object {
-                const val NFC_NOTIF_CHANNEL_ID = "cheonhong_nfc"
+        const val NFC_NOTIF_CHANNEL_ID = "cheonhong_nfc"
         const val NFC_NOTIF_ID = 3001
-
-const val ALARM_NOTIF_CHANNEL_ID = "cheonhong_native_alarm"
-        const val ALARM_REQUEST_CODE = 2001
     }
-
-    private fun createAlarmNotificationChannel() {
-
-       
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                ALARM_NOTIF_CHANNEL_ID,
-                "기상 알람 (네이티브)",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "CHEONHONG STUDIO 기상 알람 — 절대 놓치지 않는 알람"
-                enableVibration(true)
-                vibrationPattern = longArrayOf(0, 500, 200, 500, 200, 500, 200, 500)
-                setBypassDnd(true) // DND 무시
-                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
-                val sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                setSound(sound, AudioAttributes.Builder()
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .build())
-            }
-            val nm = getSystemService(NotificationManager::class.java)
-            nm.createNotificationChannel(channel)
-        }
-    }
-
 
     private fun createNfcNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -773,116 +668,7 @@ const val ALARM_NOTIF_CHANNEL_ID = "cheonhong_native_alarm"
         }
     }
 
-    private fun scheduleNativeAlarm(hour: Int, minute: Int, activeDays: List<Int>, label: String) {
-        val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-
-        // 다음 알람 시간 계산
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        // 이미 지난 시간이면 내일로
-        if (cal.timeInMillis <= System.currentTimeMillis()) {
-            cal.add(Calendar.DAY_OF_YEAR, 1)
-        }
-        // activeDays에 해당하는 요일까지 이동 (Calendar: 일=1, 월=2 ... 토=7)
-        // Flutter activeDays: 월=1 ... 일=7 → Calendar: 월=2 ... 일=1
-        if (activeDays.isNotEmpty()) {
-            var safeguard = 0
-            while (safeguard < 8) {
-                val calDow = cal.get(Calendar.DAY_OF_WEEK)
-                val flutterDow = if (calDow == Calendar.SUNDAY) 7 else calDow - 1
-                if (activeDays.contains(flutterDow)) break
-                cal.add(Calendar.DAY_OF_YEAR, 1)
-                safeguard++
-            }
-        }
-
-        val intent = Intent(this, AlarmReceiver::class.java).apply {
-            putExtra("label", label)
-            putExtra("hour", hour)
-            putExtra("minute", minute)
-        }
-        val pi = PendingIntent.getBroadcast(
-            this, ALARM_REQUEST_CODE, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        // setAlarmClock: Samsung에서 가장 신뢰성 높음 (상태바에 알람 아이콘 표시)
-        val showIntent = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        try {
-            am.setAlarmClock(
-                AlarmManager.AlarmClockInfo(cal.timeInMillis, showIntent),
-                pi
-            )
-        } catch (e: SecurityException) {
-            // Fallback: exact alarm 불가 시 inexact
-            am.set(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pi)
-        }
-
-        // SharedPreferences에 저장 (다음 알람 스케줄링용)
-        getSharedPreferences("alarm_prefs", MODE_PRIVATE).edit().apply {
-            putInt("hour", hour)
-            putInt("minute", minute)
-            putString("activeDays", activeDays.joinToString(","))
-            putString("label", label)
-            putBoolean("enabled", true)
-            apply()
-        }
-    }
-
-    private fun cancelNativeAlarm() {
-        val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(this, AlarmReceiver::class.java)
-        val pi = PendingIntent.getBroadcast(
-            this, ALARM_REQUEST_CODE, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        am.cancel(pi)
-
-        getSharedPreferences("alarm_prefs", MODE_PRIVATE).edit().apply {
-            putBoolean("enabled", false)
-            apply()
-        }
-    }
-
-    private fun requestBatteryOptimizationExemption() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-                try {
-                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                        data = Uri.parse("package:$packageName")
-                    }
-                    startActivity(intent)
-                } catch (_: Exception) {}
-            }
-        }
-    }
-
-    private fun isBatteryOptimized(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-            return pm.isIgnoringBatteryOptimizations(packageName)
-        }
-        return true
-    }
-
-    private fun canScheduleExactAlarms(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            return am.canScheduleExactAlarms()
-        }
-        return true
-    }
-
-    // ─── 방해금지 모드 (Bug #1 관련 기능) ───
+    // ─── 방해금지 모드 ───
 
     private fun enableDndMode() {
         try {
@@ -1012,177 +798,3 @@ const val ALARM_NOTIF_CHANNEL_ID = "cheonhong_native_alarm"
     }
 }
 
-// ══════════════════════════════════════════
-//  AlarmReceiver: 알람 시간 → ForegroundService 기동
-//  Samsung A15 프로세스 킬 대응: 모든 로직을 Service에서 처리
-// ══════════════════════════════════════════
-class AlarmReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        val label = intent.getStringExtra("label") ?: "⏰ 기상 시간!"
-        val hour = intent.getIntExtra("hour", 7)
-        val minute = intent.getIntExtra("minute", 0)
-
-        android.util.Log.d("AlarmReceiver", "🔔 알람 트리거: ${hour}:${minute}")
-
-        // ═══ 핵심: ForegroundService 즉시 기동 ═══
-        try {
-            val serviceIntent = Intent(context, AlarmForegroundService::class.java).apply {
-                putExtra("label", label)
-                putExtra("hour", hour)
-                putExtra("minute", minute)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent)
-            } else {
-                context.startService(serviceIntent)
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("AlarmReceiver", "ForegroundService 시작 실패: $e")
-            // 폴백: 기존 알림 방식
-            fallbackNotification(context, label, hour, minute)
-        }
-
-        // 다음 알람 자동 스케줄링
-        scheduleNextAlarm(context, hour, minute)
-    }
-
-    private fun fallbackNotification(context: Context, label: String, hour: Int, minute: Int) {
-        val notifIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val pi = PendingIntent.getActivity(
-            context, 0, notifIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-        val notif = NotificationCompat.Builder(context, MainActivity.ALARM_NOTIF_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle(label)
-            .setContentText("목표 기상: %02d:%02d — NFC 태그를 스캔하세요!".format(hour, minute))
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setFullScreenIntent(pi, true)
-            .setOngoing(true)
-            .setAutoCancel(false)
-            .setSound(sound)
-            .setContentIntent(pi)
-            .build()
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(MainActivity.ALARM_REQUEST_CODE, notif)
-    }
-
-    private fun scheduleNextAlarm(context: Context, hour: Int, minute: Int) {
-        val prefs = context.getSharedPreferences("alarm_prefs", Context.MODE_PRIVATE)
-        if (!prefs.getBoolean("enabled", false)) return
-
-        val activeDaysStr = prefs.getString("activeDays", "1,2,3,4,5,6") ?: "1,2,3,4,5,6"
-        val activeDays = activeDaysStr.split(",").mapNotNull { it.trim().toIntOrNull() }
-        val label = prefs.getString("label", "⏰ 기상 시간!") ?: "⏰ 기상 시간!"
-
-        val cal = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_YEAR, 1)
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-        }
-
-        if (activeDays.isNotEmpty()) {
-            var safeguard = 0
-            while (safeguard < 8) {
-                val calDow = cal.get(Calendar.DAY_OF_WEEK)
-                val flutterDow = if (calDow == Calendar.SUNDAY) 7 else calDow - 1
-                if (activeDays.contains(flutterDow)) break
-                cal.add(Calendar.DAY_OF_YEAR, 1)
-                safeguard++
-            }
-        }
-
-        val alarmIntent = Intent(context, AlarmReceiver::class.java).apply {
-            putExtra("label", label)
-            putExtra("hour", hour)
-            putExtra("minute", minute)
-        }
-        val pi = PendingIntent.getBroadcast(
-            context, MainActivity.ALARM_REQUEST_CODE, alarmIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val showIntent = PendingIntent.getActivity(
-            context, 0,
-            Intent(context, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        try {
-            am.setAlarmClock(
-                AlarmManager.AlarmClockInfo(cal.timeInMillis, showIntent),
-                pi
-            )
-        } catch (e: SecurityException) {
-            am.set(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pi)
-        }
-    }
-}
-
-// ══════════════════════════════════════════
-//  BootReceiver: 재부팅 후 알람 복원
-// ══════════════════════════════════════════
-class BootReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            val prefs = context.getSharedPreferences("alarm_prefs", Context.MODE_PRIVATE)
-            if (!prefs.getBoolean("enabled", false)) return
-
-            val hour = prefs.getInt("hour", 7)
-            val minute = prefs.getInt("minute", 0)
-            val activeDaysStr = prefs.getString("activeDays", "1,2,3,4,5,6") ?: "1,2,3,4,5,6"
-            val activeDays = activeDaysStr.split(",").mapNotNull { it.trim().toIntOrNull() }
-            val label = prefs.getString("label", "⏰ 기상 시간!") ?: "⏰ 기상 시간!"
-
-            val cal = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, hour)
-                set(Calendar.MINUTE, minute)
-                set(Calendar.SECOND, 0)
-            }
-            if (cal.timeInMillis <= System.currentTimeMillis()) {
-                cal.add(Calendar.DAY_OF_YEAR, 1)
-            }
-            if (activeDays.isNotEmpty()) {
-                var safeguard = 0
-                while (safeguard < 8) {
-                    val calDow = cal.get(Calendar.DAY_OF_WEEK)
-                    val flutterDow = if (calDow == Calendar.SUNDAY) 7 else calDow - 1
-                    if (activeDays.contains(flutterDow)) break
-                    cal.add(Calendar.DAY_OF_YEAR, 1)
-                    safeguard++
-                }
-            }
-
-            val alarmIntent = Intent(context, AlarmReceiver::class.java).apply {
-                putExtra("label", label)
-                putExtra("hour", hour)
-                putExtra("minute", minute)
-            }
-            val pi = PendingIntent.getBroadcast(
-                context, MainActivity.ALARM_REQUEST_CODE, alarmIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-
-            val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            val showIntent = PendingIntent.getActivity(
-                context, 0,
-                Intent(context, MainActivity::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            try {
-                am.setAlarmClock(
-                    AlarmManager.AlarmClockInfo(cal.timeInMillis, showIntent),
-                    pi
-                )
-            } catch (_: SecurityException) {
-                am.set(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pi)
-            }
-        }
-    }
-}

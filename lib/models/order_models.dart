@@ -6,11 +6,7 @@
 enum GoalTier { sprint, race, marathon }
 enum GoalArea { study, life }
 enum HabitFreq { daily, weekly }
-enum StressType { release, escape, alternative }
-enum StressTrigger { stress, fatigue, boredom, reward, habitual }
-enum PriorActivity { study, sns, lying, afterOuting, other }
 enum GrowthStage { seed, sprout, tree, pillar }
-enum SetbackCategory { examFail, rejection, burnout, lostMotivation, health, other }
 
 // ═══ MILESTONE ═══
 class OrderMilestone {
@@ -130,6 +126,35 @@ class OrderGoal {
   }
 }
 
+// ═══ STREAK RECORD ═══
+class StreakRecord {
+  final String startDate;
+  final String endDate;
+  final int length;
+  String? breakReason; // 끊김 이유
+
+  StreakRecord({
+    required this.startDate,
+    required this.endDate,
+    required this.length,
+    this.breakReason,
+  });
+
+  factory StreakRecord.fromMap(Map<String, dynamic> m) => StreakRecord(
+        startDate: m['startDate'] ?? '',
+        endDate: m['endDate'] ?? '',
+        length: (m['length'] as num?)?.toInt() ?? 0,
+        breakReason: m['breakReason'] as String?,
+      );
+
+  Map<String, dynamic> toMap() => {
+        'startDate': startDate,
+        'endDate': endDate,
+        'length': length,
+        if (breakReason != null) 'breakReason': breakReason,
+      };
+}
+
 // ═══ ORDER HABIT (v4: 순위 큐 시스템) ═══
 class OrderHabit {
   final String id;
@@ -151,13 +176,18 @@ class OrderHabit {
   /// ★ v4: 정착 완료 일시
   String? settledAt;
 
+  /// ★ v5: 연속일 이력
+  List<StreakRecord> streakHistory;
+
   OrderHabit({
     required this.id, required this.title, this.emoji = '✅',
     this.freq = HabitFreq.daily, this.targetPerWeek = 7,
     List<String>? completedDates, this.nfcTagId,
     String? createdAt, this.archived = false,
     this.rank = 0, this.targetDays = 21, this.settledAt,
+    List<StreakRecord>? streakHistory,
   })  : completedDates = completedDates ?? [],
+        streakHistory = streakHistory ?? [],
         createdAt = createdAt ?? DateTime.now().toIso8601String();
 
   bool get isSettled => settledAt != null;
@@ -263,10 +293,65 @@ class OrderHabit {
   /// ★ v4: 정착 조건 달성 여부 (연속 targetDays일 이상)
   bool get canSettle => currentStreak >= targetDays && !isSettled;
 
+  /// ★ v5: 가장 최근 끊긴 연속일 기록
+  StreakRecord? get previousStreak {
+    if (streakHistory.isEmpty) return null;
+    return streakHistory.last;
+  }
+
+  /// ★ v5: 역대 최고 연속일
+  int get bestStreak {
+    final fromHistory = streakHistory.isEmpty
+        ? 0 : streakHistory.map((r) => r.length).reduce((a, b) => a > b ? a : b);
+    final cur = currentStreak;
+    return cur > fromHistory ? cur : fromHistory;
+  }
+
+  /// ★ v5: completedDates에서 과거 연속일 이력 자동 계산
+  void buildStreakHistoryFromDates() {
+    if (completedDates.isEmpty) return;
+    final sorted = completedDates.toList()..sort();
+    final records = <StreakRecord>[];
+    String start = sorted.first;
+    String prev = sorted.first;
+    int length = 1;
+
+    for (int i = 1; i < sorted.length; i++) {
+      final prevDt = DateTime.tryParse(prev);
+      final currDt = DateTime.tryParse(sorted[i]);
+      if (prevDt != null && currDt != null &&
+          currDt.difference(prevDt).inDays == 1) {
+        length++;
+        prev = sorted[i];
+      } else {
+        if (length > 1) {
+          records.add(StreakRecord(
+            startDate: start, endDate: prev, length: length));
+        }
+        start = sorted[i];
+        prev = sorted[i];
+        length = 1;
+      }
+    }
+    // 마지막 구간이 현재 진행 중인 연속일이 아닌 경우만 추가
+    if (length > 1) {
+      var now = DateTime.now();
+      if (now.hour < 4) now = now.subtract(const Duration(days: 1));
+      final todayStr = _fmt(now);
+      final yesterdayStr = _fmt(now.subtract(const Duration(days: 1)));
+      if (prev != todayStr && prev != yesterdayStr) {
+        records.add(StreakRecord(
+          startDate: start, endDate: prev, length: length));
+      }
+    }
+    streakHistory = records;
+  }
+
   static String _fmt(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  factory OrderHabit.fromMap(Map<String, dynamic> m) => OrderHabit(
+  factory OrderHabit.fromMap(Map<String, dynamic> m) {
+    final habit = OrderHabit(
         id: m['id'] ?? 'h_${DateTime.now().millisecondsSinceEpoch}',
         title: m['title'] ?? '', emoji: m['emoji'] ?? '✅',
         freq: m['freq'] == 'weekly' ? HabitFreq.weekly : HabitFreq.daily,
@@ -279,7 +364,16 @@ class OrderHabit {
         rank: (m['rank'] as num?)?.toInt() ?? 0,
         targetDays: (m['targetDays'] as num?)?.toInt() ?? 21,
         settledAt: m['settledAt'] as String?,
+        streakHistory: (m['streakHistory'] as List?)
+            ?.map((e) => StreakRecord.fromMap(Map<String, dynamic>.from(e as Map)))
+            .toList() ?? [],
       );
+    // 마이그레이션: streakHistory가 비어있으면 자동 계산
+    if (habit.streakHistory.isEmpty && habit.completedDates.length > 1) {
+      habit.buildStreakHistoryFromDates();
+    }
+    return habit;
+  }
 
   Map<String, dynamic> toMap() => {
         'id': id, 'title': title, 'emoji': emoji,
@@ -289,161 +383,56 @@ class OrderHabit {
         'createdAt': createdAt, 'archived': archived,
         'rank': rank, 'targetDays': targetDays,
         if (settledAt != null) 'settledAt': settledAt,
+        'streakHistory': streakHistory.map((r) => r.toMap()).toList(),
       };
 }
 
-// ═══ STRESS LOG ═══
-class StressLog {
-  final String id;
-  StressType type;
-  String timestamp;
-  int duration; // 분
-  StressTrigger trigger;
-  PriorActivity priorActivity;
-  String? alternativeUsed;
-  String? note;
-  String? subType; // overwatch, etc.
-  final String? source;// manual, nfc, auto_poll
-
-  StressLog({
-    required this.id, this.type = StressType.release,
-    String? timestamp, this.duration = 15,
-    this.trigger = StressTrigger.stress,
-    this.priorActivity = PriorActivity.study,
-    this.alternativeUsed, this.note,
-    this.subType, this.source = 'manual',
-  }) : timestamp = timestamp ?? DateTime.now().toIso8601String();
-
-  DateTime get dateTime => DateTime.tryParse(timestamp) ?? DateTime.now();
-
-  String get typeLabel {
-    switch (type) {
-      case StressType.release: return 'Release';
-      case StressType.escape: return 'Escape';
-      case StressType.alternative: return '대체행동';
-    }
-  }
-
-  String get typeEmoji {
-    switch (type) {
-      case StressType.release: return '🔴';
-      case StressType.escape: return '🟡';
-      case StressType.alternative: return '🟢';
-    }
-  }
-
-  String get triggerLabel {
-    switch (trigger) {
-      case StressTrigger.stress: return '스트레스';
-      case StressTrigger.fatigue: return '피로';
-      case StressTrigger.boredom: return '무료함';
-      case StressTrigger.reward: return '보상심리';
-      case StressTrigger.habitual: return '습관적';
-    }
-  }
-
-  String get priorLabel {
-    switch (priorActivity) {
-      case PriorActivity.study: return '공부';
-      case PriorActivity.sns: return 'SNS';
-      case PriorActivity.lying: return '누워있음';
-      case PriorActivity.afterOuting: return '외출 후';
-      case PriorActivity.other: return '기타';
-    }
-  }
-
-  factory StressLog.fromMap(Map<String, dynamic> m) => StressLog(
-        id: m['id'] ?? 'sl_${DateTime.now().millisecondsSinceEpoch}',
-        type: _parseType(m['type']),
-        timestamp: m['timestamp'] as String?,
-        duration: (m['duration'] as num?)?.toInt() ?? 15,
-        trigger: _parseTrigger(m['trigger']),
-        priorActivity: _parsePrior(m['priorActivity']),
-        alternativeUsed: m['alternativeUsed'] as String?,
-        note: m['note'] as String?,
-        subType: m['subType'] as String?,
-        source: m['source'] ?? 'manual',
-      );
-
-  Map<String, dynamic> toMap() => {
-        'id': id, 'type': type.name, 'timestamp': timestamp,
-        'duration': duration, 'trigger': trigger.name,
-        'priorActivity': priorActivity.name,
-        if (alternativeUsed != null) 'alternativeUsed': alternativeUsed,
-        if (note != null) 'note': note,
-        if (subType != null) 'subType': subType,
-        'source': source,
-      };
-
-  static StressType _parseType(dynamic v) {
-    if (v == 'escape') return StressType.escape;
-    if (v == 'alternative') return StressType.alternative;
-    return StressType.release;
-  }
-  static StressTrigger _parseTrigger(dynamic v) {
-    if (v == 'fatigue') return StressTrigger.fatigue;
-    if (v == 'boredom') return StressTrigger.boredom;
-    if (v == 'reward') return StressTrigger.reward;
-    if (v == 'habitual') return StressTrigger.habitual;
-    return StressTrigger.stress;
-  }
-  static PriorActivity _parsePrior(dynamic v) {
-    if (v == 'sns') return PriorActivity.sns;
-    if (v == 'lying') return PriorActivity.lying;
-    if (v == 'afterOuting') return PriorActivity.afterOuting;
-    if (v == 'other') return PriorActivity.other;
-    return PriorActivity.study;
-  }
-}
 
 // ═══ ROUTINE TARGET (이상적 NFC 시간) ═══
 class RoutineTarget {
   String? wakeTime;   // HH:mm
-  String? readyTime;
   String? outingTime;
   String? studyTime;
   String? sleepTime;
 
   RoutineTarget({
-    this.wakeTime = '05:30', this.readyTime = '06:00',
+    this.wakeTime = '05:30',
     this.outingTime = '07:00', this.studyTime = '08:00',
     this.sleepTime = '23:00',
   });
 
   factory RoutineTarget.fromMap(Map<String, dynamic> m) => RoutineTarget(
         wakeTime: m['wakeTime'] ?? '05:30',
-        readyTime: m['readyTime'] ?? '06:00',
         outingTime: m['outingTime'] ?? '07:00',
         studyTime: m['studyTime'] ?? '08:00',
         sleepTime: m['sleepTime'] ?? '23:00',
       );
 
   Map<String, dynamic> toMap() => {
-        'wakeTime': wakeTime, 'readyTime': readyTime,
+        'wakeTime': wakeTime,
         'outingTime': outingTime, 'studyTime': studyTime,
         'sleepTime': sleepTime,
       };
 }
 
-// ═══ SETBACK LOG (좌절/실패 기록) ═══
-class SetbackLog {
-  final String id;
-  String title;
-  SetbackCategory category;
-  String date;          // yyyy-MM-dd
-  String? emotion;      // 감정 상태
-  String? note;         // 상세 기록/소감
-  String? lesson;       // 교훈/다음 행동
-  String? linkedGoalId; // 연결 목표
-  String timestamp;
 
-  SetbackLog({
-    required this.id, required this.title,
-    this.category = SetbackCategory.other,
-    String? date, this.emotion, this.note, this.lesson,
-    this.linkedGoalId, String? timestamp,
+// ═══ STUDY EXPENSE ═══
+class StudyExpense {
+  final String id;
+  String title;       // 예: "조훈 2025 자료해석 모의고사"
+  int amount;          // 원 단위
+  String category;     // 모의고사, 교재, 인강, 문구, 기타
+  String date;         // yyyy-MM-dd (구매일)
+  String? note;
+  final String createdAt;
+
+  static const List<String> categories = ['모의고사', '교재', '인강', '문구', 'AI', '기타'];
+
+  StudyExpense({
+    required this.id, required this.title, required this.amount,
+    this.category = '기타', String? date, this.note, String? createdAt,
   })  : date = date ?? _defaultDate(),
-        timestamp = timestamp ?? DateTime.now().toIso8601String();
+        createdAt = createdAt ?? DateTime.now().toIso8601String();
 
   static String _defaultDate() {
     var n = DateTime.now();
@@ -451,76 +440,51 @@ class SetbackLog {
     return '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
   }
 
-  String get categoryLabel {
-    switch (category) {
-      case SetbackCategory.examFail: return '시험 실패';
-      case SetbackCategory.rejection: return '탈락/거절';
-      case SetbackCategory.burnout: return '번아웃';
-      case SetbackCategory.lostMotivation: return '동기 상실';
-      case SetbackCategory.health: return '건강 문제';
-      case SetbackCategory.other: return '기타';
-    }
-  }
-
-  String get categoryEmoji {
-    switch (category) {
-      case SetbackCategory.examFail: return '📝';
-      case SetbackCategory.rejection: return '🚫';
-      case SetbackCategory.burnout: return '🔥';
-      case SetbackCategory.lostMotivation: return '😶';
-      case SetbackCategory.health: return '🏥';
-      case SetbackCategory.other: return '📌';
-    }
-  }
-
-  factory SetbackLog.fromMap(Map<String, dynamic> m) => SetbackLog(
-        id: m['id'] ?? 'sb_${DateTime.now().millisecondsSinceEpoch}',
+  factory StudyExpense.fromMap(Map<String, dynamic> m) => StudyExpense(
+        id: m['id'] ?? 'exp_${DateTime.now().millisecondsSinceEpoch}',
         title: m['title'] ?? '',
-        category: _parseCat(m['category']),
+        amount: (m['amount'] as num?)?.toInt() ?? 0,
+        category: m['category'] ?? '기타',
         date: m['date'] as String?,
-        emotion: m['emotion'] as String?,
         note: m['note'] as String?,
-        lesson: m['lesson'] as String?,
-        linkedGoalId: m['linkedGoalId'] as String?,
-        timestamp: m['timestamp'] as String?,
+        createdAt: m['createdAt'] as String?,
       );
 
   Map<String, dynamic> toMap() => {
-        'id': id, 'title': title, 'category': category.name,
-        'date': date, 'timestamp': timestamp,
-        if (emotion != null) 'emotion': emotion,
+        'id': id, 'title': title, 'amount': amount,
+        'category': category, 'date': date,
         if (note != null) 'note': note,
-        if (lesson != null) 'lesson': lesson,
-        if (linkedGoalId != null) 'linkedGoalId': linkedGoalId,
+        'createdAt': createdAt,
       };
-
-  static SetbackCategory _parseCat(dynamic v) {
-    if (v == 'examFail') return SetbackCategory.examFail;
-    if (v == 'rejection') return SetbackCategory.rejection;
-    if (v == 'burnout') return SetbackCategory.burnout;
-    if (v == 'lostMotivation') return SetbackCategory.lostMotivation;
-    if (v == 'health') return SetbackCategory.health;
-    return SetbackCategory.other;
-  }
 }
 
-// ═══ ORDER DATA CONTAINER (v4) ═══
+// ═══ ORDER DATA CONTAINER (v6 — cleaned) ═══
 class OrderData {
   List<OrderGoal> goals;
   List<OrderHabit> habits;
-  List<StressLog> stressLogs;
-  List<SetbackLog> setbacks;
   RoutineTarget routineTarget;
+  List<StudyExpense> expenses;
 
   OrderData({
     List<OrderGoal>? goals, List<OrderHabit>? habits,
-    List<StressLog>? stressLogs, List<SetbackLog>? setbacks,
-    RoutineTarget? routineTarget,
+    RoutineTarget? routineTarget, List<StudyExpense>? expenses,
   })  : goals = goals ?? [],
         habits = habits ?? [],
-        stressLogs = stressLogs ?? [],
-        setbacks = setbacks ?? [],
-        routineTarget = routineTarget ?? RoutineTarget();
+        routineTarget = routineTarget ?? RoutineTarget(),
+        expenses = expenses ?? [];
+
+  /// 수험 비용 총액
+  int get totalExpenseAmount =>
+      expenses.fold(0, (sum, e) => sum + e.amount);
+
+  /// 카테고리별 합계
+  Map<String, int> get expensesByCategory {
+    final map = <String, int>{};
+    for (final e in expenses) {
+      map[e.category] = (map[e.category] ?? 0) + e.amount;
+    }
+    return map;
+  }
 
   // ─── 하위호환: 목표 순위 (deprecated, 습관으로 이관) ───
   OrderGoal? get primaryGoal {
@@ -534,12 +498,19 @@ class OrderData {
 
   // ─── ★ v4: 습관 큐 시스템 ───
 
-  /// 현재 집중 습관 (rank == 1, 미정착, 미보관)
+  /// 현재 집중 습관 (rank == 1, 미정착, 미보관) — 첫번째 반환 (하위호환)
   OrderHabit? get focusHabit {
     try {
       return habits.firstWhere(
           (h) => h.rank == 1 && !h.archived && !h.isSettled);
     } catch (_) { return null; }
+  }
+
+  /// ★ v5: 모든 집중 습관 (최대 3개)
+  List<OrderHabit> get focusHabits {
+    return habits
+        .where((h) => h.rank == 1 && !h.archived && !h.isSettled)
+        .toList();
   }
 
   /// 다음 대기 습관 (rank == 2)
@@ -570,17 +541,22 @@ class OrderData {
     return habits.where((h) => h.isSettled && !h.archived).toList();
   }
 
-  /// ★ 자동 승격: 포커스 습관이 정착되면 다음 순위를 1로 올림
+  /// ★ 자동 승격: 모든 집중 습관이 정착되면 다음 순위를 1로 올림
   void promoteNextHabit() {
-    final focus = focusHabit;
-    if (focus == null) return;
+    final focus = focusHabits;
+    if (focus.isEmpty) return;
 
-    // 포커스가 정착 조건 달성
-    if (focus.canSettle) {
-      focus.settledAt = DateTime.now().toIso8601String();
-      focus.rank = 0; // 정착 → 순위 해제
+    bool promoted = false;
+    for (final h in focus) {
+      if (h.canSettle) {
+        h.settledAt = DateTime.now().toIso8601String();
+        h.rank = 0; // 정착 → 순위 해제
+        promoted = true;
+      }
+    }
 
-      // 나머지 순위 1씩 올리기 (2→1, 3→2, ...)
+    if (promoted && focusHabits.isEmpty) {
+      // 모든 집중 습관이 정착 → 나머지 순위 1씩 올리기
       final ranked = habits
           .where((h) => h.rank > 1 && !h.archived && !h.isSettled)
           .toList()
@@ -598,84 +574,19 @@ class OrderData {
         habits: (m['habits'] as List?)
             ?.map((e) => OrderHabit.fromMap(Map<String, dynamic>.from(e as Map)))
             .toList() ?? [],
-        stressLogs: (m['stressLogs'] as List?)
-            ?.map((e) => StressLog.fromMap(Map<String, dynamic>.from(e as Map)))
-            .toList() ?? [],
-        setbacks: (m['setbacks'] as List?)
-            ?.map((e) => SetbackLog.fromMap(Map<String, dynamic>.from(e as Map)))
-            .toList() ?? [],
         routineTarget: m['routineTarget'] != null
             ? RoutineTarget.fromMap(Map<String, dynamic>.from(m['routineTarget'] as Map))
             : RoutineTarget(),
+        expenses: (m['expenses'] as List?)
+            ?.map((e) => StudyExpense.fromMap(Map<String, dynamic>.from(e as Map)))
+            .toList() ?? [],
       );
 
   Map<String, dynamic> toMap() => {
         'goals': goals.map((g) => g.toMap()).toList(),
         'habits': habits.map((h) => h.toMap()).toList(),
-        'stressLogs': stressLogs.map((s) => s.toMap()).toList(),
-        'setbacks': setbacks.map((s) => s.toMap()).toList(),
         'routineTarget': routineTarget.toMap(),
+        'expenses': expenses.map((e) => e.toMap()).toList(),
       };
 }
 
-// ═══ EXAM TICKET INFO (수험표/응시표 OCR 결과) ═══
-class ExamTicketInfo {
-  final String id;
-  String examName;       // 시험명
-  String? examDate;      // yyyy-MM-dd
-  String? examTime;      // HH:mm
-  String? location;      // 시험장소
-  String? seatNumber;    // 좌석번호
-  String? examNumber;    // 수험번호
-  String? rawOcrText;    // OCR 원문
-  String? imageUrl;      // Firebase Storage URL
-  final String createdAt;
-
-  ExamTicketInfo({
-    required this.id, required this.examName,
-    this.examDate, this.examTime, this.location,
-    this.seatNumber, this.examNumber, this.rawOcrText,
-    this.imageUrl, String? createdAt,
-  }) : createdAt = createdAt ?? DateTime.now().toIso8601String();
-
-  int? get daysLeft {
-    if (examDate == null) return null;
-    final t = DateTime.tryParse(examDate!);
-    if (t == null) return null;
-    final now = DateTime.now();
-    return DateTime(t.year, t.month, t.day)
-        .difference(DateTime(now.year, now.month, now.day)).inDays;
-  }
-
-  String get dDayLabel {
-    final d = daysLeft;
-    if (d == null) return '';
-    if (d == 0) return 'D-Day';
-    return d > 0 ? 'D-$d' : 'D+${d.abs()}';
-  }
-
-  factory ExamTicketInfo.fromMap(Map<String, dynamic> m) => ExamTicketInfo(
-        id: m['id'] ?? 'et_${DateTime.now().millisecondsSinceEpoch}',
-        examName: m['examName'] ?? '',
-        examDate: m['examDate'] as String?,
-        examTime: m['examTime'] as String?,
-        location: m['location'] as String?,
-        seatNumber: m['seatNumber'] as String?,
-        examNumber: m['examNumber'] as String?,
-        rawOcrText: m['rawOcrText'] as String?,
-        imageUrl: m['imageUrl'] as String?,
-        createdAt: m['createdAt'] as String?,
-      );
-
-  Map<String, dynamic> toMap() => {
-        'id': id, 'examName': examName,
-        if (examDate != null) 'examDate': examDate,
-        if (examTime != null) 'examTime': examTime,
-        if (location != null) 'location': location,
-        if (seatNumber != null) 'seatNumber': seatNumber,
-        if (examNumber != null) 'examNumber': examNumber,
-        if (rawOcrText != null) 'rawOcrText': rawOcrText,
-        if (imageUrl != null) 'imageUrl': imageUrl,
-        'createdAt': createdAt,
-      };
-}

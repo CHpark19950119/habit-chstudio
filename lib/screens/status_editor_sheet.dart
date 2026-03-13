@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import '../theme/botanical_theme.dart';
 import '../models/models.dart';
 
@@ -54,6 +55,19 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
       )];
     } else {
       _meals = [];
+    }
+  }
+
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
     }
   }
 
@@ -122,17 +136,17 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
 
             // ── 기본 시간 필드 ──
             _timeRow('🚿', '기상', _wakeTime, BotanicalColors.gold,
-              (t) => setState(() => _wakeTime = t), textMain, textMuted, dk),
+              (t) => _safeSetState(() => _wakeTime = t), textMain, textMuted, dk),
             _timeRow('🚪', '외출', _outingTime, const Color(0xFF3B8A6B),
-              (t) => setState(() => _outingTime = t), textMain, textMuted, dk),
+              (t) => _safeSetState(() => _outingTime = t), textMain, textMuted, dk),
             _timeRow('🏠', '귀가', _returnTime, const Color(0xFF3B8A6B),
-              (t) => setState(() => _returnTime = t), textMain, textMuted, dk),
+              (t) => _safeSetState(() => _returnTime = t), textMain, textMuted, dk),
             _timeRow('📚', '공부시작', _studyTime, BotanicalColors.primary,
-              (t) => setState(() => _studyTime = t), textMain, textMuted, dk),
+              (t) => _safeSetState(() => _studyTime = t), textMain, textMuted, dk),
             _timeRow('🏁', '공부종료', _studyEndTime, const Color(0xFF5B7ABF),
-              (t) => setState(() => _studyEndTime = t), textMain, textMuted, dk),
+              (t) => _safeSetState(() => _studyEndTime = t), textMain, textMuted, dk),
             _timeRow('🌙', '수면시작', _bedTimeEdit, const Color(0xFF6B5DAF),
-              (t) => setState(() => _bedTimeEdit = t), textMain, textMuted, dk),
+              (t) => _safeSetState(() => _bedTimeEdit = t), textMain, textMuted, dk),
 
             const SizedBox(height: 8),
 
@@ -255,7 +269,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
             return Padding(
               padding: const EdgeInsets.only(right: 4),
               child: GestureDetector(
-                onTap: () => setState(() => _meals[index].type = type),
+                onTap: () => _safeSetState(() => _meals[index].type = type),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -303,7 +317,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
             dk: dk,
             textMain: textMain,
             textMuted: textMuted,
-            onChanged: (t) => setState(() => _meals[index].start = t),
+            onChanged: (t) => _safeSetState(() => _meals[index].start = t),
           )),
           // 화살표
           Padding(
@@ -319,7 +333,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
             dk: dk,
             textMain: textMain,
             textMuted: textMuted,
-            onChanged: (t) => setState(() => _meals[index].end = t),
+            onChanged: (t) => _safeSetState(() => _meals[index].end = t),
             allowNull: true,
           )),
           // 소요시간
@@ -392,7 +406,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
             if (allowNull) ...[
               const SizedBox(width: 4),
               GestureDetector(
-                onTap: () => setState(() {
+                onTap: () => _safeSetState(() {
                   // end를 null로 → "식사 중" 상태
                   // 여기선 onChanged가 String만 받으므로 별도 처리
                   final idx = _meals.indexWhere((m) => m.end == time);
@@ -441,7 +455,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
   }
 
   void _addMeal() {
-    setState(() {
+    _safeSetState(() {
       _meals.add(_EditableMeal(
         start: _nowStr(),
         end: null,
@@ -451,7 +465,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
   }
 
   void _deleteMeal(int index) {
-    setState(() => _meals.removeAt(index));
+    _safeSetState(() => _meals.removeAt(index));
   }
 
   // ══════════════════════════════════════════

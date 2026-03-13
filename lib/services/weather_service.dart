@@ -4,8 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
-/// OpenWeatherMap API 서비스 (#44)
-/// B6 Fix: API 키를 하드코딩 → SharedPreferences 저장/로드로 변경
+/// OpenWeatherMap API 서비스
 class WeatherService {
   static final WeatherService _instance = WeatherService._internal();
   factory WeatherService() => _instance;
@@ -13,6 +12,14 @@ class WeatherService {
 
   static const _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
   static const _prefsKey = 'openweathermap_api_key';
+
+  // ★ 하드코딩 fallback (설정 화면에서 오버라이드 가능)
+  static const _hardcodedKey = '0aa8ab8d78e7f3b2ff5dd159446d0a13';
+
+  // ★ Telegram 날씨 알림 (비/눈 아침 7시)
+  static const _tgToken = '8514127849:AAF8_F7SBfm51SGHtp9X5lva7yexdnFyapo';
+  static const _tgChatId = '8724548311';
+  static const _tgAlertKey = 'weather_alert_sent_date';
 
   // 서울 기본 좌표
   static const _defaultLat = 37.5665;
@@ -33,11 +40,14 @@ class WeatherService {
     debugPrint('[Weather] API key updated');
   }
 
-  /// API 키 로드
+  /// API 키 로드 (SharedPreferences → hardcoded fallback)
   Future<String?> getApiKey() async {
     if (_apiKey != null && _apiKey!.isNotEmpty) return _apiKey;
     final prefs = await SharedPreferences.getInstance();
     _apiKey = prefs.getString(_prefsKey);
+    if ((_apiKey == null || _apiKey!.isEmpty) && _hardcodedKey.isNotEmpty) {
+      _apiKey = _hardcodedKey;
+    }
     return _apiKey;
   }
 
@@ -120,5 +130,70 @@ class WeatherService {
   bool needsUmbrella(WeatherData w) {
     final m = w.main.toLowerCase();
     return m == 'rain' || m == 'drizzle' || m == 'thunderstorm';
+  }
+
+  /// 비/눈 여부
+  bool isRainOrSnow(WeatherData w) {
+    final m = w.main.toLowerCase();
+    return m == 'rain' || m == 'drizzle' || m == 'thunderstorm' || m == 'snow';
+  }
+
+  /// ★ 아침 7시 날씨 알림 체크 (앱 시작 시 호출)
+  /// - 7:00~7:59 사이, 오늘 아직 안 보냄, 비/눈 조건일 때 Telegram 전송
+  Future<void> checkMorningWeatherAlert() async {
+    try {
+      final now = DateTime.now();
+      if (now.hour != 7) return; // 7시대만
+
+      final prefs = await SharedPreferences.getInstance();
+      final sentDate = prefs.getString(_tgAlertKey) ?? '';
+      final todayKey = '${now.year}-${now.month}-${now.day}';
+      if (sentDate == todayKey) return; // 오늘 이미 전송
+
+      final w = await getCurrentWeather();
+      if (w == null || !isRainOrSnow(w)) return;
+
+      final emoji = w.main.toLowerCase() == 'snow' ? '❄️' : '☔';
+      final msg = '$emoji 오늘 날씨 알림\n'
+          '${w.emoji} ${w.description} · ${w.temp.round()}°C\n'
+          '최저 ${w.tempMin.round()}° / 최고 ${w.tempMax.round()}°\n'
+          '외출 시 우산/방한 준비하세요!';
+
+      final sent = await _sendTelegram(msg);
+      if (sent) {
+        await prefs.setString(_tgAlertKey, todayKey);
+        debugPrint('[WeatherAlert] 📩 Telegram 전송 완료: $msg');
+      }
+    } catch (e) {
+      debugPrint('[WeatherAlert] 오류: $e');
+    }
+  }
+
+  /// ★ 수동 날씨 리포트 전송 (버튼 탭용)
+  Future<void> sendWeatherReport() async {
+    final w = await getCurrentWeather();
+    final emoji = w != null ? w.emoji : '🌡';
+    final msg = w != null
+        ? '$emoji 날씨 리포트\n'
+          '${w.description} · ${w.temp.round()}°C\n'
+          '최저 ${w.tempMin.round()}° / 최고 ${w.tempMax.round()}°\n'
+          '체감 ${w.feelsLike.round()}° · 습도 ${w.humidity}%'
+        : '날씨 정보를 가져올 수 없습니다.';
+    await _sendTelegram(msg);
+  }
+
+  /// Telegram 메시지 전송
+  Future<bool> _sendTelegram(String text) async {
+    try {
+      final url = Uri.parse(
+        'https://api.telegram.org/bot$_tgToken/sendMessage');
+      final res = await http.post(url,
+        headers: {'Content-Type': 'application/json; charset=utf-8'},
+        body: jsonEncode({'chat_id': _tgChatId, 'text': text}),
+      ).timeout(const Duration(seconds: 10));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 }

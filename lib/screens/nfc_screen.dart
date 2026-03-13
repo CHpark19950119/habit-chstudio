@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import '../theme/botanical_theme.dart';
 import '../models/models.dart';
 import '../services/nfc_service.dart';
@@ -42,8 +43,8 @@ class _NfcScreenState extends State<NfcScreen> with TickerProviderStateMixin {
 
   Future<void> _initNfc() async {
     await _nfc.initialize();
-    _nfc.onStateChanged = () { if (mounted) setState(() {}); };
-    if (mounted) setState(() => _nfcLoading = false);
+    _nfc.addListener(_onNfcChanged);
+    if (mounted) _safeSetState(() => _nfcLoading = false);
   }
 
   @override
@@ -51,8 +52,23 @@ class _NfcScreenState extends State<NfcScreen> with TickerProviderStateMixin {
     _nameController.dispose();
     _pulseController.dispose();
     _nfc.stopScan();
-    _nfc.onStateChanged = null;
+    _nfc.removeListener(_onNfcChanged);
     super.dispose();
+  }
+
+  void _onNfcChanged() { if (mounted) _safeSetState(() {}); }
+
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
+    }
   }
 
   void _startScan({bool forRegister = false}) {
@@ -62,15 +78,17 @@ class _NfcScreenState extends State<NfcScreen> with TickerProviderStateMixin {
         backgroundColor: BotanicalColors.error));
       return;
     }
-    setState(() {
+    _safeSetState(() {
       _isScanning = true; _registering = forRegister;
       _lastScannedUid = null; _lastMatchedTag = null;
       _statusMessage = 'NFC 태그를 가까이 대주세요...';
     });
     _nfc.startScan(
+      // 등록 모드에서는 기존 태그의 role을 실행하지 않음
+      executeOnMatch: !forRegister,
       onDetected: (matched, uid) {
         if (!mounted) return;
-        setState(() {
+        _safeSetState(() {
           _isScanning = false; _lastScannedUid = uid; _lastMatchedTag = matched;
           if (_registering) {
             if (matched != null) {
@@ -88,7 +106,7 @@ class _NfcScreenState extends State<NfcScreen> with TickerProviderStateMixin {
       },
       onError: (error) {
         if (!mounted) return;
-        setState(() { _isScanning = false; _statusMessage = error; });
+        _safeSetState(() { _isScanning = false; _statusMessage = error; });
       },
     );
   }
@@ -100,9 +118,9 @@ class _NfcScreenState extends State<NfcScreen> with TickerProviderStateMixin {
       role: _selectedRole,
       nfcUid: _lastScannedUid!,
     );
-    await _nfc.reloadTags();
+    // registerTag가 이미 _tags를 업데이트함 — reloadTags 불필요
     if (!mounted) return;
-    setState(() {
+    _safeSetState(() {
       _registering = false; _lastScannedUid = null;
       _nameController.clear();
       _statusMessage = '태그 등록 완료!';
@@ -132,14 +150,13 @@ class _NfcScreenState extends State<NfcScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _writeNdef(NfcTagConfig tag) async {
-    setState(() { _isWritingNdef = true; _statusMessage = '태그를 가까이 대세요...'; });
+    _safeSetState(() { _isWritingNdef = true; _statusMessage = '태그를 가까이 대세요...'; });
     final success = await _nfc.writeNdefToTag(
       role: tag.role, tagId: tag.id,
-      onStatus: (status) { if (mounted) setState(() => _statusMessage = status); },
+      onStatus: (status) { if (mounted) _safeSetState(() => _statusMessage = status); },
     );
-    await _nfc.reloadTags();
     if (!mounted) return;
-    setState(() {
+    _safeSetState(() {
       _isWritingNdef = false;
       _statusMessage = success ? '✅ NDEF 쓰기 완료!' : '❌ NDEF 쓰기 실패';
     });
@@ -160,8 +177,8 @@ class _NfcScreenState extends State<NfcScreen> with TickerProviderStateMixin {
       ));
     if (confirm == true) {
       await _nfc.removeTag(tag.id);
-      await _nfc.reloadTags();
-      if (mounted) setState(() {});
+      // removeTag가 이미 _tags를 업데이트함 — reloadTags 불필요
+      if (mounted) _safeSetState(() {});
     }
   }
 
@@ -416,7 +433,7 @@ class _NfcScreenState extends State<NfcScreen> with TickerProviderStateMixin {
             hintText: '예: 욕실, 책상, 현관, 독서대',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
-          onChanged: (_) => setState(() {})),
+          onChanged: (_) => _safeSetState(() {})),
         const SizedBox(height: 16),
         Text('역할', style: BotanicalTypo.label(
           size: 11, weight: FontWeight.w700, letterSpacing: 1, color: _textMuted)),
@@ -444,7 +461,7 @@ class _NfcScreenState extends State<NfcScreen> with TickerProviderStateMixin {
     final selected = _selectedRole == role;
     final tag = NfcTagConfig(id: '', name: '', role: role, createdAt: '');
     return GestureDetector(
-      onTap: () => setState(() => _selectedRole = role),
+      onTap: () => _safeSetState(() => _selectedRole = role),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
@@ -519,7 +536,6 @@ class _NfcScreenState extends State<NfcScreen> with TickerProviderStateMixin {
   Color _roleColor(NfcTagRole role) {
     switch (role) {
       case NfcTagRole.wake: return BotanicalColors.gold;
-      case NfcTagRole.ready: return BotanicalColors.subjectVerbal;
       case NfcTagRole.outing: return const Color(0xFF3B8A6B);
       case NfcTagRole.study: return BotanicalColors.primary;
       case NfcTagRole.sleep: return const Color(0xFF5C6BC0);
@@ -558,7 +574,6 @@ class _NfcScreenState extends State<NfcScreen> with TickerProviderStateMixin {
   Widget _nfcRoleSummary() {
     final roles = [
       ('🚿', '기상', NfcTagRole.wake),
-      ('📖', '준비', NfcTagRole.ready),
       ('🚪', '외출', NfcTagRole.outing),
       ('📚', '공부', NfcTagRole.study),
       ('🍽️', '식사', NfcTagRole.meal),

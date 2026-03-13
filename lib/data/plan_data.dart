@@ -497,6 +497,27 @@ class StudyPlanData {
     ];
   }
 
+  /// 수험 비용 초기 데이터
+  static List<StudyExpense> seedExpenses() {
+    return [
+      StudyExpense(
+        id: 'exp_seed_1',
+        title: '조훈 2025 자료해석 모의고사',
+        amount: 180000,
+        category: '모의고사',
+        date: '2026-03-03',
+      ),
+      StudyExpense(
+        id: 'exp_seed_ai_1',
+        title: 'Claude Code Pro 구독 (3월)',
+        amount: 29000,
+        category: 'AI',
+        date: '2026-03-01',
+        note: 'Claude Code — 앱 개발 보조',
+      ),
+    ];
+  }
+
   /// HTML 평가서 기반 초기 습관 큐
   static List<OrderHabit> seedHabits() {
     return [

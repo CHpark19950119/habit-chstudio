@@ -17,7 +17,6 @@ class _AddEventMemoSheet extends StatefulWidget {
 }
 
 class _AddEventMemoSheetState extends State<_AddEventMemoSheet> {
-  final _cal = AiCalendarService();
   final _titleCtrl = TextEditingController();
   bool _isMemo = true;
   String _emoji = '📋';
@@ -27,6 +26,19 @@ class _AddEventMemoSheetState extends State<_AddEventMemoSheet> {
   void initState() { super.initState(); _date = widget.selectedDate; }
   @override
   void dispose() { _titleCtrl.dispose(); super.dispose(); }
+
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
+    }
+  }
   bool get _dk => Theme.of(context).brightness == Brightness.dark;
 
   @override
@@ -58,7 +70,7 @@ class _AddEventMemoSheetState extends State<_AddEventMemoSheet> {
               padding: const EdgeInsets.only(bottom: 10),
               child: Row(children: ['📋', '📚', '🎯', '📊', '🧩', '🔥', '🎉', '💪'].map((e) =>
                 GestureDetector(
-                  onTap: () => setState(() => _emoji = e),
+                  onTap: () => _safeSetState(() => _emoji = e),
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     margin: const EdgeInsets.only(right: 6),
@@ -102,7 +114,7 @@ class _AddEventMemoSheetState extends State<_AddEventMemoSheet> {
   Widget _typeChip(String label, bool isMemoType) {
     final selected = _isMemo == isMemoType;
     return GestureDetector(
-      onTap: () => setState(() => _isMemo = isMemoType),
+      onTap: () => _safeSetState(() => _isMemo = isMemoType),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
@@ -124,11 +136,6 @@ class _AddEventMemoSheetState extends State<_AddEventMemoSheet> {
     final text = _titleCtrl.text.trim();
     if (text.isEmpty) return;
     final dateStr = DateFormat('yyyy-MM-dd').format(_date);
-    if (_isMemo) {
-      await _cal.addMemoForDate(dateStr, text);
-    } else {
-      await _cal.addLocalEvent(date: dateStr, title: text, emoji: _emoji);
-    }
     widget.onAdded();
     if (mounted) Navigator.pop(context);
   }

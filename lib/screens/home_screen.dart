@@ -1,47 +1,50 @@
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:lottie/lottie.dart';
+import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/botanical_theme.dart';
-import '../services/alarm_service.dart';
-import '../services/focus_timer_service.dart';
-import '../services/focus_mode_service.dart';
+import '../services/focus_service.dart';
 import '../services/firebase_service.dart';
-import '../services/location_service.dart';
 import '../services/nfc_service.dart';
 import '../services/weather_service.dart';
-import '../services/briefing_service.dart';
-import '../services/sleep_service.dart';
-import '../services/ai_calendar_service.dart';
+import '../services/telegram_service.dart';
 import '../models/models.dart';
-import 'alarm_settings_screen.dart';
-import 'focus_session_screen.dart';
-import 'location_screen.dart';
-import 'nfc_screen.dart' hide StatisticsScreen;
-import 'qr_wake_screen.dart';
+import 'focus/focus_screen.dart';
+import 'nfc/nfc_screen.dart' hide StatisticsScreen;
 import 'settings_screen.dart';
 import 'calendar_screen.dart';
 import 'statistics_screen.dart';
 import 'progress_screen.dart';
 import 'painters.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/scheduler.dart';
 import 'status_editor_sheet.dart';
 import 'focus_records_widget.dart';
 import 'insight_screen.dart';
 import 'order/order_screen.dart';
-import 'daily_plan_sheet.dart';
 import '../models/order_models.dart';
 import '../models/plan_models.dart';
-import '../services/plan_service.dart';
-import '../services/exam_ticket_service.dart';
+import '../services/todo_service.dart';
+import '../services/local_cache_service.dart';
+import '../services/creature_service.dart';
+import '../services/cradle_service.dart';
+import '../services/library_service.dart';
+import '../services/wake_service.dart';
+import '../services/bus_service.dart';
+import '../utils/study_date_utils.dart';
+// creature_float_button, habitat_screen — 임시 비활성화
+import 'library_seat_map_screen.dart';
 
 part 'home_focus_section.dart';
 part 'home_daily_log.dart';
 part 'home_routine_card.dart';
 part 'home_order_section.dart';
+part 'home_todo_section.dart';
+part 'home_library_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -50,12 +53,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  final _ft = FocusTimerService();
-  final _ls = LocationService();
+  final _ft = FocusService();
   final _nfc = NfcService();
   final _weather = WeatherService();
-  final _sleepSvc = SleepService();
   Timer? _ui;
+  Timer? _streamDebounce;     // ★ stream listener 디바운스
+  bool _isLoading = false;    // ★ _load() 동시 실행 방지
   bool _playedEntryAnim = false;
   String? _wake, _studyStart, _studyEnd;
   String? _outing, _returnHome;
@@ -64,25 +67,45 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int? _outingMinutes;
   int _effMin = 0;
   DailyGrade? _grade;
-  AlarmSettings _alarm = AlarmSettings();
-  String? _currentPlace;
-  bool _locationTracking = false;
   WeatherData? _weatherData;
-  SleepGrade? _lastSleepGrade;
   bool _noOuting = false; // ★ v10: 외출 안하는 날
   int _tab = 0;
-  List<BehaviorTimelineEntry> _todayTimeline = [];
+  int _pendingTab = 0;
+  double _tabFadeValue = 1.0;
   List<MealEntry> _todayMeals = []; // ★ v9: 다회 식사
   List<String> _dailyMemos = [];   // ★ 데일리 메모
 
+  // ★ Creature
+  int _creatureLevel = 1;
+  int _creatureStage = 0;
+
+  // ★ Focus setup (home tab)
+  final _cradle = CradleService();
+  String _focusSubj = '자료해석';
+  String _focusMode = 'study';
+  List<FocusCycle> _focusSessions = [];
+  Map<String, int> _focusWeekly = {};
+  bool _focusRecordsLoading = false;
+  bool _focusScreenOpen = false;
+
+  // ★ Library
+  LibraryRoom? _libraryRoom;
+
   // ★ R2: COMPASS 대시보드 데이터
   OrderData? _orderData;
-  List<ExamTicketInfo> _examTickets = [];
+  // ★ 오늘의 Todo
+  TodoDaily? _todayTodos;
+  Map<String, double>? _weeklyHistoryCache;
+  late String _todoSelectedDate;  // 날짜 네비게이션용
 
-  // ★ 오늘의 일일 계획
-  DailyPlan? _todayPlan;
+  // Todo 편집용 임시 상태
+  String? _editSubject;
+  String? _editPriority;
+  int? _editMinutes;
+  String? _editType;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _fbSub;
+  int _retryDelay = 5; // ★ 스트림 재연결 지수 백오프 (초)
 
   late AnimationController _staggerController;
   final List<Animation<double>> _fadeAnims = [];
@@ -95,10 +118,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _blobCtrl;     // C) Morphing Blob (8초)
   late AnimationController _shimmerCtrl;  // D) Shimmer Scan (2.5초)
   late AnimationController _pulseCtrl;    // F) Pulse Ring (2초)
+  late AnimationController _tabFadeCtrl;  // ★ Tab transition (200ms)
 
   @override
   void initState() {
     super.initState();
+    _todoSelectedDate = StudyDateUtils.todayKey();
     _staggerController = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 900));
     for (int i = 0; i < _cardCount; i++) {
@@ -113,10 +138,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         parent: _staggerController,
         curve: Interval(start, end, curve: Curves.easeOutCubic))));
     }
-    _load(playAnim: true);
-    _checkPendingWake();
-    _startFirebaseListener();
-    _runMigration0223(); // 1회성 22일 기록 이관
+    // ★ stagger 애니메이션: _load 완료와 무관하게 즉시 시작
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_playedEntryAnim) {
+        _playedEntryAnim = true;
+        _staggerController.forward();
+      }
+    });
+    _runStartup();
+    WeatherService().checkMorningWeatherAlert(); // ★ 아침 비/눈 Telegram 알림
 
     // ★ 작업4: 모션 이펙트 초기화
     _breathCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 3))..repeat();
@@ -124,14 +154,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _blobCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 8))..repeat();
     _shimmerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2500))..repeat();
     _pulseCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
+    _tabFadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
 
-    _nfc.onStateChanged = () {
-      if (mounted) _load(playAnim: false);
-    };
+    _nfc.addListener(_onNfcChanged);
     _ui = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       final isOut = _outing != null && _returnHome == null;
-      if (_ft.isRunning || isOut) setState(() {});
+      if (_ft.isRunning || isOut) _safeSetState(() {});
     });
   }
 
@@ -139,7 +168,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void dispose() {
     _ui?.cancel();
     _fbSub?.cancel();
-    _nfc.onStateChanged = null;
+    _streamDebounce?.cancel();
+    _nfc.removeListener(_onNfcChanged);
     _staggerController.dispose();
     // ★ 모션 이펙트 dispose
     _breathCtrl.dispose();
@@ -147,156 +177,420 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _blobCtrl.dispose();
     _shimmerCtrl.dispose();
     _pulseCtrl.dispose();
+    _tabFadeCtrl.dispose();
     super.dispose();
   }
 
+  void _onNfcChanged() {
+    if (!mounted) return;
+    _safeSetState(() {});
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted && !_isLoading) _load();
+    });
+  }
+
   void _startFirebaseListener() {
+    _fbSub?.cancel();
+    // ★ 단일 study 문서 스트림 — 모든 데이터가 여기에 있음
     _fbSub = FirebaseService().watchStudyData().listen((snap) {
-      if (!snap.exists || !mounted) return;
-      final data = snap.data();
-      if (data == null) return;
+      if (!mounted) return;
+      if (!snap.exists) return;
+      _streamDebounce?.cancel();
+      _streamDebounce = Timer(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        final data = snap.data();
+        if (data == null) return;
+
+        // ★ v10: 스트림에서 timeRecords 파싱 완전 제거
+        // → timeRecords는 _doLoad() (today doc)에서만 읽음
+        // → 스트림 study doc과 today doc 충돌로 인한 플리커링 근본 해결
+        final isProtected = LocalCacheService().isWriteProtected();
+        if (!isProtected) {
+          FirebaseService().updateCacheFromStream(data);
+        }
+        final d = _studyDate();
+
+        // ── studyTimeRecords (공부시간만 스트림 업데이트) ──
+        int? effMin;
+        try {
+          final strRaw = data['studyTimeRecords'] as Map<String, dynamic>?;
+          if (strRaw != null && strRaw[d] != null) {
+            effMin = StudyTimeRecord.fromMap(d, strRaw[d] as Map<String, dynamic>).effectiveMinutes;
+          }
+        } catch (e) { debugPrint('[Home] stream studyTimeRecords: $e'); }
+
+        // ── orderData ──
+        OrderData? orderData;
+        try {
+          final od = data['orderData'];
+          if (od is Map && od.isNotEmpty) {
+            orderData = OrderData.fromMap(Map<String, dynamic>.from(od));
+          }
+        } catch (e) { debugPrint('[Home] stream orderData: $e'); }
+
+        // ── todos ──
+        TodoDaily? todayTodos;
+        try {
+          final todosRaw = data['todos'];
+          if (todosRaw is Map) {
+            final todosMap = Map<String, dynamic>.from(todosRaw);
+            if (todosMap[d] != null) {
+              todayTodos = TodoDaily.fromMap(
+                  Map<String, dynamic>.from(todosMap[d] as Map));
+            }
+          }
+        } catch (e) { debugPrint('[Home] stream todos: $e'); }
+
+        _safeSetState(() {
+          // ★ v10: timeRecords는 스트림에서 업데이트하지 않음 (플리커 방지)
+          if (effMin != null) _effMin = effMin;
+          if (orderData != null && !isProtected) _orderData = orderData;
+          if (todayTodos != null && !isProtected) _todayTodos = todayTodos;
+          _grade = DailyGrade.calculate(
+            date: d, wakeTime: _wake,
+            studyStartTime: _studyStart, effectiveMinutes: _effMin);
+        });
+      });
+    }, onError: (e) {
+      debugPrint('[Home] stream error: $e');
+      _fbSub?.cancel();
+      Future.delayed(Duration(seconds: _retryDelay), () {
+        if (mounted) {
+          _startFirebaseListener();
+          _retryDelay = (_retryDelay * 2).clamp(5, 60);
+        }
+      });
+    });
+    _retryDelay = 5;
+  }
+
+  Future<void> _load() async {
+    // NFC 리스너는 initState에서 등록됨 (ChangeNotifier 방식)
+    if (_isLoading) return;
+    _isLoading = true;
+    try {
+      await _doLoad(); // ★ 전체 타임아웃 제거 — 각 문서별 개별 타임아웃으로 처리
+    } catch (e) {
+      debugPrint('[Home] _load error: $e');
+    } finally {
+      _isLoading = false; // ★ 어떤 상황에서도 반드시 해제
+    }
+  }
+
+  /// Todo 전용 경량 리로드 (todos 문서만 읽기)
+  Future<void> _loadTodosOnly() async {
+    // ★ write 보호 중이면 리로드 스킵 (방금 입력한 데이터 보호)
+    if (LocalCacheService().isWriteProtected()) {
+      debugPrint('[Home] _loadTodosOnly skip: write-protected');
+      return;
+    }
+    try {
+      final data = await FirebaseService().getTodosData();
+      if (data == null || !mounted) return;
+      // ★ 리로드 도중 write가 발생했으면 결과 무시
+      if (LocalCacheService().isWriteProtected()) return;
       final d = _studyDate();
-      String? wake, study, studyEnd, outing, returnHome, bedTime, mealStart, mealEnd;
-      List<MealEntry> meals = [];
-      bool noOuting = false;
-      int effMin = 0;
+      final todosRaw = data['todos'] is Map ? Map<String, dynamic>.from(data['todos'] as Map) : null;
+      TodoDaily? todos;
+      if (todosRaw != null && todosRaw[d] != null) {
+        todos = TodoDaily.fromMap(Map<String, dynamic>.from(todosRaw[d] as Map));
+      }
+      final history = <String, double>{};
+      if (todosRaw != null) {
+        final cutoff = DateFormat('yyyy-MM-dd')
+            .format(DateTime.now().subtract(const Duration(days: 7)));
+        for (final entry in todosRaw.entries) {
+          if (entry.key.compareTo(cutoff) >= 0) {
+            try {
+              final td = TodoDaily.fromMap(Map<String, dynamic>.from(entry.value as Map));
+              history[entry.key] = td.completionRate;
+            } catch (_) {}
+          }
+        }
+      }
+      _safeSetState(() {
+        _todayTodos = todos;
+        _weeklyHistoryCache = history;
+      });
+    } catch (e) { debugPrint('[Home] _loadTodosOnly: $e'); }
+  }
+
+  /// 특정 날짜 Todo 로드 (날짜 네비게이션용)
+  Future<void> _loadTodosForDate(String date) async {
+    try {
+      final todos = await TodoService().getTodos(date);
+      _safeSetState(() {
+        _todoSelectedDate = date;
+        _todayTodos = todos ?? TodoDaily(date: date);
+      });
+    } catch (e) { debugPrint('[Home] _loadTodosForDate: $e'); }
+  }
+
+  Future<void> _doLoad() async {
+    final d = _studyDate();
+    final yesterday = DateFormat('yyyy-MM-dd').format(
+        DateFormat('yyyy-MM-dd').parse(d).subtract(const Duration(days: 1)));
+    final fb = FirebaseService();
+    final lc = LocalCacheService();
+    debugPrint('[Home] _doLoad 시작 (date=$d)');
+
+    // ═══ 1단계: 로컬 today 캐시에서 즉시 표시 (0ms) ═══
+    final localToday = lc.getGeneric('today');
+    if (localToday != null) {
+      _parseTodayData(localToday, d);
+      _safeSetState(() {});
+      debugPrint('[Home] today 캐시 즉시 표시 OK');
+    } else {
+      // fallback: 기존 study 캐시
+      final localData = lc.getStudyData();
+      if (localData != null) {
+        _parseStudyData(localData, d);
+        _safeSetState(() {});
+        debugPrint('[Home] study 캐시 fallback 표시');
+      }
+    }
+
+    // ═══ 2단계: Firebase today 문서 갱신 (1~2KB만 읽기) ═══
+    _tryRefresh('today', () async {
+      final data = await fb.getTodayDoc();
+      if (data != null) {
+        _parseTodayData(data, d);
+        _safeSetState(() {});
+        debugPrint('[Home] today 문서 갱신 OK');
+      } else {
+        // today 문서가 아직 없으면 study 문서 fallback
+        final studyData = await fb.getStudyData();
+        if (studyData != null) {
+          _parseStudyData(studyData, d);
+          _safeSetState(() {});
+          debugPrint('[Home] study 문서 fallback OK');
+        }
+      }
+    });
+
+    // ═══ 3단계: 외부 서비스 (각각 독립, 실패 무관) ═══
+    _tryRefresh('weather', () async {
+      final w = await _weather.getCurrentWeather();
+      if (w != null) _safeSetState(() => _weatherData = w);
+    });
+    _tryRefresh('creature', () async {
+      final c = await CreatureService().getCreature();
+      _safeSetState(() {
+        _creatureLevel = (c['level'] as num?)?.toInt() ?? 1;
+        _creatureStage = (c['stage'] as num?)?.toInt() ?? 0;
+      });
+    });
+  }
+
+  /// study 데이터 파싱 → UI 상태에 반영 (로컬/Firebase 공용)
+  void _parseStudyData(Map<String, dynamic> data, String d) {
+    // timeRecords
+    try {
       final trRaw = data['timeRecords'] as Map<String, dynamic>?;
       if (trRaw != null && trRaw[d] != null) {
-        final tr = TimeRecord.fromMap(d, trRaw[d] as Map<String, dynamic>);
-        wake = tr.wake; study = tr.study; studyEnd = tr.studyEnd;
-        outing = tr.outing; returnHome = tr.returnHome;
-        bedTime = tr.bedTime;
-        mealStart = tr.mealStart; mealEnd = tr.mealEnd;
-        meals = tr.meals;
-        noOuting = tr.noOuting;
+        final rec = TimeRecord.fromMap(d, trRaw[d] as Map<String, dynamic>);
+        _wake = rec.wake; _studyStart = rec.study; _studyEnd = rec.studyEnd;
+        _outing = rec.outing; _returnHome = rec.returnHome; _bedTime = rec.bedTime;
+        _mealStart = rec.mealStart; _mealEnd = rec.mealEnd;
+        _todayMeals = rec.meals; _noOuting = rec.noOuting;
+        _outingMinutes = rec.outingMinutes;
       }
+    } catch (e) { debugPrint('[Home] timeRecords: $e'); }
+
+    // studyTimeRecords
+    try {
       final strRaw = data['studyTimeRecords'] as Map<String, dynamic>?;
       if (strRaw != null && strRaw[d] != null) {
-        final str = StudyTimeRecord.fromMap(d, strRaw[d] as Map<String, dynamic>);
-        effMin = str.effectiveMinutes;
+        _effMin = StudyTimeRecord.fromMap(d, strRaw[d] as Map<String, dynamic>).effectiveMinutes;
       }
-      if (mounted) {
-        setState(() {
-          _wake = wake; _studyStart = study; _studyEnd = studyEnd; _effMin = effMin;
-          _outing = outing; _returnHome = returnHome; _bedTime = bedTime;
-          _mealStart = mealStart; _mealEnd = mealEnd;
-          _todayMeals = meals;
-          _noOuting = noOuting;
-          _outingMinutes = (outing != null && returnHome != null)
-              ? TimeRecord(date: d, outing: outing, returnHome: returnHome).outingMinutes
-              : null;
-          _grade = DailyGrade.calculate(
-            date: d, wakeTime: wake,
-            studyStartTime: study, effectiveMinutes: effMin);
-        });
+    } catch (e) { debugPrint('[Home] studyTimeRecords: $e'); }
+
+    _grade = DailyGrade.calculate(
+      date: d, wakeTime: _wake,
+      studyStartTime: _studyStart, effectiveMinutes: _effMin);
+
+    // orderData
+    try {
+      final od = data['orderData'];
+      if (od is Map && od.isNotEmpty) {
+        _orderData = OrderData.fromMap(Map<String, dynamic>.from(od));
+      }
+    } catch (e) { debugPrint('[Home] order: $e'); }
+
+    // todos
+    try {
+      final todosRaw = data['todos'];
+      if (todosRaw is Map) {
+        final todosMap = Map<String, dynamic>.from(todosRaw);
+        if (todosMap[d] != null) {
+          _todayTodos = TodoDaily.fromMap(Map<String, dynamic>.from(todosMap[d] as Map));
+        }
+        final cutoff = DateFormat('yyyy-MM-dd')
+            .format(DateTime.now().subtract(const Duration(days: 7)));
+        final history = <String, double>{};
+        for (final entry in todosMap.entries) {
+          if (entry.key.compareTo(cutoff) >= 0) {
+            try {
+              final td = TodoDaily.fromMap(Map<String, dynamic>.from(entry.value as Map));
+              history[entry.key] = td.completionRate;
+            } catch (_) {}
+          }
+        }
+        _weeklyHistoryCache = history;
+      }
+    } catch (e) { debugPrint('[Home] todos: $e'); }
+  }
+
+  /// today 문서 파싱 → UI 상태에 반영 (Phase C: 1~2KB 경량 문서)
+  void _parseTodayData(Map<String, dynamic> data, String d) {
+    // timeRecords (today 문서에서는 date 키 없이 바로 들어있음)
+    try {
+      final tr = data['timeRecords'];
+      if (tr is Map && tr.isNotEmpty) {
+        // today 문서는 flat 구조: timeRecords.wake, timeRecords.outing 등
+        // 또는 기존 구조: timeRecords.{date}.{fields}
+        if (tr.containsKey('wake') || tr.containsKey('study') || tr.containsKey('outing') || tr.containsKey('studyStart')) {
+          // flat 구조 (Phase C)
+          _wake = tr['wake'] as String?;
+          _studyStart = tr['study'] as String? ?? tr['studyStart'] as String?;
+          _studyEnd = tr['studyEnd'] as String?;
+          _outing = tr['outing'] as String?;
+          _returnHome = tr['returnHome'] as String?;
+          _bedTime = tr['bedTime'] as String?;
+          _mealStart = tr['mealStart'] as String?;
+          _mealEnd = tr['mealEnd'] as String?;
+          _noOuting = tr['noOuting'] == true;
+          _outingMinutes = (tr['outingMinutes'] as num?)?.toInt();
+          if (tr['meals'] is List) {
+            _todayMeals = (tr['meals'] as List)
+                .map((m) => MealEntry.fromMap(Map<String, dynamic>.from(m as Map)))
+                .toList();
+          }
+        } else if (tr.containsKey(d)) {
+          // 기존 구조 (study doc 호환)
+          final rec = TimeRecord.fromMap(d, Map<String, dynamic>.from(tr[d] as Map));
+          _wake = rec.wake; _studyStart = rec.study; _studyEnd = rec.studyEnd;
+          _outing = rec.outing; _returnHome = rec.returnHome; _bedTime = rec.bedTime;
+          _mealStart = rec.mealStart; _mealEnd = rec.mealEnd;
+          _todayMeals = rec.meals; _noOuting = rec.noOuting;
+          _outingMinutes = rec.outingMinutes;
+        }
+      }
+    } catch (e) { debugPrint('[Home] today timeRecords: $e'); }
+
+    // studyTime
+    try {
+      final st = data['studyTime'];
+      if (st is Map) {
+        _effMin = (st['total'] as num?)?.toInt() ?? 0;
+      }
+    } catch (e) { debugPrint('[Home] today studyTime: $e'); }
+
+    // fallback: studyTimeRecords (마이그레이션 직후 호환)
+    if (_effMin == 0) {
+      try {
+        final strRaw = data['studyTimeRecords'];
+        if (strRaw is Map && strRaw[d] != null) {
+          _effMin = StudyTimeRecord.fromMap(d, Map<String, dynamic>.from(strRaw[d] as Map)).effectiveMinutes;
+        }
+      } catch (_) {}
+    }
+
+    _grade = DailyGrade.calculate(
+      date: d, wakeTime: _wake,
+      studyStartTime: _studyStart, effectiveMinutes: _effMin);
+
+    // orderData
+    try {
+      final od = data['orderData'];
+      if (od is Map && od.isNotEmpty) {
+        _orderData = OrderData.fromMap(Map<String, dynamic>.from(od));
+      }
+    } catch (e) { debugPrint('[Home] today order: $e'); }
+
+    // todos (Phase C: List format)
+    try {
+      final todosRaw = data['todos'];
+      if (todosRaw is List) {
+        // Phase C: flat list of todo items
+        final items = todosRaw.map((t) {
+          if (t is Map) {
+            return TodoItem(
+              id: t['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+              title: t['title']?.toString() ?? '',
+              completed: t['done'] == true || t['completed'] == true,
+              completedAt: t['completedAt'] as String?,
+            );
+          }
+          return null;
+        }).whereType<TodoItem>().toList();
+        _todayTodos = TodoDaily(date: d, items: items);
+      } else if (todosRaw is Map) {
+        // study doc fallback
+        final todosMap = Map<String, dynamic>.from(todosRaw);
+        if (todosMap[d] != null) {
+          _todayTodos = TodoDaily.fromMap(Map<String, dynamic>.from(todosMap[d] as Map));
+        }
+      }
+    } catch (e) { debugPrint('[Home] today todos: $e'); }
+  }
+
+  /// 독립 실행 헬퍼 — 실패해도 앱에 영향 없음
+  void _tryRefresh(String name, Future<void> Function() fn) {
+    Future(() async {
+      try {
+        await fn().timeout(const Duration(seconds: 15));
+      } catch (e) {
+        debugPrint('[Home] refresh $name: FAIL — $e');
       }
     });
   }
 
-  Future<void> _load({bool playAnim = false}) async {
-    final d = _studyDate();
-    final yesterday = DateFormat('yyyy-MM-dd').format(
-        DateFormat('yyyy-MM-dd').parse(d).subtract(const Duration(days: 1)));
-    try {
-      final fb = FirebaseService();
-      final tr = await fb.getTimeRecords();
-      final sr = await fb.getStudyTimeRecords();
-      _alarm = await fb.getAlarmSettings();
-      _currentPlace = _ls.currentPlaceName;
-      _locationTracking = _ls.isTracking;
-      _weatherData = await _weather.getCurrentWeather();
-      _lastSleepGrade = await _sleepSvc.getSleepGrade(yesterday);
-      List<BehaviorTimelineEntry> tl = [];
-      try { tl = await fb.getBehaviorTimeline(d); } catch (_) {}
-      setState(() {
-        _todayTimeline = tl;
-        _wake = tr[d]?.wake;
-        _studyStart = tr[d]?.study;
-        _studyEnd = tr[d]?.studyEnd;
-        _outing = tr[d]?.outing;
-        _returnHome = tr[d]?.returnHome;
-        _bedTime = tr[d]?.bedTime;
-        _mealStart = tr[d]?.mealStart;
-        _mealEnd = tr[d]?.mealEnd;
-        _todayMeals = tr[d]?.meals ?? [];
-        _noOuting = tr[d]?.noOuting ?? false;
-        _outingMinutes = tr[d]?.outingMinutes;
-        _effMin = sr[d]?.effectiveMinutes ?? 0;
-        _grade = DailyGrade.calculate(
-          date: d, wakeTime: _wake,
-          studyStartTime: _studyStart, effectiveMinutes: _effMin);
-      });
-      // ★ 데일리 메모 로딩
-      try {
-        final memos = await AiCalendarService().getMemosForDate(d);
-        if (mounted) setState(() => _dailyMemos = memos);
-      } catch (_) {}
-      // ★ R2: ORDER 데이터 + 수험표 로딩
-      try {
-        final raw = await fb.getData();
-        if (raw != null && raw['orderData'] != null) {
-          final od = OrderData.fromMap(
-              Map<String, dynamic>.from(raw['orderData'] as Map));
-          if (mounted) setState(() => _orderData = od);
-        }
-      } catch (_) {}
-      try {
-        final tickets = await ExamTicketService().loadAllTickets();
-        if (mounted) setState(() => _examTickets = tickets);
-      } catch (_) {}
-      // ★ 오늘의 계획 로드
-      try {
-        final plan = await PlanService().getTodayPlan();
-        if (mounted) setState(() => _todayPlan = plan);
-      } catch (_) {}
-    } catch (_) {}
-    if (playAnim && mounted && !_playedEntryAnim) {
-      _playedEntryAnim = true;
-      _staggerController.reset();
-      _staggerController.forward();
-    }
-  }
-
-  Future<void> _checkPendingWake() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (_alarm.nfcWakeEnabled) return;
-    final pending = await AlarmService.hasPendingQrWake();
-    if (pending && mounted) {
-      final result = await Navigator.push(context,
-          MaterialPageRoute(builder: (_) => QrWakeScreen(settings: _alarm)));
-      if (result == true) {
-        await AlarmService.completeQrWake();
-        final time = DateFormat('HH:mm').format(DateTime.now());
-        await _sleepSvc.completeWakeRecord(time);
-        _load(playAnim: true);
-      }
-    }
-  }
-
   /// 학습일 계산: 새벽 0~4시는 전날로 취급
-  String _studyDate() {
-    final now = DateTime.now();
-    final effective = now.hour < 4
-        ? now.subtract(const Duration(days: 1))
-        : now;
-    return DateFormat('yyyy-MM-dd').format(effective);
+  String _studyDate() => StudyDateUtils.todayKey();
+
+  void _switchTab(int newTab) {
+    if (newTab == _tab) return;
+    HapticFeedback.selectionClick();
+    _pendingTab = newTab;
+    _tabFadeCtrl.forward(from: 0.0).then((_) {
+      if (!mounted) return;
+      _safeSetState(() {
+        _tab = _pendingTab;
+        _tabFadeValue = 0.0;
+      });
+      _tabFadeCtrl.reverse().then((_) {
+        if (!mounted) return;
+        _safeSetState(() => _tabFadeValue = 1.0);
+      });
+    });
   }
 
-  /// 1회성 마이그레이션: 2026-02-23 기록 → 2026-02-22로 이관, 귀가 23:30 설정
-  Future<void> _runMigration0223() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool('migration_0223_done') == true) return;
-    try {
-      await FirebaseService().migrateDateRecords(
-        fromDate: '2026-02-23',
-        toDate: '2026-02-22',
-        timeRecordOverrides: {'returnHome': '23:30'},
-      );
-      await prefs.setBool('migration_0223_done', true);
-      if (mounted) _load(playAnim: false);
-    } catch (e) {
-      debugPrint('Migration 0223 error: $e');
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
     }
+  }
+
+  /// ★ 스트림 + _load(즉시) + 백그라운드 아카이브
+  Future<void> _runStartup() async {
+    final fb = FirebaseService();
+    // 스트림과 로드를 즉시 시작
+    _startFirebaseListener();
+    _load();
+    _loadFocusRecords();
+    _loadLibrary();
+    // ★ 자동 아카이브 (7일 이전 데이터 → 월별 아카이브, UI 블로킹 없음)
+    fb.autoArchive().catchError((e) {
+      debugPrint('[Home] autoArchive error: $e');
+    });
   }
 
   bool get _dk => Theme.of(context).brightness == Brightness.dark;
@@ -322,18 +616,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Scaffold(
       body: Stack(children: [
         _paperBackground(),
-        IndexedStack(
-          index: _tab,
-          children: [
-            SafeArea(child: _dashboardPage()),
-            SafeArea(child: _focusPage()),
-            SafeArea(child: _recordsPage()),
-            const SafeArea(child: ProgressScreen()),
-            SafeArea(child: CalendarScreen(embedded: true)),
-          ],
+        AnimatedBuilder(
+          animation: _tabFadeCtrl,
+          builder: (_, child) {
+            final v = 1.0 - _tabFadeCtrl.value;
+            return Opacity(
+              opacity: v.clamp(0.0, 1.0),
+              child: Transform.translate(
+                offset: Offset(0, (1 - v) * 8),
+                child: child,
+              ),
+            );
+          },
+          child: IndexedStack(
+            index: _tab,
+            children: [
+              SafeArea(child: _dashboardPage()),
+              SafeArea(child: _todoPage()),
+              SafeArea(child: _focusPage()),
+              SafeArea(child: _recordsPage()),
+              const SafeArea(child: ProgressScreen()),
+              SafeArea(child: CalendarScreen(embedded: true)),
+            ],
+          ),
         ),
       ]),
       bottomNavigationBar: _bottomNav(),
+      floatingActionButton: _tab == 0 ? _orderFab() : null,
     );
   }
 
@@ -371,10 +680,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
             _navItem(0, Icons.dashboard_rounded, '홈'),
-            _navItem(1, Icons.local_fire_department_rounded, '포커스'),
-            _navItem(2, Icons.bar_chart_rounded, '기록'),
-            _navItem(3, Icons.trending_up_rounded, '진행도'),
-            _navItem(4, Icons.calendar_month_rounded, '캘린더'),
+            _navItem(1, Icons.checklist_rounded, 'Todo'),
+            _navItem(2, Icons.local_fire_department_rounded, '포커스'),
+            _navItem(3, Icons.bar_chart_rounded, '기록'),
+            _navItem(4, Icons.trending_up_rounded, '진행도'),
+            _navItem(5, Icons.calendar_month_rounded, '캘린더'),
           ]),
         ),
       ),
@@ -383,12 +693,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _navItem(int index, IconData icon, String label) {
     final sel = _tab == index;
-    final c = sel
-      ? (_dk ? BotanicalColors.lanternGold : BotanicalColors.primary)
-      : _textMuted;
-    final showLive = index == 1 && _ft.isRunning && !sel;
+    final selColor = _dk ? BotanicalColors.lanternGold : BotanicalColors.primary;
+    final c = sel ? selColor : _textMuted;
+    final showLive = index == 2 && _ft.isRunning && !sel;
     return GestureDetector(
-      onTap: () => setState(() => _tab = index),
+      onTap: () => _switchTab(index),
       behavior: HitTestBehavior.opaque,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -405,6 +714,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           const SizedBox(height: 3),
           Text(label, style: BotanicalTypo.label(
             size: 10, weight: sel ? FontWeight.w800 : FontWeight.w600, color: c)),
+          const SizedBox(height: 3),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            width: sel ? 16 : 0,
+            height: 2.5,
+            decoration: BoxDecoration(
+              color: sel ? selColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
         ]),
       ),
     );
@@ -417,38 +737,54 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _dashboardPage() {
     return RefreshIndicator(
       color: BotanicalColors.primary,
-      onRefresh: () => _load(playAnim: false),
+      onRefresh: () => _load(),
       child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         children: [
-          // ★ #10: 날씨 + 헤더 통합 상단바
+          // ═══ HEADER ═══
           _staggered(0, _weatherHeaderBar()),
           const SizedBox(height: 14),
-          _staggered(0, _orderPortalChip()),   // ★ 최상단 배치
-          const SizedBox(height: 14),
+
+          // ═══ STATUS — 지금 상태 ═══
           _staggered(1, _nfcStatusCard()),
-          const SizedBox(height: 16),
-          _staggered(2, _heroStatsRow()),
-          const SizedBox(height: 16),
-          if (_todayTimeline.isNotEmpty || _wake != null) ...[
-            _staggered(3, _locationSummaryCard()),
-            const SizedBox(height: 16),
-          ],
+          const SizedBox(height: 10),
+          _staggered(1, IntrinsicHeight(child: Row(children: [
+            Expanded(child: _studyTimeCard()),
+            const SizedBox(width: 10),
+            Expanded(child: _gradeCard()),
+          ]))),
+          const SizedBox(height: 10),
+          _staggered(2, _libraryCard()),
           if (_ft.isRunning) ...[
-            _staggered(4, _activeFocusBanner()),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
+            _staggered(2, _activeFocusBanner()),
           ],
-          // ★ #9: 데일리 메모 컴팩트 위젯
+          const SizedBox(height: 16),
+
+          // ═══ TODAY — 오늘 할 것 ═══
+          _staggered(3, _dashSectionHeader('TODAY')),
+          const SizedBox(height: 8),
+          _staggered(3, _orderPortalChip()),
+          const SizedBox(height: 14),
+
+          // ═══ LOG — 기록 ═══
           if (_dailyMemos.isNotEmpty || true) ...[
             _staggered(4, _dashboardMemoWidget()),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
           ],
-          const SizedBox(height: 4),
-          // ★ 기존 _orderPortalCard() 제거됨
-          _staggered(4, _quickToolsRow()),
+          _staggered(4, _locationSummaryCard()),
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+
+  Widget _dashSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 2),
+      child: Text(title, style: BotanicalTypo.label(
+        size: 11, weight: FontWeight.w800, letterSpacing: 2,
+        color: _textMuted)),
     );
   }
 
@@ -475,28 +811,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           color: const Color(0xFFB05C8A),
           onTap: () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => NfcScreen()))
-            .then((_) => _load(playAnim: false)),
-        ),
-        _toolCard(
-          icon: '⏰', label: '기상 알람',
-          subtitle: _alarm.enabled ? '목표 ${_alarm.targetWakeTime}' : '알람 설정',
-          color: const Color(0xFFD4953B),
-          trailing: _wake != null ? Text('✓', style: TextStyle(
-            fontSize: 14, fontWeight: FontWeight.w800, color: _accent)) : null,
-          onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const AlarmSettingsScreen()))
-            .then((_) => _load(playAnim: false)),
-        ),
-        _toolCard(
-          icon: '📍', label: '위치 추적',
-          subtitle: _locationTracking
-            ? (_currentPlace ?? 'GPS 추적 중')
-            : 'GPS 동선 기록',
-          color: const Color(0xFF3B8A6B),
-          isLive: _locationTracking,
-          onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const LocationScreen()))
-            .then((_) => _load(playAnim: false)),
+            .then((_) => _load()),
         ),
         const SizedBox(height: 20),
 
@@ -534,11 +849,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       children: [
-        Text('기록', style: BotanicalTypo.heading(
-          size: 26, weight: FontWeight.w800, color: _textMain)),
-        const SizedBox(height: 4),
-        Text('학습 통계와 생활 기록', style: BotanicalTypo.label(
-          size: 13, color: _textMuted)),
+        // ── 컴팩트 헤더 ──
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('기록', style: BotanicalTypo.heading(
+              size: 26, weight: FontWeight.w800, color: _textMain)),
+            const SizedBox(height: 2),
+            Text('학습 통계와 생활 기록', style: BotanicalTypo.label(
+              size: 12, color: _textMuted)),
+          ]),
+          const Spacer(),
+          // 오늘 순공 미니뱃지
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: _dk
+                ? BotanicalColors.primary.withOpacity(0.12)
+                : BotanicalColors.primary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.timer_outlined, size: 13,
+                color: _dk ? BotanicalColors.lanternGold : BotanicalColors.primary),
+              const SizedBox(width: 4),
+              Text('${_effMin ~/ 60}h ${_effMin % 60}m',
+                style: BotanicalTypo.label(size: 11, weight: FontWeight.w800,
+                  color: _dk ? BotanicalColors.lanternGold : BotanicalColors.primary)),
+            ]),
+          ),
+        ]),
         const SizedBox(height: 16),
 
         // ── 통계 화면 (세그먼트 컨트롤 포함) ──
@@ -627,77 +965,81 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final wd = ['월','화','수','목','금','토','일'][now.weekday - 1];
     final w = _weatherData;
 
-    return Column(children: [
-      // ── 날씨 상단바 (컴팩트) ──
-      if (w != null)
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: BotanicalColors.weatherGradient(w.main),
-              begin: Alignment.centerLeft, end: Alignment.centerRight),
-            borderRadius: BorderRadius.circular(12)),
-          child: Row(children: [
-            Text(w.emoji, style: const TextStyle(fontSize: 18)),
-            const SizedBox(width: 8),
-            Text('${w.temp.round()}°', style: BotanicalTypo.number(
-              size: 17, weight: FontWeight.w600, color: Colors.white)),
-            const SizedBox(width: 6),
-            Text(w.description, style: BotanicalTypo.label(
-              size: 11, color: Colors.white.withOpacity(0.85))),
-            const Spacer(),
-            Text('체감 ${w.feelsLike.round()}°', style: BotanicalTypo.label(
-              size: 10, color: Colors.white.withOpacity(0.7))),
-            const SizedBox(width: 6),
-            Text('${w.tempMax.round()}°/${w.tempMin.round()}°',
-              style: BotanicalTypo.label(size: 10, weight: FontWeight.w600,
-                color: Colors.white.withOpacity(0.8))),
-            if (_weather.needsUmbrella(w)) ...[
-              const SizedBox(width: 6),
-              const Text('☂️', style: TextStyle(fontSize: 12)),
-            ],
-          ]),
-        ),
-      if (w != null) const SizedBox(height: 10),
-
-      // ── 기존 헤더 (날짜 + 메모/설정 아이콘) ──
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('CHEONHONG', style: BotanicalTypo.brand(
-              color: _dk ? BotanicalColors.lanternGold : BotanicalColors.primary)),
-            const SizedBox(height: 4),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('CHEONHONG', style: BotanicalTypo.brand(
+            color: _dk ? BotanicalColors.lanternGold : BotanicalColors.primary)),
+          const SizedBox(height: 4),
+          Row(children: [
             Text('${now.month}월 ${now.day}일 ($wd)',
               style: BotanicalTypo.heading(size: 22, weight: FontWeight.w800, color: _textMain)),
+            if (w != null) ...[
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () async {
+                  await WeatherService().sendWeatherReport();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('📩 날씨 정보를 Telegram으로 전송했습니다'),
+                      duration: Duration(seconds: 2)));
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _dk ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(8)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(w.emoji, style: const TextStyle(fontSize: 12)),
+                    const SizedBox(width: 3),
+                    Text('${w.temp.round()}°', style: BotanicalTypo.number(
+                      size: 12, weight: FontWeight.w700, color: _textSub)),
+                    if (_weather.needsUmbrella(w)) ...[
+                      const SizedBox(width: 2),
+                      const Text('☂️', style: TextStyle(fontSize: 10)),
+                    ],
+                  ]),
+                ),
+              ),
+            ],
           ]),
-          Row(children: [
-            // ★ 메모 아이콘
-            GestureDetector(
-              onTap: _showAddMemoDialog,
-              child: Container(
-                width: 36, height: 36,
-                margin: const EdgeInsets.only(right: 8),
-                decoration: BoxDecoration(
-                  color: _dk ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
-                  borderRadius: BorderRadius.circular(10)),
-                child: Icon(Icons.edit_note_rounded, size: 20, color: _textMuted)),
-            ),
-            // 설정 아이콘
-            GestureDetector(
-              onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen())),
-              child: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: _dk ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
-                  borderRadius: BorderRadius.circular(10)),
-                child: Icon(Icons.settings_outlined, size: 18, color: _textMuted)),
-            ),
-          ]),
-        ],
-      ),
-    ]);
+        ])),
+        Row(children: [
+          _headerIconBtn(Icons.nfc_rounded, () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => NfcScreen()))
+            .then((_) => _load())),
+          const SizedBox(width: 6),
+          _headerIconBtn(Icons.directions_bus_rounded, () async {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('버스 도착정보 조회 중...'), duration: Duration(seconds: 1)));
+            await BusService().fetchNow();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('텔레그램으로 전송 완료'), duration: Duration(seconds: 2)));
+            }
+          }),
+          const SizedBox(width: 6),
+          _headerIconBtn(Icons.edit_note_rounded, _showAddMemoDialog, size: 20),
+          const SizedBox(width: 6),
+          _headerIconBtn(Icons.settings_outlined, () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const SettingsScreen())), size: 18),
+        ]),
+      ],
+    );
+  }
+
+  Widget _headerIconBtn(IconData icon, VoidCallback onTap, {double size = 16}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 34, height: 34,
+        decoration: BoxDecoration(
+          color: _dk ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(10)),
+        child: Icon(icon, size: size, color: _textMuted)),
+    );
   }
 
   // ══════════════════════════════════════════
@@ -777,7 +1119,182 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // ══════════════════════════════════════════
-  //  ② 히어로 카드
+  //  ★ Stage4: 날씨 + 성적 2컬럼 컴팩트 카드
+  // ══════════════════════════════════════════
+
+  Widget _weatherGradeRow() {
+    final w = _weatherData;
+    final g = _grade ?? DailyGrade.calculate(date: _studyDate());
+    final gc = BotanicalColors.gradeColor(g.grade);
+    final flower = GrowthMetaphor.gradeFlower(g.grade);
+
+    return IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      // ── 날씨 디테일 카드 (LEFT) — 체감온도 + 옷차림 팁 ──
+      Expanded(child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _dk ? const Color(0xFF1A2535) : const Color(0xFFF0F4FA),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _dk
+            ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text('체감온도', style: BotanicalTypo.label(
+            size: 10, weight: FontWeight.w600, letterSpacing: 1, color: _textMuted)),
+          const SizedBox(height: 6),
+          Row(crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic, children: [
+            Text(w != null ? '${w.feelsLike.round()}°' : '--°',
+              style: BotanicalTypo.number(size: 28, weight: FontWeight.w700,
+                color: _dk ? Colors.white : _textMain)),
+            const SizedBox(width: 6),
+            if (w != null)
+              Text('습도 ${w.humidity}%', style: BotanicalTypo.label(
+                size: 10, color: _textMuted)),
+          ]),
+          const SizedBox(height: 6),
+          Text(w != null ? _weather.getClothingAdvice(w) : '날씨 로딩 중',
+            style: BotanicalTypo.label(size: 10, color: _textSub),
+            maxLines: 2),
+        ]),
+      )),
+      const SizedBox(width: 10),
+      // ── 성적 카드 (RIGHT) ──
+      Expanded(child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: _dk
+              ? [gc.withOpacity(0.15), gc.withOpacity(0.08)]
+              : [gc.withOpacity(0.07), gc.withOpacity(0.03)]),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: gc.withOpacity(_dk ? 0.3 : 0.15)),
+          boxShadow: [BoxShadow(
+            color: gc.withOpacity(_dk ? 0.12 : 0.06),
+            blurRadius: 16, offset: const Offset(0, 4))]),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Row(children: [
+            Text(flower, style: const TextStyle(fontSize: 14)),
+            const SizedBox(width: 6),
+            Text('TODAY', style: BotanicalTypo.label(
+              size: 10, weight: FontWeight.w700, letterSpacing: 1, color: gc)),
+          ]),
+          const SizedBox(height: 6),
+          Row(crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic, children: [
+            Text(g.grade, style: BotanicalTypo.heading(size: 22, weight: FontWeight.w900, color: gc)),
+            const SizedBox(width: 6),
+            Text(g.totalScore.toStringAsFixed(1), style: BotanicalTypo.number(
+              size: 13, weight: FontWeight.w300,
+              color: _dk ? Colors.white54 : _textMuted)),
+          ]),
+          const SizedBox(height: 6),
+          ClipRRect(borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: (g.totalScore / 100).clamp(0.0, 1.0),
+              backgroundColor: _dk ? Colors.white.withOpacity(0.08) : gc.withOpacity(0.1),
+              valueColor: AlwaysStoppedAnimation(gc),
+              minHeight: 3)),
+        ]),
+      )),
+    ]));
+  }
+
+  // ── 성적 카드 (컴팩트) ──
+  Widget _gradeCard() {
+    final g = _grade ?? DailyGrade.calculate(date: _studyDate());
+    final gc = BotanicalColors.gradeColor(g.grade);
+    final flower = GrowthMetaphor.gradeFlower(g.grade);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [gc.withOpacity(0.07), gc.withOpacity(0.03)]),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: gc.withOpacity(0.15))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Text(flower, style: const TextStyle(fontSize: 14)),
+          const SizedBox(width: 6),
+          Text('TODAY', style: BotanicalTypo.label(
+            size: 10, weight: FontWeight.w700, letterSpacing: 1, color: gc)),
+        ]),
+        const SizedBox(height: 8),
+        Row(crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic, children: [
+          Text(g.grade, style: BotanicalTypo.heading(
+            size: 28, weight: FontWeight.w900, color: gc)),
+          const SizedBox(width: 6),
+          Text(g.totalScore.toStringAsFixed(1), style: BotanicalTypo.number(
+            size: 13, weight: FontWeight.w300, color: _textMuted)),
+        ]),
+        const SizedBox(height: 6),
+        ClipRRect(borderRadius: BorderRadius.circular(3),
+          child: LinearProgressIndicator(
+            value: (g.totalScore / 100).clamp(0.0, 1.0),
+            backgroundColor: gc.withOpacity(0.1),
+            valueColor: AlwaysStoppedAnimation(gc), minHeight: 3)),
+        const SizedBox(height: 3),
+        Text('${(g.totalScore).toStringAsFixed(0)}점', style: BotanicalTypo.label(
+          size: 9, color: _textMuted)),
+      ]),
+    );
+  }
+
+  // ── 순공시간 카드 (full width) ──
+
+  Widget _studyTimeCard() {
+    final h = _effMin ~/ 60;
+    final m = _effMin % 60;
+    final pc = _dk ? BotanicalColors.primaryLight : BotanicalColors.primary;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: _dk
+            ? [const Color(0xFF1E3A2F), const Color(0xFF1A2E26)]
+            : [const Color(0xFFE8F5E9), const Color(0xFFF1F8E9)]),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: BotanicalColors.primary.withOpacity(_dk ? 0.3 : 0.15))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.timer_outlined, size: 14, color: pc),
+          const SizedBox(width: 6),
+          Text('순공시간', style: BotanicalTypo.label(
+            size: 10, weight: FontWeight.w700, color: pc)),
+        ]),
+        const SizedBox(height: 8),
+        Row(crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic, children: [
+          Text('$h', style: BotanicalTypo.number(size: 28, weight: FontWeight.w300,
+            color: _dk ? Colors.white : BotanicalColors.textMain)),
+          Text('h ', style: BotanicalTypo.label(size: 12, weight: FontWeight.w300,
+            color: _dk ? Colors.white54 : BotanicalColors.textSub)),
+          Text('${m.toString().padLeft(2, '0')}', style: BotanicalTypo.number(
+            size: 18, weight: FontWeight.w300,
+            color: _dk ? Colors.white70 : BotanicalColors.textSub)),
+          Text('m', style: BotanicalTypo.label(size: 10, weight: FontWeight.w300,
+            color: _dk ? Colors.white38 : BotanicalColors.textMuted)),
+        ]),
+        const SizedBox(height: 6),
+        ClipRRect(borderRadius: BorderRadius.circular(3),
+          child: LinearProgressIndicator(
+            value: (_effMin / 480).clamp(0.0, 1.0),
+            backgroundColor: _dk ? Colors.white.withOpacity(0.08) : pc.withOpacity(0.1),
+            valueColor: AlwaysStoppedAnimation(pc), minHeight: 3)),
+        const SizedBox(height: 3),
+        Text('${(_effMin / 480 * 100).toInt()}%', style: BotanicalTypo.label(
+          size: 9, color: _dk ? Colors.white38 : BotanicalColors.textMuted)),
+      ]),
+    );
+  }
+
+  // ══════════════════════════════════════════
+  //  ② 히어로 카드 (레거시 — 직접 호출 안 함)
   // ══════════════════════════════════════════
 
   Widget _heroStatsRow() {
@@ -958,7 +1475,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final st = _ft.getCurrentState();
     final mc = BotanicalColors.subjectColor(st.subject);
     return GestureDetector(
-      onTap: () => setState(() => _tab = 1), // 포커스 탭으로 이동
+      onTap: () => _switchTab(2), // 포커스 탭으로 이동
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(

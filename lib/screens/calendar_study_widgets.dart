@@ -148,7 +148,7 @@ extension _CalendarStudyWidgets on _CalendarScreenState {
       await _fb.updateField('timeRecords.$ds.$key', newTime);
       // 로컬 갱신
       final records = await _fb.getTimeRecords();
-      setState(() {
+      _safeSetState(() {
         _selectedTimeRecord = records[ds];
         _selectedGrade = DailyGrade.calculate(
           date: ds, wakeTime: _selectedTimeRecord?.wake,
@@ -173,39 +173,6 @@ extension _CalendarStudyWidgets on _CalendarScreenState {
     return '${m}m';
   }
 
-  Widget _eventTile(CalendarEvent event) {
-    final isExam = event.type == EventType.exam;
-    final c = isExam ? const Color(0xFFEF4444) : const Color(0xFF6366F1);
-    return Dismissible(
-      key: ValueKey(event.title),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 16),
-        decoration: BoxDecoration(
-          color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)),
-        child: Icon(Icons.delete_outline, color: Colors.red.shade400, size: 18)),
-      onDismissed: (_) async {
-        await _cal.deleteEvent(event);
-        _cal.invalidate();
-        _loadMonth();
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: c.withOpacity(_dk ? 0.06 : 0.04),
-          borderRadius: BorderRadius.circular(12),
-          border: Border(left: BorderSide(color: c, width: 3))),
-        child: Row(children: [
-          Text(event.emoji, style: const TextStyle(fontSize: 14)),
-          const SizedBox(width: 8),
-          Expanded(child: Text(event.title,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textMain))),
-        ]),
-      ),
-    );
-  }
 
   Widget _memoTile(String memo) {
     final isPinned = memo.startsWith('📌');
@@ -219,13 +186,8 @@ extension _CalendarStudyWidgets on _CalendarScreenState {
           color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)),
         child: Icon(Icons.delete_outline, color: Colors.red.shade400, size: 18)),
       onDismissed: (_) async {
-        if (isPinned) {
-          await _cal.deletePinnedMemo(memo.replaceFirst('📌 ', ''));
-        } else {
-          await _cal.deleteMemoForDate(_selectedDateStr, memo);
-        }
         _selectedMemos.remove(memo);
-        setState(() {});
+        _safeSetState(() {});
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 5),
@@ -348,7 +310,7 @@ extension _CalendarStudyWidgets on _CalendarScreenState {
       backgroundColor: Colors.transparent,
       builder: (ctx) => _AddEventMemoSheet(
         selectedDate: _selectedDate,
-        onAdded: () { _cal.invalidate(); _loadMonth(); },
+        onAdded: () { _loadMonth(); },
       ),
     );
   }

@@ -1,20 +1,14 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import '../services/ai_calendar_service.dart';
 import '../services/firebase_service.dart';
-import '../services/exam_ticket_service.dart';
 import '../models/models.dart';
 import '../models/order_models.dart';
 import '../theme/botanical_theme.dart';
 import '../data/plan_data.dart';
-import '../models/plan_models.dart';
-import '../services/plan_service.dart';
 import 'painters.dart';
-import 'daily_plan_sheet.dart';
-import 'daily_plan_history_screen.dart';
 
 part 'calendar_day_detail.dart';
 part 'calendar_study_widgets.dart';
@@ -33,14 +27,13 @@ class CalendarScreen extends StatefulWidget {
 
 class _CalendarScreenState extends State<CalendarScreen>
     with TickerProviderStateMixin {
-  final _cal = AiCalendarService();
   final _fb = FirebaseService();
 
   late DateTime _viewMonth;
   late DateTime _selectedDate;
   bool _loading = true;
+  bool _loadLock = false;   // 중복 호출 방지 (UI 상태와 분리)
 
-  List<CalendarEvent> _monthEvents = [];
   Map<String, List<String>> _monthMemos = {};
   List<String> _selectedMemos = [];
   TimeRecord? _selectedTimeRecord;
@@ -55,12 +48,8 @@ class _CalendarScreenState extends State<CalendarScreen>
   // ★ 2-C: 커스텀 학습과제
   List<String> _selectedCustomTasks = [];
 
-  // ★ Daily Plan (동적 일일 계획)
-  DailyPlan? _selectedDailyPlan;
-
-  // ★ R2: 수험표 시험일정
-  List<ExamTicketInfo> _examTickets = [];
-  Map<String, List<ExamTicketInfo>> _examTicketsByDate = {};
+  // ★ Todo 완료율 (날짜별)
+  Map<String, double> _monthTodoRates = {};
 
   late AnimationController _fadeCtrl;
   late AnimationController _waveCtrl;
@@ -90,114 +79,265 @@ class _CalendarScreenState extends State<CalendarScreen>
     super.dispose();
   }
 
-  Future<void> _loadMonth() async {
-    if (mounted) setState(() => _loading = true);
-    try {
-      _monthEvents = await _cal.getAllEventsForMonth(_viewMonth.year, _viewMonth.month);
-    } catch (e) { _monthEvents = []; }
-    try {
-      _monthMemos = await _cal.getAllMemosForMonth(_viewMonth.year, _viewMonth.month);
-    } catch (e) { _monthMemos = {}; }
-    try { _restDays = await _fb.getRestDays(); } catch (_) {}
-
-    // ★ 월간 학습시간 데이터 일괄 로드
-    try {
-      _monthStudyRecords = await _fb.getStudyTimeRecords();
-    } catch (_) { _monthStudyRecords = {}; }
-
-    // ★ 월간 포커스 사이클 (과목 데이터)
-    try {
-      _monthFocusCycles = {};
-      final year = _viewMonth.year;
-      final month = _viewMonth.month;
-      final daysInMonth = DateTime(year, month + 1, 0).day;
-      for (int d = 1; d <= daysInMonth; d++) {
-        final ds = '$year-${month.toString().padLeft(2, '0')}-${d.toString().padLeft(2, '0')}';
-        final sr = _monthStudyRecords[ds];
-        if (sr != null && sr.effectiveMinutes > 0) {
-          try { _monthFocusCycles[ds] = await _fb.getFocusCycles(ds); } catch (_) {}
-        }
-      }
-    } catch (_) {}
-
-    // ★ 저널 데이터 로드
-    try {
-      _monthJournals = await _fb.getJournals();
-    } catch (_) { _monthJournals = []; }
-
-    // ★ R2: 수험표 시험일정 로드
-    try {
-      _examTickets = await ExamTicketService().loadAllTickets();
-      _examTicketsByDate = {};
-      for (final t in _examTickets) {
-        if (t.examDate != null) {
-          _examTicketsByDate.putIfAbsent(t.examDate!, () => []).add(t);
-        }
-      }
-    } catch (_) { _examTickets = []; _examTicketsByDate = {}; }
-
-    try { await _loadSelectedDay(); } catch (_) { _selectedMemos = []; }
-    if (mounted) {
-      setState(() => _loading = false);
-      _fadeCtrl.forward(from: 0);
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
     }
+  }
+
+  Future<void> _loadMonth() async {
+    if (_loadLock) return; // 중복 호출 방지 (_loading과 분리)
+    _loadLock = true;
+    _safeSetState(() => _loading = true);
+    const t = Duration(seconds: 8);
+
+    try {
+      // ★ Phase C: history → archive → study fallback
+      final monthKey = DateFormat('yyyy-MM').format(_viewMonth);
+      var historyData = await _fb.getMonthHistory(monthKey).timeout(t, onTimeout: () => null);
+
+      // history 없으면 archive에서 가져오기
+      if (historyData == null || (historyData['days'] as Map?)?.isEmpty != false) {
+        final archiveData = await _fb.getArchive(monthKey).timeout(t, onTimeout: () => null);
+        if (archiveData != null) {
+          // archive 형식 → history 형식 변환
+          historyData = _archiveToHistoryFormat(archiveData, monthKey);
+        }
+      }
+
+      // study 문서도 로드 (today 데이터 + restDays/journals 등)
+      final studyData = await _fb.getStudyData().timeout(t);
+
+      // studyTimeRecords: history → study fallback
+      try {
+        _monthStudyRecords = {};
+        if (historyData != null) {
+          final days = historyData['days'] as Map<String, dynamic>? ?? {};
+          for (final entry in days.entries) {
+            final dateKey = '$monthKey-${entry.key}';
+            final dayData = entry.value is Map ? Map<String, dynamic>.from(entry.value as Map) : null;
+            if (dayData == null) continue;
+            // studyTimeRecords (raw) fallback
+            final str = dayData['studyTimeRecords'];
+            if (str is Map) {
+              _monthStudyRecords[dateKey] = StudyTimeRecord.fromMap(dateKey, Map<String, dynamic>.from(str));
+            } else {
+              // studyTime (Phase C format)
+              final st = dayData['studyTime'];
+              if (st is Map && st['total'] is num) {
+                _monthStudyRecords[dateKey] = StudyTimeRecord(
+                  date: dateKey,
+                  totalMinutes: (st['total'] as num).toInt(),
+                  effectiveMinutes: (st['total'] as num).toInt(),
+                );
+              }
+            }
+          }
+        }
+        // study doc fallback (for recent data not yet in history)
+        if (studyData != null) {
+          final strRaw = studyData['studyTimeRecords'] as Map<String, dynamic>?;
+          if (strRaw != null) {
+            for (final entry in strRaw.entries) {
+              if (entry.key.startsWith(monthKey) && !_monthStudyRecords.containsKey(entry.key)) {
+                _monthStudyRecords[entry.key] = StudyTimeRecord.fromMap(
+                    entry.key, entry.value as Map<String, dynamic>);
+              }
+            }
+          }
+        }
+      } catch (_) { _monthStudyRecords = {}; }
+
+      // focusCycles: history → study fallback
+      try {
+        _monthFocusCycles = {};
+        if (historyData != null) {
+          final days = historyData['days'] as Map<String, dynamic>? ?? {};
+          for (final entry in days.entries) {
+            final dateKey = '$monthKey-${entry.key}';
+            final dayData = entry.value is Map ? Map<String, dynamic>.from(entry.value as Map) : null;
+            if (dayData == null) continue;
+            final fc = dayData['focusSessions'] ?? dayData['focusCycles'];
+            if (fc is List) {
+              _monthFocusCycles[dateKey] = fc
+                  .where((e) => e is Map)
+                  .map((e) {
+                    final m = Map<String, dynamic>.from(e as Map);
+                    // history format may differ from FocusCycle
+                    if (m.containsKey('id')) {
+                      return FocusCycle.fromMap(m);
+                    }
+                    // Phase C simplified session format
+                    return FocusCycle(
+                      id: m['start']?.toString() ?? '',
+                      date: dateKey,
+                      startTime: m['start']?.toString() ?? '',
+                      endTime: m['end']?.toString(),
+                      subject: m['subject']?.toString() ?? '',
+                      studyMin: (m['minutes'] as num?)?.toInt() ?? 0,
+                      effectiveMin: (m['effectiveMin'] as num?)?.toInt() ?? (m['minutes'] as num?)?.toInt() ?? 0,
+                    );
+                  }).toList();
+            }
+          }
+        }
+        // study doc fallback
+        final fcRaw = studyData?['focusCycles'] as Map<String, dynamic>?;
+        if (fcRaw != null) {
+          final year = _viewMonth.year;
+          final month = _viewMonth.month;
+          final daysInMonth = DateTime(year, month + 1, 0).day;
+          for (int d = 1; d <= daysInMonth; d++) {
+            final ds = '$year-${month.toString().padLeft(2, '0')}-${d.toString().padLeft(2, '0')}';
+            if (fcRaw[ds] != null && !_monthFocusCycles.containsKey(ds)) {
+              final dayData = fcRaw[ds] as List<dynamic>;
+              _monthFocusCycles[ds] = dayData
+                  .map((e) => FocusCycle.fromMap(e as Map<String, dynamic>))
+                  .toList();
+            }
+          }
+        }
+      } catch (_) { _monthFocusCycles = {}; }
+
+      try {
+        final raw = studyData?['restDays'] as List<dynamic>?;
+        _restDays = raw?.map((e) => e.toString()).toList() ?? [];
+      } catch (_) { _restDays = []; }
+
+      try {
+        final raw = studyData?['journals'] as List<dynamic>?;
+        _monthJournals = raw?.map((j) => Map<String, dynamic>.from(j as Map)).toList() ?? [];
+      } catch (_) { _monthJournals = []; }
+
+      // ★ Todo 완료율
+      try {
+        _monthTodoRates = {};
+        final todosRaw = studyData?['todos'];
+        if (todosRaw is Map) {
+          final monthPrefix = DateFormat('yyyy-MM').format(_viewMonth);
+          for (final e in (todosRaw as Map).entries) {
+            if (e.key.toString().startsWith(monthPrefix) && e.value is Map) {
+              final items = (e.value as Map)['items'];
+              if (items is List && items.isNotEmpty) {
+                final done = items.where((i) => i is Map && i['completed'] == true).length;
+                _monthTodoRates[e.key.toString()] = done / items.length;
+              }
+            }
+          }
+        }
+      } catch (_) { _monthTodoRates = {}; }
+
+      try { await _loadSelectedDay(); } catch (_) { _selectedMemos = []; }
+    } catch (e) {
+      debugPrint('[Calendar] _loadMonth error: $e');
+    } finally {
+      _loadLock = false;
+      _safeSetState(() => _loading = false);
+      if (mounted) _fadeCtrl.forward(from: 0);
+    }
+  }
+
+  /// archive 문서 형식 → history 형식으로 변환
+  Map<String, dynamic> _archiveToHistoryFormat(Map<String, dynamic> archive, String month) {
+    final days = <String, Map<String, dynamic>>{};
+    final trMap = archive['timeRecords'] as Map?;
+    final strMap = archive['studyTimeRecords'] as Map?;
+    final fcMap = archive['focusCycles'] as Map?;
+    final todosMap = archive['todos'] as Map?;
+    for (final dateKey in {...?trMap?.keys, ...?strMap?.keys, ...?fcMap?.keys, ...?todosMap?.keys}) {
+      final ds = dateKey.toString();
+      if (ds.length < 10 || !ds.startsWith(month)) continue;
+      final day = ds.substring(8, 10);
+      days.putIfAbsent(day, () => {});
+      if (trMap?[dateKey] != null) days[day]!['timeRecords'] = trMap![dateKey];
+      if (strMap?[dateKey] != null) {
+        days[day]!['studyTimeRecords'] = strMap![dateKey];
+        final str = strMap[dateKey];
+        if (str is Map) {
+          final effMin = (str['effectiveMinutes'] as num?)?.toInt() ?? 0;
+          days[day]!['studyTime'] = {'total': effMin, 'subjects': {}};
+        }
+      }
+      if (fcMap?[dateKey] != null) days[day]!['focusSessions'] = fcMap![dateKey];
+      if (todosMap?[dateKey] != null) {
+        final td = todosMap![dateKey];
+        if (td is Map) days[day]!['todos'] = td['items'] ?? [];
+      }
+    }
+    return {'month': month, 'days': days};
   }
 
   Future<void> _loadSelectedDay() async {
     final ds = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    _selectedMemos = await _cal.getMemosForDate(ds);
-    try {
-      final records = await _fb.getTimeRecords();
-      _selectedTimeRecord = records[ds];
-    } catch (_) { _selectedTimeRecord = null; }
-    try {
-      _selectedStudyRecord = _monthStudyRecords[ds];
-      if (_selectedStudyRecord != null && _selectedStudyRecord!.effectiveMinutes > 0) {
-        _selectedGrade = DailyGrade.calculate(
-          date: ds,
-          wakeTime: _selectedTimeRecord?.wake,
-          studyStartTime: _selectedTimeRecord?.study,
-          effectiveMinutes: _selectedStudyRecord!.effectiveMinutes,
-        );
-      } else {
-        _selectedGrade = null;
-      }
-    } catch (_) {
-      _selectedStudyRecord = null;
-      _selectedGrade = null;
-    }
-    try {
-      _selectedFocusCycles = _monthFocusCycles[ds] ?? await _fb.getFocusCycles(ds);
-    } catch (_) { _selectedFocusCycles = []; }
+    const t = Duration(seconds: 5);
 
-    // ★ 2-C: 학습과제 로드
+    // ★ Phase B: 분리된 문서별 읽기
+    _selectedMemos = [];
+    final fTimeRecords = _fb.getTimeRecords().timeout(t, onTimeout: () => <String, TimeRecord>{});
+
+    try {
+      final records = await fTimeRecords;
+      _selectedTimeRecord = records[ds];
+    } catch (_) {
+      _selectedTimeRecord = null;
+    }
+
+    // focusCycles (focus 문서 or 캐시)
+    _selectedFocusCycles = _monthFocusCycles[ds] ?? [];
+    if (_selectedFocusCycles.isEmpty) {
+      try {
+        _selectedFocusCycles = await _fb.getFocusCycles(ds);
+      } catch (_) {}
+    }
+
+    // customTasks (plan 문서)
     try {
       _selectedCustomTasks = await _fb.getCustomStudyTasks(ds);
-    } catch (_) { _selectedCustomTasks = []; }
+    } catch (_) {
+      _selectedCustomTasks = [];
+    }
 
-    // ★ Daily Plan 로드
-    try {
-      _selectedDailyPlan = await PlanService().getDailyPlan(ds);
-    } catch (_) { _selectedDailyPlan = null; }
+    // grade 계산
+    _selectedStudyRecord = _monthStudyRecords[ds];
+    if (_selectedStudyRecord != null && _selectedStudyRecord!.effectiveMinutes > 0) {
+      _selectedGrade = DailyGrade.calculate(
+        date: ds,
+        wakeTime: _selectedTimeRecord?.wake,
+        studyStartTime: _selectedTimeRecord?.study,
+        effectiveMinutes: _selectedStudyRecord!.effectiveMinutes,
+      );
+    } else {
+      _selectedGrade = null;
+    }
   }
 
   void _changeMonth(int delta) {
-    setState(() {
+    _safeSetState(() {
       _viewMonth = DateTime(_viewMonth.year, _viewMonth.month + delta);
     });
     _loadMonth();
   }
 
   void _selectDay(DateTime day) async {
-    setState(() => _selectedDate = day);
-    await _loadSelectedDay();
-    if (mounted) setState(() {});
+    // 같은 날짜 재탭 방지
+    if (day.year == _selectedDate.year &&
+        day.month == _selectedDate.month &&
+        day.day == _selectedDate.day) return;
+    _safeSetState(() => _selectedDate = day);
+    try {
+      await _loadSelectedDay().timeout(const Duration(seconds: 8));
+    } catch (_) {}
+    _safeSetState(() {});
   }
 
   String get _selectedDateStr => DateFormat('yyyy-MM-dd').format(_selectedDate);
-  List<CalendarEvent> get _selectedEvents =>
-    _monthEvents.where((e) => e.date == _selectedDateStr).toList();
-
   List<Map<String, dynamic>> _journalsForDate(String ds) =>
     _monthJournals.where((j) => j['date'] == ds).toList();
 
@@ -288,9 +428,15 @@ class _CalendarScreenState extends State<CalendarScreen>
         GestureDetector(
           onTap: () {
             final now = DateTime.now();
-            _viewMonth = DateTime(now.year, now.month);
+            final newMonth = DateTime(now.year, now.month);
             _selectedDate = now;
-            _loadMonth();
+            if (_viewMonth.year == newMonth.year && _viewMonth.month == newMonth.month) {
+              // 같은 월이면 전체 리로드 스킵 → 날짜 선택만
+              _selectDay(now);
+            } else {
+              _viewMonth = newMonth;
+              _loadMonth();
+            }
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -328,11 +474,6 @@ class _CalendarScreenState extends State<CalendarScreen>
     final todayStr = DateFormat('yyyy-MM-dd').format(today);
     final selectedStr = _selectedDateStr;
 
-    final eventDates = <String, List<CalendarEvent>>{};
-    for (final e in _monthEvents) {
-      eventDates.putIfAbsent(e.date, () => []).add(e);
-    }
-
     const weekLabels = ['일', '월', '화', '수', '목', '금', '토'];
 
     return Container(
@@ -364,7 +505,7 @@ class _CalendarScreenState extends State<CalendarScreen>
             }
             final dateStr = '$year-${month.toString().padLeft(2, '0')}-${dayIdx.toString().padLeft(2, '0')}';
             return Expanded(child: _buildDayCell(
-              dateStr, dayIdx, dow, todayStr, selectedStr, eventDates));
+              dateStr, dayIdx, dow, todayStr, selectedStr));
           });
           final hasValidDay = List.generate(7, (dow) {
             final dayIdx = week * 7 + dow - startWeekday + 1;
@@ -380,17 +521,14 @@ class _CalendarScreenState extends State<CalendarScreen>
   }
 
   Widget _buildDayCell(String dateStr, int day, int dow,
-      String todayStr, String selectedStr,
-      Map<String, List<CalendarEvent>> eventDates) {
+      String todayStr, String selectedStr) {
     final today = DateTime.now();
     final date = DateTime(_viewMonth.year, _viewMonth.month, day);
     final isToday = dateStr == todayStr;
     final isSelected = dateStr == selectedStr;
     final isPast = date.isBefore(DateTime(today.year, today.month, today.day));
     final isFuture = date.isAfter(DateTime(today.year, today.month, today.day));
-    final events = eventDates[dateStr];
     final hasMemo = _monthMemos.containsKey(dateStr);
-    final hasExam = events?.any((e) => e.type == EventType.exam) ?? false;
     final isRestDay = _restDays.contains(dateStr);
     final isSunday = dow == 0;
     final hasJournal = _journalsForDate(dateStr).isNotEmpty;
@@ -399,10 +537,6 @@ class _CalendarScreenState extends State<CalendarScreen>
     final planDDays = StudyPlanData.ddaysForDate(dateStr);
     final planMilestones = StudyPlanData.milestonesForDate(dateStr);
     final hasPlanExam = planDDays.isNotEmpty || planMilestones.isNotEmpty;
-
-    // ★ R2: 수험표 시험일정 마커
-    final ticketExams = _examTicketsByDate[dateStr] ?? [];
-    final hasTicketExam = ticketExams.isNotEmpty;
 
     // ★ 2-A: Plan 일일계획
     final dailyPlan = StudyPlanData.dailyPlanForDate(dateStr);
@@ -440,10 +574,10 @@ class _CalendarScreenState extends State<CalendarScreen>
               ? _accent.withOpacity(0.5)
               : isToday
                 ? _accent.withOpacity(0.3)
-                : (hasPlanExam || hasExam || hasTicketExam)
+                : (hasPlanExam)
                   ? const Color(0xFFEF4444).withOpacity(0.25)
                   : _border.withOpacity(0.1),
-            width: isSelected ? 2 : isToday ? 1.5 : (hasPlanExam || hasExam || hasTicketExam) ? 1 : 0.5),
+            width: isSelected ? 2 : isToday ? 1.5 : (hasPlanExam) ? 1 : 0.5),
           boxShadow: isSelected ? [
             BoxShadow(color: _accent.withOpacity(0.1), blurRadius: 8)
           ] : null,
@@ -488,7 +622,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                   Text('$day', style: TextStyle(
                     fontSize: 11,
                     fontWeight: isToday || isSelected ? FontWeight.w800 : FontWeight.w600,
-                    color: (hasExam || hasPlanExam || hasTicketExam) ? const Color(0xFFEF4444)
+                    color: (hasPlanExam) ? const Color(0xFFEF4444)
                          : isSelected ? _accent
                          : isToday ? _accent
                          : isRestDay ? _textMuted
@@ -498,14 +632,10 @@ class _CalendarScreenState extends State<CalendarScreen>
                          : _textMain,
                     decoration: isRestDay ? TextDecoration.lineThrough : null,
                   )),
-                  if (hasPlanExam && !hasExam)
+                  if (hasPlanExam)
                     const Padding(
                       padding: EdgeInsets.only(left: 2),
                       child: Text('🎯', style: TextStyle(fontSize: 7))),
-                  if (hasTicketExam)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 2),
-                      child: Text('📋', style: TextStyle(fontSize: 7))),
                 ]),
                 const Spacer(),
                 // 중앙: 학습시간 또는 Plan D-Day 라벨
@@ -549,8 +679,13 @@ class _CalendarScreenState extends State<CalendarScreen>
                 if (subjectMinutes.isNotEmpty) _buildSubjectBar(subjectMinutes),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   if (hasMemo) _dot(const Color(0xFFF59E0B)),
-                  if (events != null && events.isNotEmpty) _dot(const Color(0xFF6366F1)),
                   if (hasJournal) _dot(const Color(0xFF10B981)),
+                  if (_monthTodoRates.containsKey(dateStr))
+                    _dot(_monthTodoRates[dateStr]! >= 0.8
+                      ? const Color(0xFF10B981)
+                      : _monthTodoRates[dateStr]! >= 0.5
+                        ? const Color(0xFFF59E0B)
+                        : const Color(0xFFEF4444)),
                 ]),
               ],
             ),

@@ -429,149 +429,140 @@ class ScenarioBranch {
 }
 
 // ╔═══════════════════════════════════════════════════════════╗
-// ║  PART 1-B: 일일 계획 (Daily Plan)                           ║
+// ║  PART 1-B: Todo (할일 관리)                                 ║
 // ╚═══════════════════════════════════════════════════════════╝
 
-/// 일일 계획 개별 과제
-class DailyTask {
+/// Todo 개별 항목
+class TodoItem {
   final String id;
   final String title;
-  final String category; // 'data','lang','sit','econ','life','general'
-  final String priority; // 'must','should','could'
-  final int estimatedMin;
-  int actualMin;
   bool completed;
   String? completedAt; // ISO8601
-  String? reason; // 미완료 사유
   int order; // 정렬 순서
+  final String? subject;        // 과목 태그: 언어/자료/상황/경제/7급전공
+  final int? estimatedMinutes;  // 예상 시간 (분)
+  final String? priority;       // high/medium/low
+  final String? type;           // study/review/mock/task/errand
 
-  DailyTask({
+  static const subjects = ['언어', '자료', '상황', '경제', '7급전공'];
+  static const priorities = ['high', 'medium', 'low'];
+  static const priorityLabels = {'high': '상', 'medium': '중', 'low': '하'};
+
+  /// 할일 유형 (입력 단계에서 분류)
+  static const types = <String, String>{
+    'study':   '📖 학습',
+    'review':  '🔄 복습',
+    'mock':    '📝 모의고사',
+    'task':    '✅ 과제',
+    'errand':  '🏃 기타',
+  };
+  static const typeKeys = ['study', 'review', 'mock', 'task', 'errand'];
+
+  TodoItem({
     required this.id,
     required this.title,
-    this.category = 'general',
-    this.priority = 'should',
-    this.estimatedMin = 30,
-    this.actualMin = 0,
     this.completed = false,
     this.completedAt,
-    this.reason,
     this.order = 0,
+    this.subject,
+    this.estimatedMinutes,
+    this.priority,
+    this.type,
   });
 
-  DailyTask copyWith({
+  /// [clearSubject], [clearPriority] 등을 true로 전달하면 해당 필드를 null로 설정
+  TodoItem copyWith({
     String? title,
-    String? category,
-    String? priority,
-    int? estimatedMin,
-    int? actualMin,
     bool? completed,
     String? completedAt,
-    String? reason,
     int? order,
+    String? subject,
+    bool clearSubject = false,
+    int? estimatedMinutes,
+    bool clearEstimatedMinutes = false,
+    String? priority,
+    bool clearPriority = false,
+    String? type,
+    bool clearType = false,
   }) =>
-      DailyTask(
+      TodoItem(
         id: id,
         title: title ?? this.title,
-        category: category ?? this.category,
-        priority: priority ?? this.priority,
-        estimatedMin: estimatedMin ?? this.estimatedMin,
-        actualMin: actualMin ?? this.actualMin,
         completed: completed ?? this.completed,
         completedAt: completedAt ?? this.completedAt,
-        reason: reason ?? this.reason,
         order: order ?? this.order,
+        subject: clearSubject ? null : (subject ?? this.subject),
+        estimatedMinutes: clearEstimatedMinutes ? null : (estimatedMinutes ?? this.estimatedMinutes),
+        priority: clearPriority ? null : (priority ?? this.priority),
+        type: clearType ? null : (type ?? this.type),
       );
 
-  factory DailyTask.fromMap(Map<String, dynamic> m) => DailyTask(
+  factory TodoItem.fromMap(Map<String, dynamic> m) => TodoItem(
         id: m['id'] ?? '',
         title: m['title'] ?? '',
-        category: m['category'] ?? 'general',
-        priority: m['priority'] ?? 'should',
-        estimatedMin: (m['estimatedMin'] as num?)?.toInt() ?? 30,
-        actualMin: (m['actualMin'] as num?)?.toInt() ?? 0,
         completed: m['completed'] ?? false,
         completedAt: m['completedAt'] as String?,
-        reason: m['reason'] as String?,
         order: (m['order'] as num?)?.toInt() ?? 0,
+        subject: m['subject'] as String?,
+        estimatedMinutes: (m['estimatedMinutes'] as num?)?.toInt(),
+        priority: m['priority'] as String?,
+        type: m['type'] as String?,
       );
 
   Map<String, dynamic> toMap() => {
         'id': id,
         'title': title,
-        'category': category,
-        'priority': priority,
-        'estimatedMin': estimatedMin,
-        'actualMin': actualMin,
         'completed': completed,
         if (completedAt != null) 'completedAt': completedAt,
-        if (reason != null) 'reason': reason,
         'order': order,
+        if (subject != null) 'subject': subject,
+        if (estimatedMinutes != null) 'estimatedMinutes': estimatedMinutes,
+        if (priority != null) 'priority': priority,
+        if (type != null) 'type': type,
       };
 }
 
-/// 일일 계획 전체 (하루 한 문서)
-class DailyPlan {
-  final String id;
+/// 일일 Todo 전체 (하루 한 문서)
+class TodoDaily {
   final String date; // yyyy-MM-dd
-  final List<DailyTask> tasks;
+  final List<TodoItem> items;
   final String? memo;
-  final String? tomorrowNotes;
   final String? createdAt;
   final String? updatedAt;
 
-  DailyPlan({
-    required this.id,
+  TodoDaily({
     required this.date,
-    List<DailyTask>? tasks,
+    List<TodoItem>? items,
     this.memo,
-    this.tomorrowNotes,
     this.createdAt,
     this.updatedAt,
-  }) : tasks = tasks ?? [];
+  }) : items = items ?? [];
 
   /// 완료율 (0.0 ~ 1.0)
   double get completionRate {
-    if (tasks.isEmpty) return 0.0;
-    return tasks.where((t) => t.completed).length / tasks.length;
+    if (items.isEmpty) return 0.0;
+    return items.where((t) => t.completed).length / items.length;
   }
 
-  int get completedCount => tasks.where((t) => t.completed).length;
-  int get totalCount => tasks.length;
+  int get completedCount => items.where((t) => t.completed).length;
+  int get totalCount => items.length;
 
-  /// 총 예상 시간(분)
-  int get totalEstimatedMin =>
-      tasks.fold(0, (sum, t) => sum + t.estimatedMin);
-
-  /// 총 실제 시간(분)
-  int get totalActualMin => tasks.fold(0, (sum, t) => sum + t.actualMin);
-
-  /// must 과제 완료율
-  double get mustCompletionRate {
-    final musts = tasks.where((t) => t.priority == 'must');
-    if (musts.isEmpty) return 1.0;
-    return musts.where((t) => t.completed).length / musts.length;
-  }
-
-  factory DailyPlan.fromMap(Map<String, dynamic> m) => DailyPlan(
-        id: m['id'] ?? '',
+  factory TodoDaily.fromMap(Map<String, dynamic> m) => TodoDaily(
         date: m['date'] ?? '',
-        tasks: (m['tasks'] as List?)
+        items: (m['items'] as List?)
                 ?.map((e) =>
-                    DailyTask.fromMap(Map<String, dynamic>.from(e as Map)))
+                    TodoItem.fromMap(Map<String, dynamic>.from(e as Map)))
                 .toList() ??
             [],
         memo: m['memo'] as String?,
-        tomorrowNotes: m['tomorrowNotes'] as String?,
         createdAt: m['createdAt'] as String?,
         updatedAt: m['updatedAt'] as String?,
       );
 
   Map<String, dynamic> toMap() => {
-        'id': id,
         'date': date,
-        'tasks': tasks.map((t) => t.toMap()).toList(),
+        'items': items.map((t) => t.toMap()).toList(),
         if (memo != null) 'memo': memo,
-        if (tomorrowNotes != null) 'tomorrowNotes': tomorrowNotes,
         if (createdAt != null) 'createdAt': createdAt,
         if (updatedAt != null) 'updatedAt': updatedAt,
       };
@@ -627,13 +618,13 @@ class DailyFeedback {
         : 0.0;
 
     // 집중도 점수 (10점)
-    final focusScore = _focusQualityScore(
+    final focusScore = focusQualityScore(
         selfAssessment?.focusQuality ?? 'fair');
 
     return studyScore + execScore + routineScore + habitScore + focusScore;
   }
 
-  static double _focusQualityScore(String quality) {
+  static double focusQualityScore(String quality) {
     switch (quality) {
       case 'excellent':
         return 10.0;
