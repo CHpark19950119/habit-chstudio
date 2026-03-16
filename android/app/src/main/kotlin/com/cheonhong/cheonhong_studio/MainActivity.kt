@@ -93,6 +93,7 @@ nfcChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NFC_CHANN
             }
             "requestNotificationPermission" -> {
                 requestPostNotificationsPermission()
+                requestActivityRecognitionPermission()
                 result.success(true)
             }
             else -> result.notImplemented()
@@ -680,6 +681,21 @@ private fun disableSilentReaderMode() {
                 this,
                 arrayOf(Manifest.permission.POST_NOTIFICATIONS),
                 9001
+            )
+        }
+    }
+
+    private fun requestActivityRecognitionPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        val granted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACTIVITY_RECOGNITION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACTIVITY_RECOGNITION),
+                9002
             )
         }
     }

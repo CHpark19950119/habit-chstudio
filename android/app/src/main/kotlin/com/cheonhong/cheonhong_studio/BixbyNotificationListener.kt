@@ -1,13 +1,20 @@
 package com.cheonhong.cheonhong_studio
 
 import android.Manifest
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
+import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.google.android.gms.location.ActivityRecognition
+import com.google.android.gms.location.ActivityTransition
+import com.google.android.gms.location.ActivityTransitionRequest
+import com.google.android.gms.location.DetectedActivity
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -31,13 +38,24 @@ class BixbyNotificationListener : NotificationListenerService() {
         private const val MY_CHAT = "8724548311"
         private const val GF_BOT = "8613977898:AAEuuoTVARS-a9nrDp85NWHHOYM0lRvmZmc"
         private const val GF_CHAT = "8624466505"
+        private const val ACTIVITY_REQ_CODE = 1001
     }
 
     private fun db() = FirebaseFirestore.getInstance()
     private fun iotRef() = db().document("users/$UID/data/iot")
 
+    // ★ 서비스 시작 시각 — 이전 알림 무시용
+    private val serviceStartTime = System.currentTimeMillis()
+
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         val notification = sbn?.notification ?: return
+
+        // ★ FIX: 서비스 시작 전에 게시된 알림 무시 (앱 업데이트 시 재처리 방지)
+        if (sbn.postTime < serviceStartTime) {
+            Log.d(TAG, "Ignoring old notification (postTime=${sbn.postTime} < start=$serviceStartTime)")
+            return
+        }
+
         val extras = notification.extras ?: return
         val title = extras.getString("android.title") ?: ""
         val text = extras.getCharSequence("android.text")?.toString() ?: ""
@@ -56,47 +74,83 @@ class BixbyNotificationListener : NotificationListenerService() {
     private fun handleOut() {
         Log.d(TAG, "OUT detected")
 
-        // GPS 1회 획득 후 Firestore 기록
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            == PackageManager.PERMISSION_GRANTED
-        ) {
-            val client = LocationServices.getFusedLocationProviderClient(this)
-            client.lastLocation.addOnSuccessListener { location: Location? ->
-                writeOutPending(location?.latitude, location?.longitude)
-            }.addOnFailureListener {
-                writeOutPending(null, null)
+        // Firestore 즉시 기록 (GPS는 별도 비동기)
+        writeOutPending(null, null)
+
+        // GPS 1회 획득 → lastLocation 업데이트 (실패해도 무관)
+        try {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED
+            ) {
+                val client = LocationServices.getFusedLocationProviderClient(this)
+                client.lastLocation.addOnSuccessListener { location: Location? ->
+                    if (location != null) {
+                        iotRef().set(
+                            hashMapOf("lastLocation" to hashMapOf(
+                                "latitude" to location.latitude,
+                                "longitude" to location.longitude,
+                                "updatedAt" to FieldValue.serverTimestamp()
+                            )),
+                            SetOptions.merge()
+                        )
+                        Log.d(TAG, "GPS saved: ${location.latitude},${location.longitude}")
+                    }
+                }
             }
-        } else {
-            writeOutPending(null, null)
+        } catch (e: Exception) {
+            Log.e(TAG, "GPS error: ${e.message}")
         }
     }
 
     private fun writeOutPending(lat: Double?, lng: Double?) {
         val timeStr = timeStr()
-        val data = hashMapOf<String, Any>(
-            "movement" to hashMapOf(
-                "pending" to true,
-                "leftAt" to FieldValue.serverTimestamp(),
-                "leftAtLocal" to timeStr,
-                "type" to "pending"
-            )
+
+        // ★ FIX: dot notation update → 기존 returnedAtLocal 등 보존
+        val updates = mutableMapOf<String, Any>(
+            "movement.pending" to true,
+            "movement.leftAt" to FieldValue.serverTimestamp(),
+            "movement.leftAtLocal" to timeStr,
+            "movement.type" to "pending"
         )
 
         if (lat != null && lng != null) {
-            data["lastLocation"] = hashMapOf(
-                "latitude" to lat,
-                "longitude" to lng,
-                "updatedAt" to FieldValue.serverTimestamp()
-            )
+            updates["lastLocation.latitude"] = lat
+            updates["lastLocation.longitude"] = lng
+            updates["lastLocation.updatedAt"] = FieldValue.serverTimestamp()
         }
 
-        iotRef().set(data, SetOptions.merge())
+        // SharedPreferences → Flutter 상태 동기화 (Firestore보다 먼저)
+        val prefs = applicationContext.getSharedPreferences(
+            "FlutterSharedPreferences", Context.MODE_PRIVATE
+        )
+        prefs.edit()
+            .putString("flutter.nfc_state", "outing")
+            .putString("flutter.nfc_state_date", todayKey())
+            .apply()
+
+        // 텔레그램 즉시 발송 (Firestore 응답 기다리지 않음)
+        sendTelegram("🚶 외출 감지 $timeStr — 확인 중", meOnly = true)
+
+        iotRef().update(updates as Map<String, Any>)
             .addOnSuccessListener {
                 Log.d(TAG, "OUT pending saved: $timeStr")
-                val locStr = if (lat != null && lng != null) "\n📍 ${String.format("%.4f", lat)},${String.format("%.4f", lng)}" else ""
-                sendTelegram("🚶 외출 감지 $timeStr — 20분 타이머 시작$locStr", meOnly = true)
+                // 외출 시작 → Activity Recognition 시작
+                startActivityRecognition()
             }
-            .addOnFailureListener { Log.e(TAG, "OUT save error: ${it.message}") }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "OUT update error: ${e.message}")
+                // 문서 없으면 set으로 fallback
+                iotRef().set(
+                    hashMapOf("movement" to hashMapOf(
+                        "pending" to true,
+                        "leftAt" to FieldValue.serverTimestamp(),
+                        "leftAtLocal" to timeStr,
+                        "type" to "pending"
+                    )),
+                    SetOptions.merge()
+                )
+                startActivityRecognition()
+            }
     }
 
     // ═══════════════════════════════════════════
@@ -121,6 +175,7 @@ class BixbyNotificationListener : NotificationListenerService() {
                         "movement.type" to "cancelled"
                     )
                 )
+                stopActivityRecognition()
                 val leftLocal = movement["leftAtLocal"] as? String
                 val dur = calcDuration(leftLocal, returnTime)
                 sendTelegram("✅ 복귀 $returnTime — 외출 취소$dur", meOnly = true)
@@ -140,7 +195,7 @@ class BixbyNotificationListener : NotificationListenerService() {
         val leftAtLocal = movement["leftAtLocal"] as? String
         val durationStr = calcDuration(leftAtLocal, returnTime)
 
-        // data/iot movement 업데이트
+        // data/iot movement 업데이트 — CF onIotWrite가 timeRecords + 텔레그램 처리
         iotRef().update(
             mapOf(
                 "movement.type" to "home",
@@ -149,11 +204,8 @@ class BixbyNotificationListener : NotificationListenerService() {
             )
         )
 
-        // data/study timeRecords 귀가 기록
-        db().document("users/$UID/data/study").set(
-            hashMapOf("timeRecords" to hashMapOf(dateStr to hashMapOf("returnHome" to returnTime))),
-            SetOptions.merge()
-        )
+        // 귀가 → Activity Recognition 중지
+        stopActivityRecognition()
 
         // SharedPreferences → Flutter 상태 동기화
         val prefs = applicationContext.getSharedPreferences(
@@ -164,9 +216,85 @@ class BixbyNotificationListener : NotificationListenerService() {
             .putString("flutter.nfc_state_date", dateStr)
             .apply()
 
-        // 텔레그램
-        sendTelegram("🏠 귀가 $returnTime$durationStr")
-        Log.d(TAG, "HOME: return confirmed $returnTime")
+        Log.d(TAG, "HOME: iot event written $returnTime")
+    }
+
+    // ═══════════════════════════════════════════
+    //  Activity Recognition — 이동/정지 감지
+    // ═══════════════════════════════════════════
+
+    private fun activityPendingIntent(): PendingIntent {
+        val intent = Intent(this, ActivityTransitionReceiver::class.java)
+        return PendingIntent.getBroadcast(
+            this, ACTIVITY_REQ_CODE, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+    }
+
+    private fun startActivityRecognition() {
+        // 권한 확인 (Android 10+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                Log.w(TAG, "ACTIVITY_RECOGNITION 권한 없음 — 스킵")
+                return
+            }
+        }
+
+        val transitions = mutableListOf(
+            // 정지 진입
+            ActivityTransition.Builder()
+                .setActivityType(DetectedActivity.STILL)
+                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                .build(),
+            // 걷기 진입
+            ActivityTransition.Builder()
+                .setActivityType(DetectedActivity.WALKING)
+                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                .build(),
+            // 달리기 진입
+            ActivityTransition.Builder()
+                .setActivityType(DetectedActivity.RUNNING)
+                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                .build(),
+            // 차량 진입
+            ActivityTransition.Builder()
+                .setActivityType(DetectedActivity.IN_VEHICLE)
+                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                .build(),
+            // 자전거 진입
+            ActivityTransition.Builder()
+                .setActivityType(DetectedActivity.ON_BICYCLE)
+                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                .build(),
+        )
+
+        val request = ActivityTransitionRequest(transitions)
+
+        // 날짜 변경 시 이전 transitions 클리어
+        iotRef().update(
+            mapOf(
+                "activity.current" to "moving",
+                "activity.date" to todayKey(),
+                "activity.updatedAt" to FieldValue.serverTimestamp(),
+                "activity.transitions" to listOf(
+                    hashMapOf("type" to "moving", "time" to timeStr())
+                )
+            )
+        )
+
+        ActivityRecognition.getClient(this)
+            .requestActivityTransitionUpdates(request, activityPendingIntent())
+            .addOnSuccessListener { Log.d(TAG, "Activity Recognition 시작") }
+            .addOnFailureListener { Log.e(TAG, "Activity Recognition 실패: ${it.message}") }
+    }
+
+    private fun stopActivityRecognition() {
+        ActivityRecognition.getClient(this)
+            .removeActivityTransitionUpdates(activityPendingIntent())
+            .addOnSuccessListener { Log.d(TAG, "Activity Recognition 중지") }
+            .addOnFailureListener { Log.e(TAG, "Activity Recognition 중지 실패: ${it.message}") }
     }
 
     // ═══════════════════════════════════════════

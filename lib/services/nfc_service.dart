@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../utils/study_date_utils.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_service.dart';
 import 'geofence_service.dart';
 import 'telegram_service.dart';
@@ -63,6 +64,16 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
   Timer? _wakeReminder;
   Timer? _mealReminder;
   StreamSubscription<bool>? _geofenceSub;
+  StreamSubscription<DocumentSnapshot>? _movementSub;
+
+  // ═══ Movement times (Single Source of Truth for UI) ═══
+  String? _outingTime;
+  String? _returnTime;
+
+  // ═══ Activity Recognition (이동/정지 감지) ═══
+  String? _currentActivity;
+  List<Map<String, String>> _activityTransitions = [];
+  String? _activityDate;
 
   // ═══ UI ═══
   NfcAction? _lastAction;
@@ -78,6 +89,11 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
   bool get isAvailable => _nfcAvailable;
   bool get isSilentReaderEnabled => _silentReaderEnabled;
   List<NfcTagConfig> get tags => List.unmodifiable(_tags);
+  String? get outingTime => _outingTime;
+  String? get returnTime => _returnTime;
+  String? get currentActivity => _currentActivity;
+  List<Map<String, String>> get activityTransitions =>
+      List.unmodifiable(_activityTransitions);
 
   NfcAction? consumeLastAction() {
     final a = _lastAction;
@@ -107,6 +123,22 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
     if (value) { _state = DayState.outing; }
     else if (_state == DayState.outing) { _state = DayState.returned; }
     _saveState();
+    notifyListeners();
+  }
+
+  /// 외부 이벤트(FCM/CF) → UI 상태만 변경 (timeRecords 쓰기 없음)
+  void forceState(DayState newState) {
+    if (_state == newState) return;
+    _log('forceState: ${_state.name} → ${newState.name}');
+    _state = newState;
+    _saveState();
+    if (newState == DayState.awake) {
+      _startWakeReminder();
+      BusService().startPolling();
+    } else if (newState == DayState.outing) {
+      _cancelReminders();
+      BusService().stopPolling();
+    }
     notifyListeners();
   }
 
@@ -163,6 +195,9 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
     _geofenceSub?.cancel();
     _geofenceSub = GeofenceService().homeStream.listen(_onGeofenceEvent);
 
+    // ★ Bixby movement 실시간 감지 (data/iot movement 필드)
+    _startMovementListener();
+
     // ★ 백그라운드→포그라운드 전환 시 상태 재로딩
     WidgetsBinding.instance.addObserver(this);
 
@@ -200,14 +235,202 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
     final timeStr = DateFormat('HH:mm').format(now);
 
     if (!entering && _state != DayState.outing) {
-      // EXIT → 자동 외출 (idle/sleeping 제외)
+      // EXIT → data/iot에 이벤트 기록 (CF onIotWrite가 timeRecords 처리)
       if (_state == DayState.idle || _state == DayState.sleeping) return;
-      _log('Geofence EXIT → 자동 외출');
-      _handleOuting(dateStr, timeStr);
+      _log('Geofence EXIT → iot 이벤트 기록');
+      _outingTime = timeStr;
+      _returnTime = null;
+      _writeGeofenceToIot(type: 'out', timeStr: timeStr);
+      forceState(DayState.outing);
+      _emitAction('outing_start', '🚪', '외출 $timeStr (GPS)');
     } else if (entering && _state == DayState.outing) {
-      // ENTER → 자동 귀가
-      _log('Geofence ENTER → 자동 귀가');
-      _handleOuting(dateStr, timeStr);
+      // ENTER → data/iot에 이벤트 기록
+      _log('Geofence ENTER → iot 이벤트 기록');
+      _returnTime = timeStr;
+      _writeGeofenceToIot(type: 'home', timeStr: timeStr);
+      forceState(DayState.returned);
+      _emitAction('outing_end', '🏠', '귀가 $timeStr (GPS)');
+    }
+  }
+
+  Future<void> _writeGeofenceToIot({required String type, required String timeStr}) async {
+    try {
+      final ref = FirebaseFirestore.instance.doc(_iotDocPath);
+      if (type == 'out') {
+        await ref.set({
+          'movement': {
+            'pending': false,
+            'type': 'out',
+            'leftAt': FieldValue.serverTimestamp(),
+            'leftAtLocal': timeStr,
+            'source': 'geofence',
+            'confirmedAt': FieldValue.serverTimestamp(),
+          }
+        }, SetOptions(merge: true)).timeout(const Duration(seconds: 5));
+      } else {
+        await ref.update({
+          'movement.type': 'home',
+          'movement.returnedAt': FieldValue.serverTimestamp(),
+          'movement.returnedAtLocal': timeStr,
+          'movement.source': 'geofence',
+        }).timeout(const Duration(seconds: 5));
+      }
+    } catch (e) {
+      _log('iot 기록 에러: $e');
+    }
+  }
+
+  // ═══════════════════════════════════════════
+  //  Activity Recognition 파싱
+  // ═══════════════════════════════════════════
+
+  void _parseActivityData(Map<String, dynamic> data) {
+    final activity = data['activity'] as Map?;
+    if (activity == null) return;
+    final actDate = activity['date'] as String?;
+    final todayStr = _studyDate(DateTime.now());
+    if (actDate != todayStr) {
+      // 날짜 다르면 무시
+      if (_activityTransitions.isNotEmpty) {
+        _activityTransitions = [];
+        _currentActivity = null;
+        _activityDate = null;
+        notifyListeners();
+      }
+      return;
+    }
+    bool changed = false;
+    final newCurrent = activity['current'] as String?;
+    if (newCurrent != _currentActivity) {
+      _currentActivity = newCurrent;
+      _activityDate = actDate;
+      changed = true;
+    }
+    final transitions = activity['transitions'] as List?;
+    if (transitions != null) {
+      final newList = transitions
+          .map((t) {
+            final m = Map<String, dynamic>.from(t as Map);
+            return {
+              'type': m['type']?.toString() ?? '',
+              'time': m['time']?.toString() ?? '',
+            };
+          })
+          .toList();
+      if (newList.length != _activityTransitions.length) {
+        _activityTransitions = newList;
+        changed = true;
+      }
+    }
+    if (changed) notifyListeners();
+  }
+
+  // ═══════════════════════════════════════════
+  //  Bixby movement 실시간 감지
+  // ═══════════════════════════════════════════
+
+  static const String _iotDocPath = 'users/sJ8Pxusw9gR0tNR44RhkIge7OiG2/data/iot';
+  String? _lastMovementType;
+  bool _movementFirstSnapshot = true;
+
+  void _startMovementListener() {
+    _movementSub?.cancel();
+    _movementFirstSnapshot = true;
+    _movementSub = FirebaseFirestore.instance
+        .doc(_iotDocPath)
+        .snapshots()
+        .listen(_onMovementSnapshot, onError: (e) {
+      _log('movement 스트림 에러: $e');
+      Future.delayed(const Duration(seconds: 5), _startMovementListener);
+    });
+  }
+
+  void _onMovementSnapshot(DocumentSnapshot snapshot) {
+    if (!snapshot.exists) return;
+    try {
+      final data = Map<String, dynamic>.from(snapshot.data() as Map);
+
+      // ── Activity Recognition 파싱 (movement 변경 무관하게 항상 처리) ──
+      _parseActivityData(data);
+
+      final movement = data['movement'] as Map?;
+      if (movement == null) return;
+
+      final pending = movement['pending'] as bool? ?? false;
+      final type = movement['type'] as String? ?? '';
+
+      final key = '${pending}_$type';
+      final leftLocal = movement['leftAtLocal'] as String?;
+      final returnLocal = movement['returnedAtLocal'] as String?;
+
+      // 첫 스냅샷: 상태 동기화 (앱 재설치/업데이트 포함)
+      if (_movementFirstSnapshot) {
+        _movementFirstSnapshot = false;
+        _lastMovementType = key;
+        _log('movement 초기 동기화: type=$type, pending=$pending, state=${_state.name}');
+        // 시간 복원
+        if (leftLocal != null) _outingTime = leftLocal;
+        if (returnLocal != null) _returnTime = returnLocal;
+        // ★ 조건 완화: SharedPrefs 날림 후에도 iot 기준으로 복원
+        if (type == 'out' && !pending) {
+          if (_state != DayState.outing) {
+            _log('초기 동기화 → 외출 반영');
+            _returnTime = null;
+            forceState(DayState.outing);
+          } else {
+            notifyListeners(); // 상태 같아도 시간값 전파
+          }
+        } else if (type == 'home') {
+          if (_state != DayState.returned && _state != DayState.studying
+              && _state != DayState.sleeping) {
+            _log('초기 동기화 → 귀가 반영');
+            forceState(DayState.returned);
+          } else {
+            notifyListeners(); // 시간값 전파
+          }
+        } else {
+          notifyListeners(); // pending 등 기타 — 시간값만 전파
+        }
+        return;
+      }
+
+      // 중복 처리 방지
+      if (key == _lastMovementType) return;
+      _lastMovementType = key;
+
+      final now = DateTime.now();
+      final dateStr = _studyDate(now);
+      final timeStr = DateFormat('HH:mm').format(now);
+
+      final source = movement['source'] as String? ?? '';
+
+      if (type == 'out' && !pending && _state != DayState.outing
+          && !source.startsWith('geofence')) {
+        // CF가 확정 → UI 상태만 전환 (geofence는 자체 처리)
+        _log('Bixby → 외출 확정 ($leftLocal) — UI만 반영');
+        _outingTime = leftLocal ?? timeStr;
+        _returnTime = null;
+        forceState(DayState.outing);
+        _emitAction('outing_start', '🚪', '외출 ${leftLocal ?? timeStr}');
+      } else if (type == 'home' && _state == DayState.outing) {
+        // 귀가 → UI 상태만 전환
+        _log('Bixby → 귀가 — UI만 반영');
+        _returnTime = returnLocal ?? timeStr;
+        forceState(DayState.returned);
+        _emitAction('outing_end', '🏠', '귀가 ${returnLocal ?? timeStr}');
+      } else if (pending && _state != DayState.outing) {
+        // pending 상태 — UI 알림만 (상태 전환 X)
+        _log('Bixby → 외출 pending ($leftLocal) — 대기');
+        _emitAction('outing_pending', '🚶', '외출 감지 ${leftLocal ?? timeStr} — 확인 중');
+        notifyListeners();
+      } else if (type == 'cancelled') {
+        // 빠른 복귀 → pending 취소
+        _log('Bixby → 외출 취소 (빠른 복귀)');
+        _emitAction('outing_cancelled', '✅', '복귀 — 외출 취소');
+        notifyListeners();
+      }
+    } catch (e) {
+      _log('movement 파싱 에러: $e');
     }
   }
 
@@ -526,6 +749,8 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
     } else {
       _state = DayState.idle;
       _isMealing = false;
+      _outingTime = null;
+      _returnTime = null;
       await _saveState();
       _log('날짜 변경 → 리셋');
     }

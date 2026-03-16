@@ -64,6 +64,7 @@ extension _HomeDailyLog on _HomeScreenState {
         case '준비': return const Color(0xFFF59E0B);
         case '재택': return const Color(0xFF5B7ABF);
         case '이동': return const Color(0xFF3B8A6B);
+        case '체류': return const Color(0xFF8B5CF6);
         case '공부': return const Color(0xFF6366F1);
         case '식사': return const Color(0xFFFF8A65);
         case '자유': return const Color(0xFF94A3B8);
@@ -77,6 +78,7 @@ extension _HomeDailyLog on _HomeScreenState {
         case '준비': return '🌅';
         case '재택': return '🏠';
         case '이동': return '🚶';
+        case '체류': return '📍';
         case '공부': return '📖';
         case '식사': return '🍽️';
         case '자유': return '🏠';
@@ -107,20 +109,29 @@ extension _HomeDailyLog on _HomeScreenState {
       
       // 이벤트 타입에 따라 세그먼트 라벨 결정
       String label;
+      final nextType = i + 1 < events.length ? events[i + 1].type : '';
       switch (curr.type) {
-        case 'wake': label = _noOuting ? '재택' : '준비'; break;
+        case 'wake':
+          if (nextType == 'outing') { label = '준비'; }
+          else if (nextType.isEmpty) {
+            // 마지막 세그먼트 (현재까지) → NFC 상태 기반
+            if (_nfc.isOut) { label = '이동'; }
+            else if (_nfc.isStudying) { label = '공부'; }
+            else if (_noOuting) { label = '재택'; }
+            else { label = '자유'; }
+          } else if (_noOuting) { label = '재택'; }
+          else { label = '자유'; }
+          break;
         case 'outing': label = '이동'; break;
         case 'studyStart': label = '공부'; break;
         case 'studyEnd':
           // 공부종료 → 다음 이벤트까지 (귀가 전이면 이동, 아니면 자유)
-          final nextType = i + 1 < events.length ? events[i + 1].type : '';
           label = nextType == 'returnHome' ? '이동' : '자유';
           break;
         case 'mealStart': label = '식사'; break;
         case 'mealEnd':
           // 식사종료 → 다음까지 (공부/자유 등)
-          final nextT = i + 1 < events.length ? events[i + 1].type : '';
-          label = nextT == 'studyEnd' || nextT == 'returnHome' ? '공부' : (_noOuting ? '재택' : '준비');
+          label = nextType == 'studyEnd' || nextType == 'returnHome' ? '공부' : '자유';
           break;
         case 'returnHome': label = '자유'; break;
         case 'bedTime': label = '취침'; break;
@@ -128,10 +139,9 @@ extension _HomeDailyLog on _HomeScreenState {
           // meal_N_start, meal_N_end 등
           if (curr.type.endsWith('_start')) { label = '식사'; }
           else if (curr.type.endsWith('_end')) {
-            final nextT = i + 1 < events.length ? events[i + 1].type : '';
-            label = nextT.contains('study') || nextT.contains('meal') ? '공부' : (_noOuting ? '재택' : '준비');
+            label = nextType.contains('study') || nextType.contains('meal') ? '공부' : '자유';
           }
-          else { label = _noOuting ? '재택' : '준비'; }
+          else { label = '자유'; }
       }
       
       segments.add(_DaySegment(
@@ -150,6 +160,82 @@ extension _HomeDailyLog on _HomeScreenState {
       seen.add(key);
       return false;
     });
+
+    // ── Activity Recognition: "이동" 세그먼트 → 이동/체류 세분화 ──
+    final actTransitions = _nfc.activityTransitions;
+    if (actTransitions.isNotEmpty) {
+      final refined = <_DaySegment>[];
+      for (final seg in segments) {
+        if (seg.label != '이동') {
+          refined.add(seg);
+          continue;
+        }
+        final segStartMin = safeMin(seg.start);
+        final segEndMin = safeMin(seg.end);
+
+        // 이 세그먼트 시간대의 activity transitions
+        final relevant = actTransitions.where((t) {
+          final m = safeMin(t['time'] ?? '00:00');
+          return m > segStartMin && m < segEndMin;
+        }).toList()
+          ..sort((a, b) =>
+              safeMin(a['time']!).compareTo(safeMin(b['time']!)));
+
+        if (relevant.isEmpty) {
+          // transition 없음 → 현재 activity 또는 직전 transition 기준
+          final before = actTransitions.where((t) =>
+              safeMin(t['time']!) <= segStartMin).toList();
+          if (before.isNotEmpty) {
+            before.sort((a, b) =>
+                safeMin(a['time']!).compareTo(safeMin(b['time']!)));
+            if (before.last['type'] == 'still') {
+              refined.add(_DaySegment(
+                start: seg.start, end: seg.end,
+                label: '체류', emoji: '📍',
+                color: const Color(0xFF8B5CF6)));
+              continue;
+            }
+          }
+          refined.add(seg);
+          continue;
+        }
+
+        // 세그먼트 시작 전 마지막 transition → 초기 상태
+        String curType = 'moving';
+        final before = actTransitions.where((t) =>
+            safeMin(t['time']!) <= segStartMin).toList();
+        if (before.isNotEmpty) {
+          before.sort((a, b) =>
+              safeMin(a['time']!).compareTo(safeMin(b['time']!)));
+          curType = before.last['type'] ?? 'moving';
+        }
+
+        String cursor = seg.start;
+        for (final t in relevant) {
+          final tTime = t['time']!;
+          if (cursor != tTime && safeMin(cursor) < safeMin(tTime)) {
+            final label = curType == 'still' ? '체류' : '이동';
+            refined.add(_DaySegment(
+              start: cursor, end: tTime,
+              label: label, emoji: _emojiFor(label),
+              color: _colorFor(label)));
+          }
+          cursor = tTime;
+          curType = t['type'] ?? 'moving';
+        }
+        // 남은 구간
+        if (safeMin(cursor) < segEndMin) {
+          final label = curType == 'still' ? '체류' : '이동';
+          refined.add(_DaySegment(
+            start: cursor, end: seg.end,
+            label: label, emoji: _emojiFor(label),
+            color: _colorFor(label)));
+        }
+      }
+      segments
+        ..clear()
+        ..addAll(refined);
+    }
 
     if (segments.isEmpty) return const SizedBox.shrink();
 
@@ -365,14 +451,14 @@ extension _HomeDailyLog on _HomeScreenState {
               }
               // 이동, 공부, 자유 순서로 표시
               final display = <MapEntry<String, int>>[];
-              for (final k in ['이동', '공부', '자유', '준비', '재택', '식사']) {
+              for (final k in ['이동', '체류', '공부', '자유', '준비', '재택', '식사']) {
                 if (catMin.containsKey(k)) display.add(MapEntry(k, catMin[k]!));
               }
               if (display.isEmpty) return <Widget>[];
               return display.asMap().entries.map((entry) {
                 final e = entry.value;
                 final isLast = entry.key == display.length - 1;
-                final emoji = e.key == '이동' ? '🚶' : e.key == '공부' ? '📖' : e.key == '자유' ? '🏠' : e.key == '준비' ? '🌅' : e.key == '재택' ? '🏠' : '🍽️';
+                final emoji = e.key == '이동' ? '🚶' : e.key == '체류' ? '📍' : e.key == '공부' ? '📖' : e.key == '자유' ? '🏠' : e.key == '준비' ? '🌅' : e.key == '재택' ? '🏠' : '🍽️';
                 final h = e.value ~/ 60; final m = e.value % 60;
                 final timeStr = h > 0 ? '${h}h${m > 0 ? " ${m}m" : ""}' : '${m}m';
                 return Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
