@@ -3,25 +3,23 @@
 ## 세션 시작 시 반드시 읽을 것
 > 이 섹션만 읽으면 현재 상태 파악 가능. 상세 히스토리는 하단.
 
-### 현재 버전: v10.11.0 (2026-03-18)
-- **이번 세션 변경사항:**
-  - CF `kstStudyDate()` 4AM 경계 헬퍼 추가 — 기상/외출/귀가/지오펜스 전체 적용
-  - CF 배포 완료 (4개 함수: pollDoorSensor, onIotWrite, checkDoorManual, girlfriendBotWebhook)
-  - 헤드위그 봇: today doc flat 구조 읽기 수정
-  - 앱 재설치 시 stale movement 복원 방지 (iot doc 날짜 검증)
-  - today doc `_parseTodayData` 날짜 불일치 시 stale 데이터 무시
-  - 데일리 로그 세그먼트 탭 → 시간 직접 편집 (Firestore 저장)
-  - `OrderHabit.autoTrigger` 필드 추가 (wake/sleep → 습관 자동 완료)
-  - NFC 기상/취침 시 매칭 습관 자동 체크
+### 현재 버전: v10.13.1 (2026-03-18)
+- **이번 세션 변경사항 (데드코드 정리 + 버그 수정):**
+  - Phase 1: 데드 파일 6개 삭제 (nfc_screen×2, nfc_action_part, focus_records_widget, location_request_service)
+  - Phase 2: 좀비 AnimationController 5개 + 미사용 Painter 7개 삭제
+  - Phase 3: 비활성 game/habitat 모듈 + plan_service + plan_models PART2 삭제
+  - Phase 4: NfcService→DayService, NfcTagRole→ActionType rename (호환 래퍼 제거)
+  - Phase 5: Firebase UID 중앙화 → `lib/constants.dart` (9개 파일 하드코딩 제거)
+  - **버그 수정**: Order `_update()` 레이스컨디션 — `_safeSetState(fn)`이 빌드 중 fn()을 지연시키면 _save()가 변경 전 데이터를 저장하는 버그
+  - 총 ~5,600줄 데드코드 삭제
 
 ### 미커밋 파일
-- 없음 (전체 커밋 + 푸시 완료)
+- 없음 (전체 커밋 완료)
 
 ### 미배포
-- 없음 (CF 배포 완료, 앱 빌드 완료 — 폰 연결 후 `adb install -r build/app/outputs/flutter-apk/app-release.apk`)
+- 없음 (빌드 + 폰 설치 완료)
 
 ### 다음 할 일
-- [ ] 폰 연결 후 앱 설치 (`adb install -r`)
 - [ ] 습관에 autoTrigger 설정 UI (습관 상세 화면에서 wake/sleep 선택)
 - [ ] 오염된 Firestore 데이터 수동 정리 (study doc timeRecords 새벽 기록)
 - [ ] 투두에서 진행도 목표 연결 UI (목표 선택 드롭다운)
@@ -34,6 +32,12 @@
 ---
 
 ## 히스토리
+
+### 2026-03-18 — v10.13.1 (데드코드 정리)
+- 데드 파일 6개 + 좀비 컨트롤러/페인터 + game/habitat/plan 모듈 삭제 (~5,600줄)
+- NfcService→DayService, NfcTagRole→ActionType rename
+- Firebase UID 중앙화 (constants.dart)
+- Order _update() 레이스컨디션 수정
 
 ### 2026-03-18 — v10.11.0
 - CF 4AM 경계 적용 + 헤드위그 flat 구조 수정 + 배포
