@@ -3,37 +3,27 @@
 ## 세션 시작 시 반드시 읽을 것
 > 이 섹션만 읽으면 현재 상태 파악 가능. 상세 히스토리는 하단.
 
-### 현재 버전: v10.10.0 (2026-03-17)
+### 현재 버전: v10.11.0 (2026-03-18)
 - **이번 세션 변경사항:**
-  - DailyGrade 점수 시스템 전체 제거 (순공시간 표시로 대체)
-  - "다영에게 알리기" 스낵바 제거
-  - 텔레그램 알림: 외출/귀가만 유지 (기상/공부/식사/취침 제거)
-  - 외출/귀가 UI 즉시 반영 (NfcService Single Source of Truth)
-  - 데일리 로그: 무한 '준비' 제거 (NFC 상태 기반 라벨)
-  - 앱 재설치 후 movement 상태 자동 복원
-  - CF onIotWrite: data/iot → today+study 듀얼라이트 (Single Writer)
-  - Todo ↔ Progress 연결: goalId 필드 추가, 투두 완료 시 진행도 자동 반영
+  - CF `kstStudyDate()` 4AM 경계 헬퍼 추가 — 기상/외출/귀가/지오펜스 전체 적용
+  - CF 배포 완료 (4개 함수: pollDoorSensor, onIotWrite, checkDoorManual, girlfriendBotWebhook)
+  - 헤드위그 봇: today doc flat 구조 읽기 수정
+  - 앱 재설치 시 stale movement 복원 방지 (iot doc 날짜 검증)
+  - today doc `_parseTodayData` 날짜 불일치 시 stale 데이터 무시
+  - 데일리 로그 세그먼트 탭 → 시간 직접 편집 (Firestore 저장)
+  - `OrderHabit.autoTrigger` 필드 추가 (wake/sleep → 습관 자동 완료)
+  - NFC 기상/취침 시 매칭 습관 자동 체크
 
 ### 미커밋 파일
-- `functions/index.js` — onIotWrite CF 신규, checkMovementPending 듀얼라이트
-- `lib/services/nfc_service.dart` — movement listener, forceState, outingTime/returnTime
-- `lib/services/fcm_service.dart` — geofence → iot 기록 간소화
-- `lib/screens/home_screen.dart` — DailyGrade 제거, NFC 시간 즉시 반영
-- `lib/screens/home_daily_log.dart` — NFC 상태 기반 세그먼트 라벨
-- `lib/screens/home_routine_card.dart` — 다영 알리기 제거
-- `lib/services/nfc_action_part.dart` — 외출/귀가만 텔레그램
-- `lib/services/todo_service.dart` — goalId 기반 진행도 자동 반영
-- `lib/models/plan_models.dart` — TodoItem.goalId, goalUnits 추가
-- `lib/models/models.dart` — DailyGrade 클래스 삭제
-- `lib/screens/calendar_*.dart`, `statistics_screen.dart`, `plan_service.dart` — grade 참조 제거
-- `lib/app_init.dart` — 초기화 순서 개선 (Phase 4a/4b)
-- `lib/screens/settings_screen.dart` — 공부 장소 카드 제거
+- 없음 (전체 커밋 + 푸시 완료)
 
 ### 미배포
-- `functions/index.js` — `firebase deploy --only functions` 필요
+- 없음 (CF 배포 완료, 앱 빌드 완료 — 폰 연결 후 `adb install -r build/app/outputs/flutter-apk/app-release.apk`)
 
 ### 다음 할 일
-- [ ] CF functions 배포 (onIotWrite 활성화)
+- [ ] 폰 연결 후 앱 설치 (`adb install -r`)
+- [ ] 습관에 autoTrigger 설정 UI (습관 상세 화면에서 wake/sleep 선택)
+- [ ] 오염된 Firestore 데이터 수동 정리 (study doc timeRecords 새벽 기록)
 - [ ] 투두에서 진행도 목표 연결 UI (목표 선택 드롭다운)
 - [ ] 경제학 등 신규 과목 로드맵 설정
 - [ ] 크리쳐 알람 시스템 재설계
@@ -44,6 +34,12 @@
 ---
 
 ## 히스토리
+
+### 2026-03-18 — v10.11.0
+- CF 4AM 경계 적용 + 헤드위그 flat 구조 수정 + 배포
+- 앱 재설치 stale movement 방지
+- 데일리 로그 세그먼트 직접 편집
+- OrderHabit autoTrigger (기상/취침 습관 자동 완료)
 
 ### 2026-03-17 — v10.10.0
 - DailyGrade 전체 제거 + 순공시간 UI 대체
