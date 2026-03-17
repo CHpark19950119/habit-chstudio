@@ -471,7 +471,7 @@ class _JourneyScreenState extends State<JourneyScreen>
       opacity: _card2Fade,
       child: _JCard(
         title: '실제 기록',
-        subtitle: '인생 로드맵 v12',
+        subtitle: '인생 로드맵 v13',
         description: '13,315건의 데이터로 복원한\n실제 삶의 궤적',
         icon: Icons.route_rounded,
         tags: const ['12섹션', '1995–2026'],

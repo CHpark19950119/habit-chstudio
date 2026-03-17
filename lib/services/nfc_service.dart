@@ -17,11 +17,16 @@ import 'bus_service.dart';
 import 'location_service.dart';
 import 'report_service.dart';
 import 'backup_service.dart';
+import 'routine_service.dart';
+import 'meal_service.dart';
+import 'movement_service.dart';
+import 'safety_net_service.dart';
 
 part 'nfc_action_part.dart';
 
 /// ═══════════════════════════════════════════════════
 ///  DayState FSM — 하루 루틴 상태 (식사 제외)
+///  ※ 외부 호환을 위해 여기 선언, RoutineService에서 import해서 사용
 /// ═══════════════════════════════════════════════════
 enum DayState {
   idle,       // 아직 기상 전
@@ -42,39 +47,19 @@ class NfcAction {
 
 const _nfcChannel = MethodChannel('com.cheonhong.cheonhong_studio/nfc');
 
-class NfcService extends ChangeNotifier with WidgetsBindingObserver {
+class NfcService extends ChangeNotifier {
   static final NfcService _instance = NfcService._internal();
   factory NfcService() => _instance;
   NfcService._internal();
 
+  // ═══ NFC 전용 ═══
   List<NfcTagConfig> _tags = [];
   bool _nfcAvailable = false;
   bool _initialized = false;
 
-  // ═══ FSM (식사 제외) ═══
-  DayState _state = DayState.idle;
-
-  // ═══ 식사 독립 추적 ═══
-  bool _isMealing = false;
-
   // ═══ Tag dedup (30s) ═══
   final Map<NfcTagRole, DateTime> _lastTagTime = {};
   static const _dedupWindow = Duration(seconds: 30);
-
-  // ═══ Reminders ═══
-  Timer? _wakeReminder;
-  Timer? _mealReminder;
-  StreamSubscription<bool>? _geofenceSub;
-  StreamSubscription<DocumentSnapshot>? _movementSub;
-
-  // ═══ Movement times (Single Source of Truth for UI) ═══
-  String? _outingTime;
-  String? _returnTime;
-
-  // ═══ Activity Recognition (이동/정지 감지) ═══
-  String? _currentActivity;
-  List<Map<String, String>> _activityTransitions = [];
-  String? _activityDate;
 
   // ═══ UI ═══
   NfcAction? _lastAction;
@@ -82,19 +67,23 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
   bool _silentReaderEnabled = false;
   bool _notifPermissionRequested = false;
 
-  // ═══ Getters ═══
-  DayState get state => _state;
-  bool get isOut => _state == DayState.outing;
-  bool get isStudying => _state == DayState.studying;
-  bool get isMealing => _isMealing;
+  // ═══ Sub-service refs ═══
+  final _routine = RoutineService();
+  final _meal = MealService();
+  final _movement = MovementService();
+
+  // ═══ Getters (delegate to sub-services) ═══
+  DayState get state => _routine.state;
+  bool get isOut => _routine.isOut;
+  bool get isStudying => _routine.isStudying;
+  bool get isMealing => _meal.isMealing;
   bool get isAvailable => _nfcAvailable;
   bool get isSilentReaderEnabled => _silentReaderEnabled;
   List<NfcTagConfig> get tags => List.unmodifiable(_tags);
-  String? get outingTime => _outingTime;
-  String? get returnTime => _returnTime;
-  String? get currentActivity => _currentActivity;
-  List<Map<String, String>> get activityTransitions =>
-      List.unmodifiable(_activityTransitions);
+  String? get outingTime => _movement.outingTime;
+  String? get returnTime => _movement.returnTime;
+  String? get currentActivity => _movement.currentActivity;
+  List<Map<String, String>> get activityTransitions => _movement.activityTransitions;
 
   NfcAction? consumeLastAction() {
     final a = _lastAction;
@@ -107,11 +96,11 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
-  // ═══ State force (home_routine_card 수동 편집용) ═══
-  /// 자동 수면 감지에서 호출 — 화면 꺼진 시각 기준으로 취침 처리
+  // ═══ State force (외부 호출용 facade) ═══
+
   Future<void> triggerAutoSleep(DateTime sleepTime) async {
-    if (_state == DayState.idle || _state == DayState.sleeping) {
-      _log('Auto-sleep skip (${_state.name})');
+    if (_routine.state == DayState.idle || _routine.state == DayState.sleeping) {
+      _log('Auto-sleep skip (${_routine.state.name})');
       return;
     }
     final dateStr = _studyDate(sleepTime);
@@ -121,35 +110,16 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void forceOutState(bool value) {
-    if (value) { _state = DayState.outing; }
-    else if (_state == DayState.outing) { _state = DayState.returned; }
-    _saveState();
+    if (value) { _routine.setState(DayState.outing); }
+    else if (_routine.state == DayState.outing) { _routine.setState(DayState.returned); }
+    _routine.saveState();
     notifyListeners();
   }
 
-  /// 외부 이벤트(FCM/CF) → UI 상태만 변경 (timeRecords 쓰기 없음)
-  void forceState(DayState newState) {
-    if (_state == newState) return;
-    _log('forceState: ${_state.name} → ${newState.name}');
-    _state = newState;
-    _saveState();
-    if (newState == DayState.awake) {
-      _startWakeReminder();
-      BusService().startPolling();
-    } else if (newState == DayState.outing) {
-      _cancelReminders();
-      BusService().stopPolling();
-    }
-    notifyListeners();
-  }
+  void forceState(DayState newState) => _routine.forceState(newState);
+  void forceStudyState(bool value) => _routine.forceStudyState(value);
 
-  void forceStudyState(bool value) {
-    if (value) { _state = DayState.studying; }
-    else if (_state == DayState.studying) { _state = DayState.returned; }
-    _saveState();
-    notifyListeners();
-  }
-
+  // ═══ 로깅 ═══
   void _log(String msg) {
     debugPrint('[NFC] $msg');
     lastDiagnostic = '${DateFormat('HH:mm:ss').format(DateTime.now())} $msg';
@@ -169,7 +139,23 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
     catch (_) { _nfcAvailable = false; }
 
     await _loadTags();
-    await _restoreState();
+
+    // Sub-services 초기화
+    await _routine.initialize(_nfcChannel);
+    await _meal.initialize();
+
+    // Sub-service 변경 → NfcService notifyListeners 전파
+    _routine.addListener(notifyListeners);
+    _meal.addListener(notifyListeners);
+    _movement.addListener(notifyListeners);
+
+    // Movement action callback → NfcService _emitAction으로 전파
+    _movement.onAction = (action, emoji, message) {
+      _emitAction(action, emoji, message);
+    };
+
+    _log('복원: state=${_routine.state.name}, meal=${_meal.isMealing}');
+
     _setupMethodChannel();
 
     try { await _nfcChannel.invokeMethod('flutterReady'); } catch (_) {}
@@ -192,272 +178,14 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
 
     await _requestNotificationPermissionOnce();
 
-    // ★ Geofence 자동 외출/귀가 연결
-    _geofenceSub?.cancel();
-    _geofenceSub = GeofenceService().homeStream.listen(_onGeofenceEvent);
+    // Movement 서비스 초기화 (Geofence + Bixby movement 리스너)
+    await _movement.initialize();
 
-    // ★ Bixby movement 실시간 감지 (data/iot movement 필드)
-    _startMovementListener();
-
-    // ★ 백그라운드→포그라운드 전환 시 상태 재로딩
-    WidgetsBinding.instance.addObserver(this);
+    // 외출 중이면 Activity Recognition 재시작 (앱 업데이트 대응)
+    await _routine.restartActivityRecognitionIfNeeded();
 
     _initialized = true;
-    _log('초기화 완료 (state=${_state.name}, mealing=$_isMealing)');
-    notifyListeners();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
-    if (lifecycleState == AppLifecycleState.resumed) {
-      _syncStateFromPrefs();
-    }
-  }
-
-  /// 백그라운드 FCM/Geofence가 SharedPreferences에 저장한 상태를 읽어 UI 반영
-  Future<void> _syncStateFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.reload(); // isolate 간 동기화
-    final savedDate = prefs.getString('nfc_state_date');
-    if (savedDate != _studyDate()) return;
-    final savedName = prefs.getString('nfc_state') ?? 'idle';
-    final saved = DayState.values.firstWhere(
-      (s) => s.name == savedName, orElse: () => DayState.idle);
-    if (saved != _state) {
-      _log('resume 동기화: $_state → $saved');
-      _state = saved;
-      notifyListeners();
-    }
-  }
-
-  void _onGeofenceEvent(bool entering) {
-    final now = DateTime.now();
-    final dateStr = _studyDate(now);
-    final timeStr = DateFormat('HH:mm').format(now);
-
-    if (!entering && _state != DayState.outing) {
-      // EXIT → data/iot에 이벤트 기록 (CF onIotWrite가 timeRecords 처리)
-      if (_state == DayState.idle || _state == DayState.sleeping) return;
-      _log('Geofence EXIT → iot 이벤트 기록');
-      _outingTime = timeStr;
-      _returnTime = null;
-      _writeGeofenceToIot(type: 'out', timeStr: timeStr);
-      forceState(DayState.outing);
-      _emitAction('outing_start', '🚪', '외출 $timeStr (GPS)');
-    } else if (entering && _state == DayState.outing) {
-      // ENTER → data/iot에 이벤트 기록
-      _log('Geofence ENTER → iot 이벤트 기록');
-      _returnTime = timeStr;
-      _writeGeofenceToIot(type: 'home', timeStr: timeStr);
-      forceState(DayState.returned);
-      _emitAction('outing_end', '🏠', '귀가 $timeStr (GPS)');
-    }
-  }
-
-  Future<void> _writeGeofenceToIot({required String type, required String timeStr}) async {
-    try {
-      final ref = FirebaseFirestore.instance.doc(_iotDocPath);
-      if (type == 'out') {
-        await ref.set({
-          'movement': {
-            'pending': false,
-            'type': 'out',
-            'leftAt': FieldValue.serverTimestamp(),
-            'leftAtLocal': timeStr,
-            'source': 'geofence',
-            'confirmedAt': FieldValue.serverTimestamp(),
-          }
-        }, SetOptions(merge: true)).timeout(const Duration(seconds: 5));
-      } else {
-        await ref.update({
-          'movement.type': 'home',
-          'movement.returnedAt': FieldValue.serverTimestamp(),
-          'movement.returnedAtLocal': timeStr,
-          'movement.source': 'geofence',
-        }).timeout(const Duration(seconds: 5));
-      }
-    } catch (e) {
-      _log('iot 기록 에러: $e');
-    }
-  }
-
-  // ═══════════════════════════════════════════
-  //  Activity Recognition 파싱
-  // ═══════════════════════════════════════════
-
-  void _parseActivityData(Map<String, dynamic> data) {
-    final activity = data['activity'] as Map?;
-    if (activity == null) return;
-    final actDate = activity['date'] as String?;
-    final todayStr = _studyDate(DateTime.now());
-    if (actDate != todayStr) {
-      // 날짜 다르면 무시
-      if (_activityTransitions.isNotEmpty) {
-        _activityTransitions = [];
-        _currentActivity = null;
-        _activityDate = null;
-        notifyListeners();
-      }
-      return;
-    }
-    bool changed = false;
-    final newCurrent = activity['current'] as String?;
-    if (newCurrent != _currentActivity) {
-      _currentActivity = newCurrent;
-      _activityDate = actDate;
-      changed = true;
-    }
-    final transitions = activity['transitions'] as List?;
-    if (transitions != null) {
-      final newList = transitions
-          .map((t) {
-            final m = Map<String, dynamic>.from(t as Map);
-            return {
-              'type': m['type']?.toString() ?? '',
-              'time': m['time']?.toString() ?? '',
-            };
-          })
-          .toList();
-      if (newList.length != _activityTransitions.length) {
-        _activityTransitions = newList;
-        changed = true;
-      }
-    }
-    if (changed) notifyListeners();
-  }
-
-  // ═══════════════════════════════════════════
-  //  Bixby movement 실시간 감지
-  // ═══════════════════════════════════════════
-
-  static const String _iotDocPath = 'users/sJ8Pxusw9gR0tNR44RhkIge7OiG2/data/iot';
-  String? _lastMovementType;
-  bool _movementFirstSnapshot = true;
-
-  void _startMovementListener() {
-    _movementSub?.cancel();
-    _movementFirstSnapshot = true;
-    _movementSub = FirebaseFirestore.instance
-        .doc(_iotDocPath)
-        .snapshots()
-        .listen(_onMovementSnapshot, onError: (e) {
-      _log('movement 스트림 에러: $e');
-      Future.delayed(const Duration(seconds: 5), _startMovementListener);
-    });
-  }
-
-  void _onMovementSnapshot(DocumentSnapshot snapshot) {
-    if (!snapshot.exists) return;
-    try {
-      final data = Map<String, dynamic>.from(snapshot.data() as Map);
-
-      // ── Activity Recognition 파싱 (movement 변경 무관하게 항상 처리) ──
-      _parseActivityData(data);
-
-      final movement = data['movement'] as Map?;
-      if (movement == null) return;
-
-      final pending = movement['pending'] as bool? ?? false;
-      final type = movement['type'] as String? ?? '';
-
-      final key = '${pending}_$type';
-      final leftLocal = movement['leftAtLocal'] as String?;
-      final returnLocal = movement['returnedAtLocal'] as String?;
-
-      // 첫 스냅샷: 상태 동기화 (앱 재설치/업데이트 포함)
-      if (_movementFirstSnapshot) {
-        _movementFirstSnapshot = false;
-        _lastMovementType = key;
-
-        // ★ FIX: movement 날짜 검증 — stale 데이터면 상태 복원 스킵
-        final mvDate = movement['date'] as String?;
-        final mvLeftAt = movement['leftAt'];  // Firestore Timestamp
-        bool isStale = false;
-        if (mvDate != null && mvDate != _studyDate()) {
-          isStale = true;
-        } else if (mvLeftAt != null && mvDate == null) {
-          // leftAt Timestamp로 날짜 추정
-          try {
-            final leftDt = (mvLeftAt as Timestamp).toDate();
-            if (_studyDate(leftDt) != _studyDate()) isStale = true;
-          } catch (_) {}
-        }
-
-        if (isStale) {
-          _log('movement 초기 동기화 스킵 — stale 데이터 (date=$mvDate)');
-          notifyListeners();
-          return;
-        }
-
-        _log('movement 초기 동기화: type=$type, pending=$pending, state=${_state.name}');
-        // 시간 복원
-        if (leftLocal != null) _outingTime = leftLocal;
-        if (returnLocal != null) _returnTime = returnLocal;
-        // ★ 조건 완화: SharedPrefs 날림 후에도 iot 기준으로 복원
-        if (type == 'out' && !pending) {
-          if (_state != DayState.outing) {
-            _log('초기 동기화 → 외출 반영');
-            _returnTime = null;
-            forceState(DayState.outing);
-          } else {
-            notifyListeners(); // 상태 같아도 시간값 전파
-          }
-        } else if (type == 'home') {
-          if (_state != DayState.returned && _state != DayState.studying
-              && _state != DayState.sleeping) {
-            _log('초기 동기화 → 귀가 반영');
-            forceState(DayState.returned);
-          } else {
-            notifyListeners(); // 시간값 전파
-          }
-        } else {
-          notifyListeners(); // pending 등 기타 — 시간값만 전파
-        }
-        return;
-      }
-
-      // 중복 처리 방지
-      if (key == _lastMovementType) return;
-      _lastMovementType = key;
-
-      final now = DateTime.now();
-      final dateStr = _studyDate(now);
-      final timeStr = DateFormat('HH:mm').format(now);
-
-      final source = movement['source'] as String? ?? '';
-
-      if (type == 'out' && !pending && _state != DayState.outing
-          && !source.startsWith('geofence')) {
-        // CF가 확정 → UI 상태만 전환 (geofence는 자체 처리)
-        _log('Bixby → 외출 확정 ($leftLocal) — UI만 반영');
-        _outingTime = leftLocal ?? timeStr;
-        _returnTime = null;
-        forceState(DayState.outing);
-        _emitAction('outing_start', '🚪', '외출 ${leftLocal ?? timeStr}');
-      } else if (type == 'home' && _state == DayState.outing) {
-        // 귀가 → UI 상태만 전환
-        _log('Bixby → 귀가 — UI만 반영');
-        _returnTime = returnLocal ?? timeStr;
-        forceState(DayState.returned);
-        _emitAction('outing_end', '🏠', '귀가 ${returnLocal ?? timeStr}');
-      } else if (pending && _state != DayState.outing) {
-        // pending 상태 — UI 알림만 (상태 전환 X)
-        _log('Bixby → 외출 pending ($leftLocal) — 대기');
-        _emitAction('outing_pending', '🚶', '외출 감지 ${leftLocal ?? timeStr} — 확인 중');
-        notifyListeners();
-      } else if (type == 'cancelled') {
-        // 빠른 복귀 → pending 취소
-        _log('Bixby → 외출 취소 (빠른 복귀)');
-        _emitAction('outing_cancelled', '✅', '복귀 — 외출 취소');
-        notifyListeners();
-      }
-    } catch (e) {
-      _log('movement 파싱 에러: $e');
-    }
-  }
-
-  Future<void> reloadTags() async {
-    await _loadTags();
+    _log('초기화 완료 (state=${_routine.state.name}, mealing=${_meal.isMealing})');
     notifyListeners();
   }
 
@@ -539,7 +267,7 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
     final timeStr = DateFormat('HH:mm').format(now);
 
     // Auto-wake
-    if (_state == DayState.idle && role != NfcTagRole.wake) {
+    if (_routine.state == DayState.idle && role != NfcTagRole.wake) {
       _log('Auto-wake: ${role.name}');
       await _handleWake(dateStr, timeStr, auto: true);
     }
@@ -570,17 +298,16 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
 
   String? _resolveAction(NfcTagRole role) {
     switch (role) {
-      case NfcTagRole.outing: return _state == DayState.outing ? 'end' : 'start';
+      case NfcTagRole.outing: return _routine.state == DayState.outing ? 'end' : 'start';
       case NfcTagRole.study:
-        if (_state == DayState.studying) return 'end';
-        if (_state == DayState.outing) return 'resume';
+        if (_routine.state == DayState.studying) return 'end';
+        if (_routine.state == DayState.outing) return 'resume';
         return 'start';
-      case NfcTagRole.meal: return _isMealing ? 'end' : 'start';
+      case NfcTagRole.meal: return _meal.isMealing ? 'end' : 'start';
       default: return null;
     }
   }
 
-  /// FCM/외부 트리거에서 호출 — dedup 적용, 이벤트 저장
   Future<void> triggerRole(NfcTagRole role) async {
     await _dispatch(role);
   }
@@ -589,7 +316,7 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
     _lastTagTime.remove(role);
     try {
       await _dispatch(role, saveEvent: false);
-      return '${role.name} OK (state=${_state.name}, meal=$_isMealing)';
+      return '${role.name} OK (state=${_routine.state.name}, meal=${_meal.isMealing})';
     } catch (e) { return '에러: $e'; }
   }
 
@@ -599,6 +326,11 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
       if (t.nfcId?.toLowerCase() == uid.toLowerCase()) return t.name;
     }
     return null;
+  }
+
+  Future<void> reloadTags() async {
+    await _loadTags();
+    notifyListeners();
   }
 
   // ═══════════════════════════════════════════
@@ -749,79 +481,26 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   // ═══════════════════════════════════════════
-  //  FSM 상태 저장/복원 (SharedPreferences)
+  //  이동시간 요약 (delegate)
   // ═══════════════════════════════════════════
 
-  Future<void> _saveState() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('nfc_state', _state.name);
-    await prefs.setBool('nfc_is_mealing', _isMealing);
-    await prefs.setString('nfc_state_date', _studyDate());
-  }
-
-  Future<void> _restoreState() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedDate = prefs.getString('nfc_state_date');
-    if (savedDate == _studyDate()) {
-      _state = DayState.values.firstWhere(
-        (s) => s.name == (prefs.getString('nfc_state') ?? 'idle'),
-        orElse: () => DayState.idle);
-      _isMealing = prefs.getBool('nfc_is_mealing') ?? false;
-      _log('복원: state=${_state.name}, meal=$_isMealing');
-    } else {
-      _state = DayState.idle;
-      _isMealing = false;
-      _outingTime = null;
-      _returnTime = null;
-      await _saveState();
-      _log('날짜 변경 → 리셋');
-    }
-  }
+  Future<Map<String, int?>> getTodayTravelSummary() => _movement.getTodayTravelSummary();
 
   // ═══════════════════════════════════════════
-  //  Reminders
+  //  알림 권한
   // ═══════════════════════════════════════════
 
-  void _startWakeReminder() {
-    _wakeReminder?.cancel();
-    _wakeReminder = Timer(const Duration(minutes: 60), () {
-      if (_state == DayState.awake) {
-        _sendNfc('⏰ 기상 60분 — 공부 시작하세요!');
-        _notifyNative(title: '활동 리마인더', body: '기상 60분 경과');
-      }
-    });
-  }
-
-  void _startMealReminder() {
-    _mealReminder?.cancel();
-    _mealReminder = Timer(const Duration(hours: 4), () {
-      if (_state == DayState.studying && !_isMealing) {
-        _sendNfc('🍽 공부 4시간 — 식사하세요!');
-        _notifyNative(title: '식사 리마인더', body: '공부 4시간 경과');
-      }
-    });
-  }
-
-  void _cancelReminders() { _wakeReminder?.cancel(); _mealReminder?.cancel(); }
-
-  // ═══════════════════════════════════════════
-  //  이동시간 요약
-  // ═══════════════════════════════════════════
-
-  Future<Map<String, int?>> getTodayTravelSummary() async {
-    try {
-      final records = await FirebaseService().getTimeRecords();
-      final tr = records[_studyDate()];
-      if (tr == null) return {};
-      return {'commuteTo': tr.commuteToMinutes, 'commuteFrom': tr.commuteFromMinutes, 'stayTime': tr.stayMinutes};
-    } catch (_) { return {}; }
+  Future<void> _requestNotificationPermissionOnce() async {
+    if (_notifPermissionRequested) return;
+    _notifPermissionRequested = true;
+    try { await _nfcChannel.invokeMethod('requestNotificationPermission'); } catch (_) {}
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _cancelReminders();
-    _geofenceSub?.cancel();
+    _routine.removeListener(notifyListeners);
+    _meal.removeListener(notifyListeners);
+    _movement.removeListener(notifyListeners);
     super.dispose();
   }
 }

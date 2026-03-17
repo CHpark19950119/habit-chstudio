@@ -19,14 +19,14 @@ TimeRecord _withFields(String date, TimeRecord? e, {
 );
 
 /// ═══════════════════════════════════════════════════════════
-/// NFC — DayState FSM Handlers (식사 독립 추적)
+/// NFC — DayState FSM Handlers (서브서비스 위임)
 /// ═══════════════════════════════════════════════════════════
 extension _NfcActionHandlers on NfcService {
 
   // ═══ 기상 (wake) ═══
 
   Future<void> _handleWake(String dateStr, String timeStr, {bool auto = false}) async {
-    if (_state != DayState.idle && _state != DayState.sleeping && !auto) {
+    if (_routine.state != DayState.idle && _routine.state != DayState.sleeping && !auto) {
       _emitAction('wake_already', '🚿', '이미 기상됨');
       return;
     }
@@ -41,9 +41,9 @@ extension _NfcActionHandlers on NfcService {
       await fb.updateTimeRecord(dateStr, _withFields(dateStr, e, wake: timeStr))
           .timeout(const Duration(seconds: 5));
 
-      _state = DayState.awake;
-      await _saveState();
-      _startWakeReminder();
+      _routine.setState(DayState.awake);
+      await _routine.saveState();
+      _routine.startWakeReminder();
 
       final tgTime = DateFormat('HH:mm').format(DateTime.now());
       if (!auto) {
@@ -54,8 +54,10 @@ extension _NfcActionHandlers on NfcService {
       }
       _triggerWidgetUpdate();
 
-      // 버스 도착정보 폴링 시작
       BusService().startPolling();
+
+      // 안전망 알림 해제
+      SafetyNetService().clearAlert(SafetyCheck.wakeMiss);
 
       // ★ v6: 습관 자동 트리거 (wake)
       _autoTriggerHabits('wake', dateStr);
@@ -67,14 +69,14 @@ extension _NfcActionHandlers on NfcService {
   // ═══ 외출/귀가 (outing) ═══
 
   Future<void> _handleOuting(String dateStr, String timeStr) async {
-    _log('외출: state=${_state.name}');
+    _log('외출: state=${_routine.state.name}');
     try {
       final fb = FirebaseService();
       final records = await fb.getTimeRecords().timeout(const Duration(seconds: 5));
       final e = records[dateStr];
       final tgTime = DateFormat('HH:mm').format(DateTime.now());
 
-      if (_state == DayState.outing) {
+      if (_routine.state == DayState.outing) {
         // ── 귀가 ──
         await fb.updateTimeRecord(dateStr, _withFields(dateStr, e, returnHome: timeStr))
             .timeout(const Duration(seconds: 5));
@@ -83,11 +85,12 @@ extension _NfcActionHandlers on NfcService {
           final m = _timeDiffMin(e!.outing!, timeStr);
           if (m > 0) dur = ' (${_fmtMin(m)})';
         }
-        _state = DayState.returned;
-        await _saveState();
+        _routine.setState(DayState.returned);
+        await _routine.saveState();
         _sendNfc('🏠 귀가 $tgTime$dur');
         _notifyNative(title: '귀가', body: '귀가 $tgTime$dur');
         _emitAction('outing_end', '🏠', '귀가 $tgTime$dur');
+        SafetyNetService().clearAlert(SafetyCheck.returnMiss);
       } else {
         // ── 외출 ──
         await fb.updateTimeRecord(dateStr,
@@ -98,13 +101,14 @@ extension _NfcActionHandlers on NfcService {
           final pos = await LocationService().getCurrentPosition();
           if (pos != null) loc = ' (${LocationService.formatPosition(pos)})';
         } catch (_) {}
-        _state = DayState.outing;
-        await _saveState();
-        _cancelReminders();
+        _routine.setState(DayState.outing);
+        await _routine.saveState();
+        _routine.cancelReminders();
         BusService().stopPolling();
         _sendNfc('🚶 외출 $tgTime$loc');
         _notifyNative(title: '외출', body: '외출 $tgTime');
         _emitAction('outing_start', '🚪', '외출 $tgTime$loc');
+        SafetyNetService().clearAlert(SafetyCheck.outingMiss);
       }
     } catch (e) {
       _log('Outing 에러: $e');
@@ -114,7 +118,7 @@ extension _NfcActionHandlers on NfcService {
   // ═══ 공부 (study) ═══
 
   Future<void> _handleStudy(String dateStr, String timeStr) async {
-    _log('공부: state=${_state.name}');
+    _log('공부: state=${_routine.state.name}');
     try {
       final fb = FirebaseService();
       final records = await fb.getTimeRecords().timeout(const Duration(seconds: 5));
@@ -122,7 +126,7 @@ extension _NfcActionHandlers on NfcService {
       final tgTime = DateFormat('HH:mm').format(DateTime.now());
 
       // Case 1: 외출 중 → 귀가 + 공부 재개
-      if (_state == DayState.outing) {
+      if (_routine.state == DayState.outing) {
         await fb.updateTimeRecord(dateStr, _withFields(dateStr, e, returnHome: timeStr))
             .timeout(const Duration(seconds: 5));
         String dur = '외출';
@@ -130,9 +134,9 @@ extension _NfcActionHandlers on NfcService {
           final m = _timeDiffMin(e!.outing!, timeStr);
           if (m > 0) dur = '외출 ${_fmtMin(m)}';
         }
-        _state = DayState.studying;
-        await _saveState();
-        _startMealReminder();
+        _routine.setState(DayState.studying);
+        await _routine.saveState();
+        _routine.startMealReminder();
         _notifyNative(title: '공부 재개', body: '귀가 → 공부 ($dur)');
         _emitAction('study_resume', '📚', '공부 재개 ($dur)');
         _triggerWidgetUpdate();
@@ -140,14 +144,8 @@ extension _NfcActionHandlers on NfcService {
       }
 
       // Case 2: 공부 중 → 종료
-      if (_state == DayState.studying) {
-        // 열린 식사 닫기
-        final meals = List<MealEntry>.from(e?.meals ?? []);
-        if (_isMealing) {
-          final openIdx = meals.lastIndexWhere((m) => m.end == null);
-          if (openIdx >= 0) meals[openIdx] = meals[openIdx].withEnd(timeStr);
-          _isMealing = false;
-        }
+      if (_routine.state == DayState.studying) {
+        final meals = _meal.closePendingMeals(timeStr, List<MealEntry>.from(e?.meals ?? []));
         await fb.updateTimeRecord(dateStr,
             _withFields(dateStr, e, studyEnd: timeStr, meals: meals.isNotEmpty ? meals : null))
             .timeout(const Duration(seconds: 5));
@@ -156,9 +154,9 @@ extension _NfcActionHandlers on NfcService {
           final net = _calcNetStudy(e!, timeStr);
           if (net > 0) dur = ' (순공 ${_fmtMin(net)})';
         }
-        _state = DayState.returned;
-        await _saveState();
-        _cancelReminders();
+        _routine.setState(DayState.returned);
+        await _routine.saveState();
+        _routine.cancelReminders();
         _notifyNative(title: '공부 종료', body: '공부 종료 $tgTime$dur');
         _emitAction('study_end', '📚', '공부종료 $tgTime$dur');
         return;
@@ -170,9 +168,9 @@ extension _NfcActionHandlers on NfcService {
       await fb.updateTimeRecord(dateStr, _withFields(dateStr, e, study: timeStr))
           .timeout(const Duration(seconds: 5));
       final placeMsg = place != null ? ' ($place)' : '';
-      _state = DayState.studying;
-      await _saveState();
-      _startMealReminder();
+      _routine.setState(DayState.studying);
+      await _routine.saveState();
+      _routine.startMealReminder();
       _notifyNative(title: '공부 시작', body: '공부 시작 $tgTime$placeMsg');
       _emitAction('study_start', '📚', '공부시작 $tgTime$placeMsg');
       _triggerWidgetUpdate();
@@ -184,7 +182,7 @@ extension _NfcActionHandlers on NfcService {
   // ═══ 식사 (meal) — DayState 변경 없음 ═══
 
   Future<void> _handleMeal(String dateStr, String timeStr) async {
-    _log('식사: mealing=$_isMealing');
+    _log('식사: mealing=${_meal.isMealing}');
     try {
       final fb = FirebaseService();
       final records = await fb.getTimeRecords().timeout(const Duration(seconds: 5));
@@ -192,9 +190,9 @@ extension _NfcActionHandlers on NfcService {
       final meals = List<MealEntry>.from(e?.meals ?? []);
       final tgTime = DateFormat('HH:mm').format(DateTime.now());
 
-      if (!_isMealing) {
+      if (!_meal.isMealing) {
         // ── 식사 시작 ──
-        _isMealing = true;
+        _meal.startMeal();
         meals.add(MealEntry(start: timeStr));
         await fb.updateTimeRecord(dateStr, _withFields(dateStr, e, meals: meals))
             .timeout(const Duration(seconds: 5));
@@ -203,19 +201,18 @@ extension _NfcActionHandlers on NfcService {
           final pos = await LocationService().getCurrentPosition();
           if (pos != null) loc = ' (${LocationService.formatPosition(pos)})';
         } catch (_) {}
-        await _saveState();
         _notifyNative(title: '식사 시작', body: '식사 시작 $tgTime (${meals.length}번째)');
         _emitAction('meal_start', '🍽️', '식사 시작 $tgTime');
+        SafetyNetService().clearAlert(SafetyCheck.mealMiss);
       } else {
         // ── 식사 종료 ──
-        _isMealing = false;
+        _meal.endMeal();
         final openIdx = meals.lastIndexWhere((m) => m.end == null);
         if (openIdx >= 0) meals[openIdx] = meals[openIdx].withEnd(timeStr);
         await fb.updateTimeRecord(dateStr, _withFields(dateStr, e, meals: meals))
             .timeout(const Duration(seconds: 5));
         final dur = openIdx >= 0 ? meals[openIdx].durationFormatted : null;
         final durMsg = dur != null ? ' ($dur)' : '';
-        await _saveState();
         _notifyNative(title: '식사 종료', body: '식사 종료 $tgTime$durMsg');
         _emitAction('meal_end', '🍽️', '식사 종료 $tgTime$durMsg');
       }
@@ -228,8 +225,8 @@ extension _NfcActionHandlers on NfcService {
   // ═══ 수면 (sleep) + 일일 요약 ═══
 
   Future<void> _handleSleep(String dateStr, String timeStr) async {
-    if (_state == DayState.idle || _state == DayState.sleeping) {
-      _emitAction('sleep_skip', '🛏️', '취침 불가 (${_state.name})');
+    if (_routine.state == DayState.idle || _routine.state == DayState.sleeping) {
+      _emitAction('sleep_skip', '🛏️', '취침 불가 (${_routine.state.name})');
       return;
     }
     try {
@@ -244,18 +241,14 @@ extension _NfcActionHandlers on NfcService {
       }
 
       final e = records[dateStr];
-      final meals = List<MealEntry>.from(e?.meals ?? []);
+      var meals = List<MealEntry>.from(e?.meals ?? []);
 
       // 열린 식사 닫기
-      if (_isMealing) {
-        _isMealing = false;
-        final oi = meals.lastIndexWhere((m) => m.end == null);
-        if (oi >= 0) meals[oi] = meals[oi].withEnd(timeStr);
-      }
+      meals = _meal.closePendingMeals(timeStr, meals);
 
       // 공부 중이면 종료
       String? studyEnd;
-      if (_state == DayState.studying && e?.study != null && e?.studyEnd == null) {
+      if (_routine.state == DayState.studying && e?.study != null && e?.studyEnd == null) {
         studyEnd = timeStr;
       }
 
@@ -263,9 +256,9 @@ extension _NfcActionHandlers on NfcService {
           _withFields(dateStr, e, studyEnd: studyEnd, bedTime: timeStr, meals: meals))
           .timeout(const Duration(seconds: 5));
 
-      _state = DayState.sleeping;
-      await _saveState();
-      _cancelReminders();
+      _routine.setState(DayState.sleeping);
+      await _routine.saveState();
+      _routine.cancelReminders();
 
       final tgTime = DateFormat('HH:mm').format(now);
       final summary = _buildSummary(e, studyEnd ?? e?.studyEnd, timeStr, meals);
@@ -276,7 +269,7 @@ extension _NfcActionHandlers on NfcService {
       // ★ v6: 습관 자동 트리거 (sleep)
       _autoTriggerHabits('sleep', dateStr);
 
-      // 일일 리포트 + 자동 백업 (비동기, 실패해도 무관)
+      // 일일 리포트 + 자동 백업
       Future.delayed(const Duration(seconds: 3), () {
         ReportService().sendDailyReport(dateStr).catchError((_) {});
         BackupService().autoBackup().catchError((_) {});
@@ -324,12 +317,6 @@ extension _NfcActionHandlers on NfcService {
   Future<void> _notifyNative({required String title, required String body}) async {
     try { await _nfcChannel.invokeMethod('showNotification', {'title': title, 'body': body}); }
     catch (_) {}
-  }
-
-  Future<void> _requestNotificationPermissionOnce() async {
-    if (_notifPermissionRequested) return;
-    _notifPermissionRequested = true;
-    try { await _nfcChannel.invokeMethod('requestNotificationPermission'); } catch (_) {}
   }
 
   int _timeDiffMin(String start, String end) {

@@ -524,13 +524,7 @@ class _V9CompareViewerState extends State<_V9CompareViewer> {
 
   Future<void> _load() async {
     try {
-      final raw = await rootBundle.loadString('assets/roadmap/박천홍_인생로드맵_v9.html');
-      // "그들과 나" 섹션만 추출
-      final start = raw.indexOf('<!-- ═══ 5. 그들과 나');
-      final endMarker = raw.indexOf('<!-- ═══', start + 10);
-      final section = endMarker > start
-          ? raw.substring(start, endMarker)
-          : raw.substring(start);
+      final section = await rootBundle.loadString('assets/roadmap/그들과나.html');
       setState(() { _html = section; _loading = false; });
     } catch (e) {
       setState(() => _loading = false);

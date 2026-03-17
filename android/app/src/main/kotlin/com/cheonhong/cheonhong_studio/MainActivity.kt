@@ -28,6 +28,10 @@ import android.content.ComponentName
 import android.nfc.NfcAdapter
 import android.util.Log
 import android.nfc.NdefMessage
+import com.google.android.gms.location.ActivityRecognition
+import com.google.android.gms.location.ActivityTransition
+import com.google.android.gms.location.ActivityTransitionRequest
+import com.google.android.gms.location.DetectedActivity
 import android.nfc.NdefRecord
 import android.os.Bundle
 import android.os.Parcelable
@@ -94,6 +98,14 @@ nfcChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NFC_CHANN
             "requestNotificationPermission" -> {
                 requestPostNotificationsPermission()
                 requestActivityRecognitionPermission()
+                result.success(true)
+            }
+            "startActivityRecognition" -> {
+                startActivityRecognitionFromMain()
+                result.success(true)
+            }
+            "stopActivityRecognition" -> {
+                stopActivityRecognitionFromMain()
                 result.success(true)
             }
             else -> result.notImplemented()
@@ -683,6 +695,63 @@ private fun disableSilentReaderMode() {
                 9001
             )
         }
+    }
+
+    // ─── Activity Recognition (MainActivity 직접 관리) ───
+
+    private fun activityPendingIntent(): PendingIntent {
+        val intent = Intent(this, ActivityTransitionReceiver::class.java)
+        return PendingIntent.getBroadcast(
+            this, 1001, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+    }
+
+    private fun startActivityRecognitionFromMain() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                Log.w("ActivityMain", "ACTIVITY_RECOGNITION 권한 없음")
+                return
+            }
+        }
+
+        val transitions = listOf(
+            ActivityTransition.Builder()
+                .setActivityType(DetectedActivity.STILL)
+                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                .build(),
+            ActivityTransition.Builder()
+                .setActivityType(DetectedActivity.WALKING)
+                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                .build(),
+            ActivityTransition.Builder()
+                .setActivityType(DetectedActivity.RUNNING)
+                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                .build(),
+            ActivityTransition.Builder()
+                .setActivityType(DetectedActivity.IN_VEHICLE)
+                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                .build(),
+            ActivityTransition.Builder()
+                .setActivityType(DetectedActivity.ON_BICYCLE)
+                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                .build(),
+        )
+
+        val request = ActivityTransitionRequest(transitions)
+        ActivityRecognition.getClient(this)
+            .requestActivityTransitionUpdates(request, activityPendingIntent())
+            .addOnSuccessListener { Log.d("ActivityMain", "Activity Recognition 시작 (from MainActivity)") }
+            .addOnFailureListener { Log.e("ActivityMain", "Activity Recognition 실패: ${it.message}") }
+    }
+
+    private fun stopActivityRecognitionFromMain() {
+        ActivityRecognition.getClient(this)
+            .removeActivityTransitionUpdates(activityPendingIntent())
+            .addOnSuccessListener { Log.d("ActivityMain", "Activity Recognition 중지 (from MainActivity)") }
+            .addOnFailureListener { Log.e("ActivityMain", "Activity Recognition 중지 실패: ${it.message}") }
     }
 
     private fun requestActivityRecognitionPermission() {

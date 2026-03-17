@@ -16,6 +16,7 @@ import 'services/wake_service.dart';
 import 'services/location_request_service.dart';
 import 'services/widget_render_service.dart';
 import 'services/fcm_service.dart';
+import 'services/safety_net_service.dart';
 
 class AppInit {
   static Future<void> run() async {
@@ -59,6 +60,9 @@ class AppInit {
       FcmService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
       LocationRequestService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
     ]);
+
+    // ── Phase 4c: 안전망 서비스 ──
+    SafetyNetService().init().timeout(const Duration(seconds: 5)).catchError((_) {});
 
     // ── Phase 5: 주간 리포트 자동 체크 (일요일) ──
     ReportService().checkWeeklyReport().catchError((_) {});
