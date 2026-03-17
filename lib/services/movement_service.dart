@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../utils/study_date_utils.dart';
 import 'routine_service.dart';
-import 'nfc_service.dart' show DayState;
+import 'day_service.dart' show DayState;
 import 'firebase_service.dart';
 import 'geofence_service.dart';
 import 'location_service.dart';

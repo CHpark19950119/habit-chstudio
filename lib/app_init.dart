@@ -6,7 +6,7 @@ import 'firebase_options.dart';
 import 'services/firebase_service.dart';
 import 'services/focus_service.dart';
 import 'services/local_cache_service.dart';
-import 'services/nfc_service.dart';
+import 'services/day_service.dart';
 import 'services/cradle_service.dart';
 import 'services/geofence_service.dart';
 import 'services/door_sensor_service.dart';
@@ -37,7 +37,7 @@ class AppInit {
     // ── Phase 2: 서비스 초기화 (병렬, 개별 try-catch) ──
     await Future.wait([
       FocusService().initialize().timeout(const Duration(seconds: 10)).catchError((_) {}),
-      NfcService().initialize().timeout(const Duration(seconds: 10)).catchError((_) {}),
+      DayService().initialize().timeout(const Duration(seconds: 10)).catchError((_) {}),
     ]);
 
     // ── Phase 3: 상태 복원 (병렬, 개별 try-catch) ──

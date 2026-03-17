@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/iot_models.dart';
 import '../models/models.dart';
 import 'door_sensor_service.dart';
-import 'nfc_service.dart';
+import 'day_service.dart';
 
 /// 기상 감지 인터페이스
 abstract class WakeDetector {
@@ -49,7 +49,7 @@ class SensorWakeDetector implements WakeDetector {
     if (event.type != DoorState.open) return;
 
     // DayState가 idle일 때만
-    final nfcState = NfcService().state;
+    final nfcState = DayService().state;
     if (nfcState != DayState.idle) return;
 
     // 7시 이전 무시 (새벽 화장실 등 오탐 방지)
@@ -148,7 +148,7 @@ class WakeService {
 
   /// 기상 기록 — NfcService의 manualTestRole(wake) 위임
   Future<void> recordWake() async {
-    final result = await NfcService().manualTestRole(NfcTagRole.wake);
+    final result = await DayService().manualTestRole(ActionType.wake);
     debugPrint('[WakeService] recordWake: $result');
   }
 }

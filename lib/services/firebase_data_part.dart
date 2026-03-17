@@ -167,9 +167,9 @@ extension FirebaseDataOps on FirebaseService {
         id: m['id'] ?? '',
         date: m['date'] ?? '',
         timestamp: m['timestamp'] ?? '',
-        role: NfcTagRole.values.firstWhere(
+        role: ActionType.values.firstWhere(
           (r) => r.name == (m['role'] ?? 'wake'),
-          orElse: () => NfcTagRole.wake,
+          orElse: () => ActionType.wake,
         ),
         tagName: m['tagName'] ?? '',
         action: m['action'] as String?,

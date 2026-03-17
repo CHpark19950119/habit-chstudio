@@ -8,8 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/study_date_utils.dart';
 import '../models/iot_models.dart';
 import 'routine_service.dart';
-import '../models/models.dart' show NfcTagRole;
-import 'nfc_service.dart' show DayState, NfcService;
+import '../models/models.dart' show ActionType;
+import 'day_service.dart';
 import 'geofence_service.dart';
 import 'door_sensor_service.dart';
 import 'meal_service.dart';
@@ -120,16 +120,16 @@ class SafetyNetService {
 
     switch (actionId) {
       case _actionConfirmWake:
-        NfcService().manualTestRole(NfcTagRole.wake);
+        DayService().manualTestRole(ActionType.wake);
         break;
       case _actionConfirmOuting:
-        NfcService().manualTestRole(NfcTagRole.outing);
+        DayService().manualTestRole(ActionType.outing);
         break;
       case _actionConfirmReturn:
-        NfcService().manualTestRole(NfcTagRole.outing); // 토글 → 귀가
+        DayService().manualTestRole(ActionType.outing); // 토글 → 귀가
         break;
       case _actionConfirmMeal:
-        NfcService().manualTestRole(NfcTagRole.meal);
+        DayService().manualTestRole(ActionType.meal);
         break;
       case _actionLocSka:
         _recordStayLocation('스카');
@@ -152,9 +152,9 @@ class SafetyNetService {
         await prefs.remove('safety_pending_action');
         _log('consuming pending action: $pending');
         switch (pending) {
-          case 'wake': NfcService().manualTestRole(NfcTagRole.wake); break;
-          case 'outing': NfcService().manualTestRole(NfcTagRole.outing); break;
-          case 'meal': NfcService().manualTestRole(NfcTagRole.meal); break;
+          case 'wake': DayService().manualTestRole(ActionType.wake); break;
+          case 'outing': DayService().manualTestRole(ActionType.outing); break;
+          case 'meal': DayService().manualTestRole(ActionType.meal); break;
         }
       }
     } catch (_) {}

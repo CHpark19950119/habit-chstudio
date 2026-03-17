@@ -621,16 +621,13 @@ class SubjectInfo {
 //  v8.5: NFC 태그 모델 (4태그 토글 시스템)
 // ══════════════════════════════════════════
 
-/// 액션 타입 (기존 NfcTagRole)
+/// 액션 타입
 enum ActionType { wake, outing, study, sleep, meal }
-
-/// @deprecated Use ActionType
-typedef NfcTagRole = ActionType;
 
 class NfcTagConfig {
   final String id;
   final String name;
-  final NfcTagRole role;
+  final ActionType role;
   final String? nfcId;
   final String? placeName;
   final String createdAt;
@@ -648,9 +645,9 @@ class NfcTagConfig {
     return NfcTagConfig(
       id: map['id'] ?? '',
       name: map['name'] ?? '',
-      role: NfcTagRole.values.firstWhere(
+      role: ActionType.values.firstWhere(
         (r) => r.name == (map['role'] ?? 'wake'),
-        orElse: () => NfcTagRole.wake,
+        orElse: () => ActionType.wake,
       ),
       nfcId: map['nfcId'],
       placeName: map['placeName'] as String?,
@@ -669,31 +666,31 @@ class NfcTagConfig {
 
   String get emoji {
     switch (role) {
-      case NfcTagRole.wake: return '🚿';
-      case NfcTagRole.outing: return '🚪';
-      case NfcTagRole.study: return '📚';
-      case NfcTagRole.sleep: return '🛏️';
-      case NfcTagRole.meal: return '🍽️';
+      case ActionType.wake: return '🚿';
+      case ActionType.outing: return '🚪';
+      case ActionType.study: return '📚';
+      case ActionType.sleep: return '🛏️';
+      case ActionType.meal: return '🍽️';
     }
   }
 
   String get roleLabel {
     switch (role) {
-      case NfcTagRole.wake: return '기상 인증';
-      case NfcTagRole.outing: return '외출 ↔ 귀가 (토글)';
-      case NfcTagRole.study: return '공부 시작 / 재개 / 종료';
-      case NfcTagRole.sleep: return '수면시작';
-      case NfcTagRole.meal: return '식사시작 ↔ 식사종료 (토글)';
+      case ActionType.wake: return '기상 인증';
+      case ActionType.outing: return '외출 ↔ 귀가 (토글)';
+      case ActionType.study: return '공부 시작 / 재개 / 종료';
+      case ActionType.sleep: return '수면시작';
+      case ActionType.meal: return '식사시작 ↔ 식사종료 (토글)';
     }
   }
 
-  static String roleDescription(NfcTagRole role) {
+  static String roleDescription(ActionType role) {
     switch (role) {
-      case NfcTagRole.wake: return '욕실 NFC → 기상시간 기록';
-      case NfcTagRole.outing: return '현관 NFC → 외출/귀가 토글';
-      case NfcTagRole.study: return '독서대 NFC → 공부시작/재개/종료';
-      case NfcTagRole.sleep: return '침대 NFC → 취침시간 기록';
-      case NfcTagRole.meal: return '식탁 NFC → 식사시작/종료 토글';
+      case ActionType.wake: return '욕실 NFC → 기상시간 기록';
+      case ActionType.outing: return '현관 NFC → 외출/귀가 토글';
+      case ActionType.study: return '독서대 NFC → 공부시작/재개/종료';
+      case ActionType.sleep: return '침대 NFC → 취침시간 기록';
+      case ActionType.meal: return '식탁 NFC → 식사시작/종료 토글';
     }
   }
 }
@@ -703,7 +700,7 @@ class NfcEvent {
   final String id;
   final String date;
   final String timestamp;
-  final NfcTagRole role;
+  final ActionType role;
   final String tagName;
   final String? action; // 토글: 'start'/'end' 구분
 

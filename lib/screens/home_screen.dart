@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/botanical_theme.dart';
 import '../services/focus_service.dart';
 import '../services/firebase_service.dart';
-import '../services/nfc_service.dart';
+import '../services/day_service.dart';
 import '../services/weather_service.dart';
 import '../services/telegram_service.dart';
 import '../models/models.dart';
@@ -52,7 +52,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _ft = FocusService();
-  final _nfc = NfcService();
+  final _nfc = DayService();
   final _weather = WeatherService();
   Timer? _ui;
   Timer? _streamDebounce;     // ★ stream listener 디바운스
@@ -162,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _onNfcChanged() {
     if (!mounted) return;
-    // ★ NfcService movement times → UI 즉시 반영 (CF 비동기 대기 불필요)
+    // ★ DayService movement times → UI 즉시 반영 (CF 비동기 대기 불필요)
     if (_nfc.isOut && _nfc.outingTime != null) {
       _outing = _nfc.outingTime;
       _returnHome = null;
@@ -345,7 +345,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _parseStudyData(studyData, d);
         }
       }
-      // ★ NfcService movement times 보존 (Firestore에 없어도 iot 기반 즉시 반영)
+      // ★ DayService movement times 보존 (Firestore에 없어도 iot 기반 즉시 반영)
       _preserveNfcMovementTimes();
       _safeSetState(() {});
     });
@@ -527,7 +527,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
-  /// NfcService movement 시간이 Firestore보다 최신이면 보존
+  /// DayService movement 시간이 Firestore보다 최신이면 보존
   void _preserveNfcMovementTimes() {
     if (_outing == null && _nfc.outingTime != null &&
         (_nfc.isOut || _nfc.state == DayState.returned)) {

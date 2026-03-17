@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import '../utils/study_date_utils.dart';
 import 'bus_service.dart';
 import 'telegram_service.dart';
-import 'nfc_service.dart' show DayState;
+import 'day_service.dart' show DayState;
 
 /// RoutineService — DayState FSM, 상태 저장/복원, 리마인더
 class RoutineService extends ChangeNotifier with WidgetsBindingObserver {

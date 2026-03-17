@@ -3,7 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import '../theme/botanical_theme.dart';
-import '../services/nfc_service.dart';
+import '../services/day_service.dart';
 import '../services/local_cache_service.dart';
 import '../services/sleep_detect_service.dart';
 import '../services/wake_service.dart';
@@ -16,7 +16,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _nfc = NfcService();
+  final _nfc = DayService();
   final _sleepDetect = SleepDetectService();
   final _wake = WakeService();
   static const _bixbyChannel = MethodChannel('com.cheonhong.cheonhong_studio/bixby');

@@ -9,7 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../firebase_options.dart';
 import '../models/models.dart';
-import 'nfc_service.dart';
+import 'day_service.dart';
 
 // ═══════════════════════════════════════════════════════════
 //  FCM Background Handler + Geofence Foreground Service
@@ -254,11 +254,11 @@ class FcmService {
     final type = data['type'];
     // CF가 이미 timeRecords 기록 → UI 상태만 전환
     if (type == 'wake') {
-      NfcService().forceState(DayState.awake);
+      DayService().forceState(DayState.awake);
     } else if (type == 'outing' || type == 'studying') {
-      NfcService().forceState(DayState.outing);
+      DayService().forceState(DayState.outing);
     } else if (type == 'returnHome') {
-      NfcService().forceState(DayState.returned);
+      DayService().forceState(DayState.returned);
     }
   }
 

@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
-import 'nfc_service.dart';
+import 'day_service.dart';
 
 /// ═══════════════════════════════════════════════════
 ///  수면 자동 감지 서비스
@@ -63,7 +63,7 @@ class SleepDetectService {
       final sleepTime = DateTime.fromMillisecondsSinceEpoch(timeMs);
       debugPrint('[SleepDetect] Pending sleep found at $sleepTime');
 
-      await NfcService().triggerAutoSleep(sleepTime);
+      await DayService().triggerAutoSleep(sleepTime);
     } catch (e) {
       debugPrint('[SleepDetect] checkPendingSleep error: $e');
     }

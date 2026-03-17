@@ -313,7 +313,7 @@ extension _HomeRoutineCard on _HomeScreenState {
 
   /// 식사 토글 (NFC 서비스 위임 — 다회 식사 로직)
   Future<void> _quickMeal() async {
-    await _nfc.manualTestRole(NfcTagRole.meal);
+    await _nfc.manualTestRole(ActionType.meal);
     await _load();
   }
 

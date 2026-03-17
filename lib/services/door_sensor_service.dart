@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/iot_models.dart';
 import 'location_service.dart';
-import 'nfc_service.dart';
+import 'day_service.dart';
 import 'telegram_service.dart';
 
 /// ═══════════════════════════════════════════════════════════
@@ -206,7 +206,7 @@ class DoorSensorService extends ChangeNotifier {
 
   void _notifyByContext(DoorEvent event) {
     // 방문 센서: 텔레그램 알림 비활성 (기상 감지는 SensorWakeDetector가 처리)
-    final dayState = NfcService().state;
+    final dayState = DayService().state;
     _log('문 ${event.type.name} — 알림 생략 (state=${dayState.name})');
   }
 
