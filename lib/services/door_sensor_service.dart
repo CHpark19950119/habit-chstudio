@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/iot_models.dart';
 import 'location_service.dart';
+import '../constants.dart';
 import 'day_service.dart';
 import 'telegram_service.dart';
 
@@ -19,8 +20,7 @@ class DoorSensorService extends ChangeNotifier {
   DoorSensorService._internal();
 
   // ═══ Firestore ═══
-  static const String _uid = 'sJ8Pxusw9gR0tNR44RhkIge7OiG2';
-  static const String _iotDocPath = 'users/$_uid/data/iot';
+  static final String _iotDocPath = kIotDoc;
 
   // ═══ 상태 ═══
   bool _enabled = false;

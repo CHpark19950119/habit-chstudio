@@ -3,6 +3,7 @@
 
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─── 시간 기록 (기상/공부시작/외출/귀가/공부종료) ───
@@ -575,7 +576,7 @@ class SubjectConfig {
         'name': s.name, 'emoji': s.emoji, 'color': s.colorValue,
       }).toList();
       await FirebaseFirestore.instance
-        .doc('users/sJ8Pxusw9gR0tNR44RhkIge7OiG2/data/meta')
+        .doc(kMetaDoc)
         .set({'subjects': list}, SetOptions(merge: true));
     } catch (_) {}
   }
@@ -584,7 +585,7 @@ class SubjectConfig {
   static Future<void> syncFromFirestore() async {
     try {
       final snap = await FirebaseFirestore.instance
-        .doc('users/sJ8Pxusw9gR0tNR44RhkIge7OiG2/data/meta')
+        .doc(kMetaDoc)
         .get(const GetOptions(source: Source.server))
         .timeout(const Duration(seconds: 5));
       final data = snap.data();

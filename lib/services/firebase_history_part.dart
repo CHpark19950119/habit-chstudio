@@ -82,14 +82,14 @@ extension FirebaseHistoryOps on FirebaseService {
   // ── History (monthly) ──
 
   Future<Map<String, dynamic>?> getMonthHistory(String month) async {
-    return _cachedDocGet('history_$month', 'users/$_uid/history/$month');
+    return _cachedDocGet('history_$month', 'users/$kUid/history/$month');
   }
 
   Future<void> appendDayToHistory(String date, Map<String, dynamic> dayData) async {
     final month = date.substring(0, 7);
     final day = date.substring(8, 10);
     try {
-      await _db.doc('users/$_uid/history/$month').set({
+      await _db.doc('users/$kUid/history/$month').set({
         'month': month,
         'days': {day: dayData},
         'lastUpdated': FieldValue.serverTimestamp(),
@@ -105,7 +105,7 @@ extension FirebaseHistoryOps on FirebaseService {
     final month = date.substring(0, 7);
     final day = date.substring(8, 10);
     try {
-      await _db.doc('users/$_uid/history/$month').set({
+      await _db.doc('users/$kUid/history/$month').set({
         'month': month,
         'days': {day: {'focusSessions': FieldValue.arrayUnion([session])}},
         'lastUpdated': FieldValue.serverTimestamp(),
@@ -118,13 +118,13 @@ extension FirebaseHistoryOps on FirebaseService {
 
   Future<void> _recalculateMonthSummary(String month) async {
     try {
-      final history = await _db.doc('users/$_uid/history/$month')
+      final history = await _db.doc('users/$kUid/history/$month')
           .get().timeout(const Duration(seconds: 10));
       if (!history.exists || history.data() == null) return;
       final data = history.data()!;
       final days = data['days'] as Map<String, dynamic>? ?? {};
       final summary = _calculateMonthlySummary(days);
-      await _db.doc('users/$_uid/history/$month').update({
+      await _db.doc('users/$kUid/history/$month').update({
         'summary': summary,
         'lastUpdated': FieldValue.serverTimestamp(),
       }).timeout(const Duration(seconds: 10));
@@ -233,7 +233,7 @@ extension FirebaseHistoryOps on FirebaseService {
     try {
       for (final entry in archiveByMonth.entries) {
         final month = entry.key;
-        await _db.doc('users/$_uid/archive/$month')
+        await _db.doc('users/$kUid/archive/$month')
             .set(entry.value, SetOptions(merge: true))
             .timeout(const Duration(seconds: 10));
         final historyDays = <String, Map<String, dynamic>>{};
@@ -262,7 +262,7 @@ extension FirebaseHistoryOps on FirebaseService {
           }
         }
         if (historyDays.isNotEmpty) {
-          await _db.doc('users/$_uid/history/$month').set({
+          await _db.doc('users/$kUid/history/$month').set({
             'month': month,
             'days': historyDays,
             'lastUpdated': FieldValue.serverTimestamp(),
@@ -313,7 +313,7 @@ extension FirebaseHistoryOps on FirebaseService {
     final cached = LocalCacheService().getGeneric('archive_$yearMonth');
     if (cached != null && cached.isNotEmpty) return cached;
     try {
-      final cacheDoc = await _db.doc('users/$_uid/archive/$yearMonth')
+      final cacheDoc = await _db.doc('users/$kUid/archive/$yearMonth')
           .get(const GetOptions(source: Source.cache))
           .timeout(const Duration(seconds: 3));
       if (cacheDoc.exists && cacheDoc.data() != null) {
@@ -322,7 +322,7 @@ extension FirebaseHistoryOps on FirebaseService {
       }
     } catch (_) {}
     try {
-      final doc = await _db.doc('users/$_uid/archive/$yearMonth')
+      final doc = await _db.doc('users/$kUid/archive/$yearMonth')
           .get().timeout(const Duration(seconds: 10));
       if (doc.exists && doc.data() != null) {
         LocalCacheService().saveGeneric('archive_$yearMonth', doc.data()!);

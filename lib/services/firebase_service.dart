@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../constants.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -17,19 +18,17 @@ part 'firebase_data_part.dart';
 //  Library-private constants
 // ═══════════════════════════════════════════════════════════
 
-const String _uid = 'sJ8Pxusw9gR0tNR44RhkIge7OiG2';
-
 // Document paths
-const String _studyDoc = 'users/$_uid/data/study';
-const String _liveFocusDoc = 'users/$_uid/data/liveFocus';
-const String _todayDoc2 = 'users/$_uid/data/today';
-const String _alarmSettingsDoc = 'users/$_uid/settings/alarm';
-const String _locationHistoryCol = 'users/$_uid/locationHistory';
-const String _behaviorTimelineCol = 'users/$_uid/behaviorTimeline';
-const String _nfcTagsDoc = 'users/$_uid/settings/nfcTags';
-const String _nfcEventsCol = 'users/$_uid/nfcEvents';
-const String _memosCol = 'users/$_uid/memos';
-const String _diaryCol = 'users/$_uid/dailyDiary';
+const String _studyDoc = kStudyDoc;
+const String _liveFocusDoc = kLiveFocusDoc;
+const String _todayDoc2 = kTodayDoc;
+const String _alarmSettingsDoc = 'users/$kUid/settings/alarm';
+const String _locationHistoryCol = 'users/$kUid/locationHistory';
+const String _behaviorTimelineCol = 'users/$kUid/behaviorTimeline';
+const String _nfcTagsDoc = 'users/$kUid/settings/nfcTags';
+const String _nfcEventsCol = 'users/$kUid/nfcEvents';
+const String _memosCol = 'users/$kUid/memos';
+const String _diaryCol = 'users/$kUid/dailyDiary';
 
 // Field names in study doc
 const String _timeRecordsField = 'timeRecords';
@@ -55,7 +54,7 @@ class FirebaseService {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   FirebaseFirestore get _db => firestore;
 
-  String get uid => _uid;
+  String get uid => kUid;
 
   // ═══ Study doc cache ═══
   Map<String, dynamic>? _studyCache;

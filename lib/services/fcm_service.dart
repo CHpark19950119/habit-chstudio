@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../constants.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -15,7 +16,6 @@ import 'day_service.dart';
 //  FCM Background Handler + Geofence Foreground Service
 // ═══════════════════════════════════════════════════════════
 
-const String _uid = 'sJ8Pxusw9gR0tNR44RhkIge7OiG2';
 const String _myBot = '8514127849:AAF8_F7SBfm51SGHtp9X5lva7yexdnFyapo';
 const String _myChat = '8724548311';
 const String _gfBot = '8613977898:AAEuuoTVARS-a9nrDp85NWHHOYM0lRvmZmc';
@@ -166,7 +166,7 @@ class _GeofenceHandler extends TaskHandler {
       }
 
       // ★ 매 폴링마다 위치 저장 → 헤드위그 "어디야" 응답용
-      FirebaseFirestore.instance.doc('users/$_uid/data/iot').set({
+      FirebaseFirestore.instance.doc(kIotDoc).set({
         'lastLocation': {
           'latitude': pos.latitude,
           'longitude': pos.longitude,
@@ -187,7 +187,7 @@ class _GeofenceHandler extends TaskHandler {
     final t = _timeStr();
     try {
       // data/iot에만 기록 — CF onIotWrite가 timeRecords + 텔레그램 처리
-      await FirebaseFirestore.instance.doc('users/$_uid/data/iot').set({
+      await FirebaseFirestore.instance.doc(kIotDoc).set({
         'movement': {
           'pending': false,
           'type': 'out',
@@ -216,7 +216,7 @@ class _GeofenceHandler extends TaskHandler {
     final t = _timeStr();
     try {
       // data/iot에만 기록 — CF onIotWrite가 timeRecords + 텔레그램 처리
-      await FirebaseFirestore.instance.doc('users/$_uid/data/iot').update({
+      await FirebaseFirestore.instance.doc(kIotDoc).update({
         'movement.type': 'home',
         'movement.returnedAt': FieldValue.serverTimestamp(),
         'movement.returnedAtLocal': t,
@@ -269,14 +269,14 @@ class FcmService {
       );
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null) {
-        await FirebaseFirestore.instance.doc('users/$_uid/data/iot').set(
+        await FirebaseFirestore.instance.doc(kIotDoc).set(
           {'fcmToken': token},
           SetOptions(merge: true),
         );
         debugPrint('[FCM] token: ${token.substring(0, 20)}...');
       }
       FirebaseMessaging.instance.onTokenRefresh.listen((t) {
-        FirebaseFirestore.instance.doc('users/$_uid/data/iot').set(
+        FirebaseFirestore.instance.doc(kIotDoc).set(
           {'fcmToken': t}, SetOptions(merge: true),
         );
       });

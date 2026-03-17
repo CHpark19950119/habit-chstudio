@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
+import '../constants.dart';
 import '../theme/botanical_theme.dart';
 import '../services/day_service.dart';
 import '../services/local_cache_service.dart';
@@ -302,7 +303,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 14),
         _infoRow('버전', 'v10.9.2'),
         const SizedBox(height: 8),
-        _infoRow('Firebase UID', 'sJ8Pxusw9gR0tNR44RhkIge7OiG2'),
+        _infoRow('Firebase UID', kUid),
         const SizedBox(height: 8),
         _infoRow('시험일', '2026-03-07 (5급 PSAT)'),
       ]),

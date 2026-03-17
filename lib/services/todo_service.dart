@@ -7,6 +7,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import '../constants.dart';
 import '../models/plan_models.dart';
 import '../models/models.dart';
 import 'creature_service.dart';
@@ -20,7 +21,7 @@ class TodoService {
   TodoService._internal();
 
   final _db = FirebaseFirestore.instance;
-  static const String _todosDoc = 'users/sJ8Pxusw9gR0tNR44RhkIge7OiG2/data/study';
+  static final String _todosDoc = kStudyDoc;
 
   /// 4AM 경계 적용 오늘 날짜
   static String _todayDate() => StudyDateUtils.todayKey();

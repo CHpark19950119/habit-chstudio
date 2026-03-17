@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../constants.dart';
 import 'package:intl/intl.dart';
 import '../utils/study_date_utils.dart';
 import 'routine_service.dart';
@@ -24,7 +25,7 @@ class MovementService extends ChangeNotifier {
   factory MovementService() => _instance;
   MovementService._internal();
 
-  static const String _iotDocPath = 'users/sJ8Pxusw9gR0tNR44RhkIge7OiG2/data/iot';
+  static final String _iotDocPath = kIotDoc;
 
   // ═══ Movement times ═══
   String? _outingTime;

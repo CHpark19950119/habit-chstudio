@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../constants.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart' show Colors, showDialog;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -479,7 +480,7 @@ class SafetyNetService {
       final dateStr = StudyDateUtils.todayKey(now);
 
       FirebaseFirestore.instance
-          .doc('users/sJ8Pxusw9gR0tNR44RhkIge7OiG2/data/iot')
+          .doc(kIotDoc)
           .update({
         'stayLocation': {
           'place': location,
