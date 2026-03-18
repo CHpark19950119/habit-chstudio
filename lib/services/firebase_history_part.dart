@@ -346,21 +346,7 @@ extension FirebaseHistoryOps on FirebaseService {
     _studyCache![_restDaysField] = days;
     _studyCacheTime = DateTime.now();
     LocalCacheService().updateStudyField(_restDaysField, days);
-    try {
-      await _db.doc(_studyDoc).update({
-        _restDaysField: days,
-        'lastModified': DateTime.now().millisecondsSinceEpoch,
-        'lastDevice': 'android',
-      }).timeout(const Duration(seconds: 5));
-    } catch (e) {
-      try {
-        await _db.doc(_studyDoc).set({
-          _restDaysField: days,
-          'lastModified': DateTime.now().millisecondsSinceEpoch,
-          'lastDevice': 'android',
-        }, SetOptions(merge: true)).timeout(const Duration(seconds: 5));
-      } catch (_) {}
-    }
+    FirestoreWriteQueue().enqueue(_studyDoc, {_restDaysField: days});
     return !isRest;
   }
 

@@ -671,7 +671,9 @@ class FocusService extends ChangeNotifier {
       debugPrint('[FocusService] sync OK: ${cycle.date} ${cycle.effectiveMin}min');
 
       // 홈 위젯 갱신
-      WidgetRenderService().updateWidget().catchError((_) {});
+      WidgetRenderService().updateWidget().catchError((e) {
+        debugPrint('[Focus] widget update fail: $e');
+      });
 
       if (addedMin > 0) {
         try {
@@ -824,7 +826,9 @@ class _FocusHandler extends TaskHandler {
         FlutterForegroundTask.updateService(
             notificationTitle: '$modeEmoji $modeLabel · $subject',
             notificationText: '순공 ${eff ~/ 60}h${eff % 60}m · 세션 ${sessionMin}분');
-      }).catchError((_) {});
+      }).catchError((e) {
+        debugPrint('[Focus] foreground task update fail: $e');
+      });
     }
   }
 

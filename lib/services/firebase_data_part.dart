@@ -236,24 +236,12 @@ extension FirebaseDataOps on FirebaseService {
 
   Future<void> saveProgressGoals(List<ProgressGoal> goals) async {
     final goalsList = goals.map((g) => g.toMap()).toList();
-    try {
-      await _db.doc(_studyDoc).update({
-        _progressGoalsField: goalsList,
-        'lastModified': DateTime.now().millisecondsSinceEpoch,
-        'lastDevice': 'android',
-      }).timeout(const Duration(seconds: 5));
-    } catch (e) {
-      try {
-        await _db.doc(_studyDoc).set({
-          _progressGoalsField: goalsList,
-          'lastModified': DateTime.now().millisecondsSinceEpoch,
-          'lastDevice': 'android',
-        }, SetOptions(merge: true)).timeout(const Duration(seconds: 5));
-      } catch (_) {}
-    }
     _studyCache ??= {};
     _studyCache![_progressGoalsField] = goalsList;
     _studyCacheTime = DateTime.now();
+    FirestoreWriteQueue().enqueue(_studyDoc, {
+      _progressGoalsField: goalsList,
+    });
   }
 
   Stream<List<ProgressGoal>> watchProgressGoals() {

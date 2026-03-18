@@ -113,21 +113,9 @@ extension FirebaseStudyOps on FirebaseService {
     (_studyCache!.putIfAbsent(_focusCyclesField, () => {}) as Map)[date] = cyclesList;
     _studyCacheTime = DateTime.now();
     LocalCacheService().updateStudyField('$_focusCyclesField.$date', cyclesList);
-    try {
-      await _db.doc(_studyDoc).update({
-        '$_focusCyclesField.$date': cyclesList,
-        'lastModified': DateTime.now().millisecondsSinceEpoch,
-        'lastDevice': 'android',
-      }).timeout(const Duration(seconds: 5));
-    } catch (e) {
-      try {
-        await _db.doc(_studyDoc).set({
-          _focusCyclesField: {date: cyclesList},
-          'lastModified': DateTime.now().millisecondsSinceEpoch,
-          'lastDevice': 'android',
-        }, SetOptions(merge: true)).timeout(const Duration(seconds: 5));
-      } catch (_) {}
-    }
+    FirestoreWriteQueue().enqueue(_studyDoc, {
+      '$_focusCyclesField.$date': cyclesList,
+    });
   }
 
   Future<void> _cleanOldFocusCycles() async {
@@ -171,13 +159,17 @@ extension FirebaseStudyOps on FirebaseService {
         'date': date,
         'lastModified': DateTime.now().millisecondsSinceEpoch,
       }).timeout(const Duration(seconds: 3));
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[FB] updateLiveFocus fail: $e');
+    }
   }
 
   Future<void> clearLiveFocus(String date) async {
     try {
       await _db.doc(_liveFocusDoc).delete().timeout(const Duration(seconds: 3));
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[FB] clearLiveFocus fail: $e');
+    }
   }
 
   // ── customStudyTasks ──
@@ -217,20 +209,8 @@ extension FirebaseStudyOps on FirebaseService {
     (_studyCache!.putIfAbsent(_customTasksField, () => {}) as Map)[date] = tasks;
     _studyCacheTime = DateTime.now();
     LocalCacheService().updateStudyField('$_customTasksField.$date', tasks);
-    try {
-      await _db.doc(_studyDoc).update({
-        '$_customTasksField.$date': tasks,
-        'lastModified': DateTime.now().millisecondsSinceEpoch,
-        'lastDevice': 'android',
-      }).timeout(const Duration(seconds: 5));
-    } catch (e) {
-      try {
-        await _db.doc(_studyDoc).set({
-          _customTasksField: {date: tasks},
-          'lastModified': DateTime.now().millisecondsSinceEpoch,
-          'lastDevice': 'android',
-        }, SetOptions(merge: true)).timeout(const Duration(seconds: 5));
-      } catch (_) {}
-    }
+    FirestoreWriteQueue().enqueue(_studyDoc, {
+      '$_customTasksField.$date': tasks,
+    });
   }
 }

@@ -275,8 +275,12 @@ extension _DayActionHandlers on DayService {
 
       // 일일 리포트 + 자동 백업
       Future.delayed(const Duration(seconds: 3), () {
-        ReportService().sendDailyReport(dateStr).catchError((_) {});
-        BackupService().autoBackup().catchError((_) {});
+        ReportService().sendDailyReport(dateStr).catchError((e) {
+          debugPrint('[DayAction] dailyReport fail: $e');
+        });
+        BackupService().autoBackup().catchError((e) {
+          debugPrint('[DayAction] autoBackup fail: $e');
+        });
       });
     } catch (e) {
       _log('Sleep 에러: $e');
