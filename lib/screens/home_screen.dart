@@ -74,8 +74,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       final now = DateTime.now();
       final p = _wake!.split(':');
-      final wakeTime = DateTime(now.year, now.month, now.day,
+      var wakeTime = DateTime(now.year, now.month, now.day,
           int.parse(p[0]), int.parse(p[1]));
+      // 자정 넘김: wakeTime이 미래면 전날로 보정
+      if (wakeTime.isAfter(now)) {
+        wakeTime = wakeTime.subtract(const Duration(days: 1));
+      }
       return now.difference(wakeTime).inMinutes >= 180;
     } catch (_) { return false; }
   }
@@ -1266,8 +1270,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       try {
         final now = DateTime.now();
         final p = _wake!.split(':');
-        final wakeTime = DateTime(now.year, now.month, now.day,
+        var wakeTime = DateTime(now.year, now.month, now.day,
             int.parse(p[0]), int.parse(p[1]));
+        if (wakeTime.isAfter(now)) {
+          wakeTime = wakeTime.subtract(const Duration(days: 1));
+        }
         homeMinutes = now.difference(wakeTime).inMinutes.clamp(0, 1440);
       } catch (_) {}
     }
