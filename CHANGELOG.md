@@ -3,35 +3,61 @@
 ## 세션 시작 시 반드시 읽을 것
 > 이 섹션만 읽으면 현재 상태 파악 가능. 상세 히스토리는 하단.
 
-### 현재 버전: v10.13.1 (2026-03-18)
-- **이번 세션 변경사항 (데드코드 정리 + 버그 수정):**
-  - Phase 1: 데드 파일 6개 삭제 (nfc_screen×2, nfc_action_part, focus_records_widget, location_request_service)
-  - Phase 2: 좀비 AnimationController 5개 + 미사용 Painter 7개 삭제
-  - Phase 3: 비활성 game/habitat 모듈 + plan_service + plan_models PART2 삭제
-  - Phase 4: NfcService→DayService, NfcTagRole→ActionType rename (호환 래퍼 제거)
-  - Phase 5: Firebase UID 중앙화 → `lib/constants.dart` (9개 파일 하드코딩 제거)
-  - **버그 수정**: Order `_update()` 레이스컨디션 — `_safeSetState(fn)`이 빌드 중 fn()을 지연시키면 _save()가 변경 전 데이터를 저장하는 버그
-  - 총 ~5,600줄 데드코드 삭제
+### 현재 버전: v10.14.0 (2026-03-19)
+- **크리처 알람 시스템 v2:**
+  - 분기 이벤트 4개 (칩거확인, 자동기상확인, 장시간공부, 식사리마인더)
+  - 크리처 무드 (neutral/worried/curious/proud/sleepy + 오버레이 색상)
+  - 메시지 뱅크 (SafetyCheck별 한국어 3개 랜덤)
+- **데이터 무결성 가디언:**
+  - TimeRecord.validate() — 포맷/순서 검증, 포맷에러 시 쓰기 차단
+  - Write-back verify — 3초 후 서버 읽기 비교 + 재시도
+  - 듀얼 문서 동기화 (study↔today doc)
+  - 캐시 신선도 (30분+ → 서버 리프레시)
+- **DataAuditService** — 앱 시작 1일 1회 데이터 검증 + 설정 화면 수동 실행
+- **습관 autoTrigger 확장:**
+  - 트리거 5종 (wake/sleep/study/outing/meal)
+  - 시간 조건부 모드 (triggerTime)
+  - 오토뱃지 UI + 시트 트리거 6칩 + 시간 피커
+- **진행도 1차/2차 탭 분리** (TabBar + 라운드별 과목 요약)
+- **과목 선택 1차/2차 분리** (목표추가 시트 + 포커스존)
+- **데일리로그 공부→포커스/휴식 세분화** (FocusCycle 기반)
+- **칩거모드 연결 + 수동 토글** (SafetyNet→홈 UI + X 버튼 해제)
+- **오더 목표 카드 컴팩트 뷰** (높이 절반)
+- **쓰기 보호 강화:**
+  - silent catchError 6곳 → 로깅
+  - Order _save() 뮤텍스 + 큐잉
+  - Rollover 중복 방지
+- **버그 수정:** 칩거모드 자정 넘김 (wakeTime 미래 보정)
 
 ### 미커밋 파일
-- 없음 (전체 커밋 완료)
+- 없음
 
 ### 미배포
 - 없음 (빌드 + 폰 설치 완료)
 
 ### 다음 할 일
-- [ ] 습관에 autoTrigger 설정 UI (습관 상세 화면에서 wake/sleep 선택)
-- [ ] 오염된 Firestore 데이터 수동 정리 (study doc timeRecords 새벽 기록)
-- [ ] 투두에서 진행도 목표 연결 UI (목표 선택 드롭다운)
 - [ ] 경제학 등 신규 과목 로드맵 설정
-- [ ] 크리쳐 알람 시스템 재설계
+- [ ] Codemagic CI 검증
 
 ### 보류 작업
 - 소설 「허락」 제1부 확장 (핸드오프: `assets/roadmap/HANDOFF_소설_허락_제1부.md`)
+- 투두→진행도 목표 연결 UI
 
 ---
 
 ## 히스토리
+
+### 2026-03-19 — v10.14.0 (크리처 알람 v2 + 데이터 무결성 + UI 대폭 개선)
+- 크리처 분기 이벤트 4개 + 무드 시스템 + 메시지 뱅크
+- 데이터 가디언 (validate, write-back verify, dual sync, cache freshness)
+- DataAuditService (앱 시작 1일 1회 + 설정 수동 실행)
+- 습관 autoTrigger 확장 (5종 + 시간 조건부 + 오토뱃지)
+- 진행도/포커스/목표추가 과목 1차/2차 분리
+- 데일리로그 공부→포커스/휴식 세분화
+- 칩거모드 연결 + 수동 토글 + 자정 버그 수정
+- 오더 목표 컴팩트 뷰
+- 쓰기 보호 강화 (로깅, 뮤텍스, rollover 중복 방지)
+- 21파일 변경, +1,600줄
 
 ### 2026-03-18 — v10.13.1 (데드코드 정리)
 - 데드 파일 6개 + 좀비 컨트롤러/페인터 + game/habitat/plan 모듈 삭제 (~5,600줄)

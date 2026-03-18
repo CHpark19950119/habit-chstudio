@@ -11,6 +11,7 @@ import '../services/wake_service.dart';
 import '../models/iot_models.dart';
 import '../services/door_sensor_service.dart';
 import '../services/routine_service.dart';
+import '../services/data_audit_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -223,6 +224,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (prevState != DayState.idle) {
                   routine.forceState(prevState);
                 }
+              },
+            ),
+          ]),
+          const SizedBox(height: 12),
+          // ── 데이터 감사 ──
+          Row(children: [
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981).withOpacity(_dk ? 0.12 : 0.08),
+                foregroundColor: const Color(0xFF10B981),
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Text('🔍', style: TextStyle(fontSize: 14)),
+              label: Text('데이터 감사',
+                style: BotanicalTypo.label(size: 11, weight: FontWeight.w700,
+                  color: const Color(0xFF10B981))),
+              onPressed: () async {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('🔍 데이터 감사 실행 중...'),
+                    duration: Duration(seconds: 2)));
+                final results = await DataAuditService().runForced();
+                if (!mounted) return;
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text('데이터 감사 결과 (${results.length}건)'),
+                    content: SizedBox(
+                      width: double.maxFinite,
+                      child: results.isEmpty
+                        ? const Text('문제 없음')
+                        : ListView(
+                            shrinkWrap: true,
+                            children: results.map((r) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(r, style: const TextStyle(fontSize: 12)),
+                            )).toList(),
+                          ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('확인')),
+                    ],
+                  ),
+                );
               },
             ),
           ]),
