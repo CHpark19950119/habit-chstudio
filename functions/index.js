@@ -1130,12 +1130,36 @@ const AI_TOOLS = [
       required: ["keyword"],
     },
   },
+  {
+    name: "iot_status",
+    description: "IoT 센서 전체 상태 조회 — 도어센서, mmWave, 전등, 위치",
+    input_schema: {type: "object", properties: {}, required: []},
+  },
+  {
+    name: "query_sensor",
+    description: "특정 Tuya 센서/기기 실시간 상태 직접 조회 (API 호출)",
+    input_schema: {
+      type: "object",
+      properties: {
+        device: {type: "string", enum: ["door", "mmwave", "plug_16a", "plug_20a"], description: "조회할 기기"},
+      },
+      required: ["device"],
+    },
+  },
 ];
 
-const AI_SYSTEM = `너는 CHEONHONG STUDIO 앱의 AI 비서야. 사용자의 공부/루틴을 관리해.
+const AI_SYSTEM = `너는 CHEONHONG STUDIO 앱의 AI 비서야. 사용자(천홍)의 공부/루틴/IoT를 관리해.
 오늘 날짜: ${kstStudyDate()}
 간결하게 답하되 친근한 반말 사용. 이모지 적절히.
-tool 호출이 필요하면 반드시 tool을 사용해. 일반 대화도 가능.`;
+tool 호출이 필요하면 반드시 tool을 사용해. 일반 대화도 가능.
+
+IoT 기기:
+- 도어센서(door): 방문 열림/닫힘
+- mmWave(mmwave): 존재감지 (none=비어있음, presence=움직임, peaceful=정지), distance=거리cm
+- 16A 소켓(plug_16a): 방 전등 ON/OFF
+- 20A 소켓(plug_20a): 예비 (미연결)
+
+"센서 상태" → iot_status, "전등 상태" → query_sensor(plug_16a)`;
 
 // ── tool 실행 ──
 
@@ -1278,6 +1302,45 @@ async function executeTool(name, input) {
       {todos: {[dateStr]: {date: dateStr, items, updatedAt: new Date().toISOString()}}},
       {merge: true});
     return "✅ 완료: " + items[idx].title;
+  }
+
+  if (name === "iot_status") {
+    const iotDoc = await db.doc("users/" + UID + "/data/iot").get();
+    const iot = iotDoc.exists ? iotDoc.data() : {};
+    const door = iot.door || {};
+    const presence = iot.presence || {};
+    const movement = iot.movement || {};
+
+    let status = "🏠 IoT 상태\n";
+    status += "🚪 도어: " + (door.state || "?") + (door.openedToday ? " (오늘 열림)" : "") + "\n";
+    status += "📡 mmWave: " + (presence.state || "?");
+    if (presence.distance != null) status += " " + presence.distance + "cm";
+    status += "\n";
+    status += "💡 전등: Firestore에 없음 (query_sensor로 실시간 조회)\n";
+    if (movement.type) status += "🚶 이동: " + movement.type + "\n";
+    return status;
+  }
+
+  if (name === "query_sensor") {
+    const deviceMap = {
+      door: process.env.TUYA_DEVICE_ID,
+      mmwave: process.env.TUYA_MMWAVE_DEVICE_ID,
+      plug_16a: process.env.TUYA_PLUG_16A_DEVICE_ID,
+      plug_20a: "ebeaff0f5a69754067yfdv",
+    };
+    const did = deviceMap[input.device];
+    if (!did) return "❌ 기기 없음: " + input.device;
+
+    const {accessId, accessSecret} = getConfig();
+    const token = await getTuyaToken(accessId, accessSecret);
+    const statusArr = await getDeviceStatus(accessId, accessSecret, token, did);
+
+    const labels = {door: "🚪 도어센서", mmwave: "📡 mmWave", plug_16a: "💡 16A 소켓(전등)", plug_20a: "🔌 20A 소켓"};
+    let result = labels[input.device] + " 실시간:\n";
+    for (const s of statusArr) {
+      result += "  " + s.code + ": " + s.value + "\n";
+    }
+    return result;
   }
 
   return "⚠️ 알 수 없는 도구: " + name;
