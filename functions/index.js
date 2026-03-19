@@ -299,25 +299,7 @@ async function pollDoorLogic() {
         }
       }
 
-      // ═══ 책상 스탠드 자동 제어 (20A) ═══
-      const atDesk = (presenceState === "peaceful" || presenceState === "presence")
-        && targetDist !== null && targetDist > 200;
-      const wasAtDesk = (prevPresence.state === "peaceful" || prevPresence.state === "presence")
-        && prevPresence.distance !== undefined && prevPresence.distance > 200;
-      const deskLightLocked = prevPresence.deskLightLock || false;
-
-      if (atDesk && !wasAtDesk && !hasBedTime && !deskLightLocked) {
-        // 책상 앉음 → 스탠드 ON
-        setDeskLight(true);
-        console.log("Desk detected (" + targetDist + "cm) → desk light ON");
-      } else if (!atDesk && wasAtDesk) {
-        // 책상 떠남 → 스탠드 OFF + 잠금 해제
-        setDeskLight(false);
-        if (deskLightLocked) {
-          await todayRef.set({"presence.deskLightLock": false}, {merge: true});
-        }
-        console.log("Left desk → desk light OFF");
-      }
+      // ═══ 책상 스탠드 (20A) — 자동화 비활성 (전원순환=모드변경 스탠드, 호환 불가) ═══
 
       // ═══ 취침 자동 감지 ═══
       sleepTime = await checkSleepByPresence(doc, presenceState, prevPresence, targetDist);
