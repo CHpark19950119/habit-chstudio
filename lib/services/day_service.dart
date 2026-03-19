@@ -150,6 +150,11 @@ class DayService extends ChangeNotifier {
 
     _log('복원: state=${_routine.state.name}, meal=${_meal.isMealing}');
 
+    // ★ Firestore 기상 기록 복원 — FCM 미도달 시 안전망
+    if (_routine.state == DayState.idle) {
+      await _recoverWakeFromFirestore();
+    }
+
     try { await _appChannel.invokeMethod('flutterReady'); } catch (_) {}
 
     await _requestNotificationPermissionOnce();
@@ -163,6 +168,27 @@ class DayService extends ChangeNotifier {
     _initialized = true;
     _log('초기화 완료 (state=${_routine.state.name}, mealing=${_meal.isMealing})');
     notifyListeners();
+  }
+
+  /// Firestore에서 오늘 wake 기록 확인 → 상태 복원
+  /// (FCM 미도달 / SharedPrefs 유실 대비 안전망)
+  Future<void> _recoverWakeFromFirestore() async {
+    try {
+      final dateStr = _studyDate();
+      final records = await FirebaseService()
+          .getTimeRecords()
+          .timeout(const Duration(seconds: 5));
+      final tr = records[dateStr];
+      if (tr?.wake != null) {
+        _routine.setState(DayState.awake);
+        await _routine.saveState();
+        _routine.startWakeReminder();
+        BusService().startPolling();
+        _log('Firestore 기상 복원: ${tr!.wake} → awake');
+      }
+    } catch (e) {
+      _log('기상 복원 실패 (무시): $e');
+    }
   }
 
   // ═══════════════════════════════════════════

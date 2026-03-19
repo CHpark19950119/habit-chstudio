@@ -117,8 +117,8 @@ async function pollDoorLogic() {
     return {success: false, msg: "doorcontact_state not found", raw: statusArr};
   }
 
-  // Tuya doorcontact_state: true = closed (magnet contact), false = open
-  const isOpen = !doorContactState;
+  // Tuya doorcontact_state: true = open (magnet away), false = closed
+  const isOpen = doorContactState;
 
   // Read current state to detect change
   const todayRef = db.doc("users/" + UID + "/data/iot");
@@ -140,12 +140,36 @@ async function pollDoorLogic() {
     doorUpdate.lastChanged = admin.firestore.FieldValue.serverTimestamp();
   }
 
+  // ═══ 문 열림 일별 추적 (openedToday) ═══
+  const todayDateStr = kstStudyDate();
+  const prevOpenedDate = currentDoor.openedDate || "";
+
+  // 날짜 넘어가면 리셋
+  if (prevOpenedDate !== todayDateStr) {
+    doorUpdate.openedToday = false;
+    doorUpdate.openedDate = todayDateStr;
+    doorUpdate.firstOpenTime = null;
+  }
+
+  // 문이 열려있으면 openedToday 설정 (stateChanged 무관 — 이미 열려있는 경우도 포함)
+  if (isOpen) {
+    doorUpdate.openedToday = true;
+    doorUpdate.openedDate = todayDateStr;
+    // 오늘 첫 열림 시간만 기록
+    if (!currentDoor.firstOpenTime || prevOpenedDate !== todayDateStr) {
+      const kstT = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      doorUpdate.firstOpenTime = String(kstT.getUTCHours()).padStart(2, "0") + ":" +
+        String(kstT.getUTCMinutes()).padStart(2, "0");
+    }
+  }
+
   await todayRef.set({door: doorUpdate}, {merge: true});
 
-  // ═══ 기상 감지: 문 열림 + 7시 이후 + 오늘 wake 미기록 ═══
+  // ═══ 기상 감지: 오늘 문 열린 적 있으면 매 폴링마다 체크 ═══
   let wakeTime = null;
-  if (stateChanged && isOpen) {
-    wakeTime = await checkWakeAndNotify(doc);
+  const doorMerged = {...currentDoor, ...doorUpdate};
+  if (doorMerged.openedToday) {
+    wakeTime = await checkWakeAndNotify(doc, doorMerged.firstOpenTime);
   }
 
   // ═══ 외출 20분 확정 체크 ═══
@@ -159,7 +183,7 @@ async function pollDoorLogic() {
 //  기상 감지 — CF에서 자동 처리 (앱 불필요)
 // ═══════════════════════════════════════════════════════════
 
-async function checkWakeAndNotify(iotDoc) {
+async function checkWakeAndNotify(iotDoc, firstOpenTime) {
   const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
   const kstHour = kstNow.getUTCHours();
   const kstMin = kstNow.getUTCMinutes();
@@ -168,7 +192,16 @@ async function checkWakeAndNotify(iotDoc) {
   if (kstHour < 7) return null;
 
   const dateStr = kstStudyDate(kstNow);
-  const timeStr = String(kstHour).padStart(2, "0") + ":" + String(kstMin).padStart(2, "0");
+
+  // ★ 기상 시각: 첫 문 열림 시간 사용 (7시 이전이면 현재 시간)
+  let timeStr;
+  if (firstOpenTime) {
+    const fp = firstOpenTime.split(":").map(Number);
+    timeStr = (fp[0] >= 7) ? firstOpenTime
+      : String(kstHour).padStart(2, "0") + ":" + String(kstMin).padStart(2, "0");
+  } else {
+    timeStr = String(kstHour).padStart(2, "0") + ":" + String(kstMin).padStart(2, "0");
+  }
 
   // 오늘 wake 이미 기록되었는지 확인
   const todayDoc = await db.doc("users/" + UID + "/data/today").get();
@@ -206,7 +239,8 @@ async function checkWakeAndNotify(iotDoc) {
       await admin.messaging().send({
         token: iotData.fcmToken,
         data: {type: "wake", time: timeStr},
-        android: {priority: "high"},
+        notification: {title: "☀️ 기상", body: "자동 기상 " + timeStr},
+        android: {priority: "high", notification: {channelId: "cheonhong_wake"}},
       });
       console.log("FCM wake sent:", timeStr);
     } catch (e) {
