@@ -132,18 +132,31 @@ async function setLight(on) {
   }
 }
 
-// ═══ 스탠드(20A) 제어 헬퍼 ═══
-async function setDeskLight(on) {
+// ═══ 스탠드(20A) 제어 — 전원순환으로 모드 변경 ═══
+// 모드: 1단계→2단계→3단계→꺼짐 (항상 3단계 사용)
+// 끄기: 1번 순환 (3단계→꺼짐)
+// 켜기: 3번 순환 (꺼짐→1→2→3단계)
+async function deskLightCycle(count) {
   try {
     const {accessId, accessSecret} = getConfig();
     const deskPlugId = "ebeaff0f5a69754067yfdv";
     const token = await getTuyaToken(accessId, accessSecret);
-    const ok = await sendTuyaCommand(accessId, accessSecret, token, deskPlugId,
-      [{code: "switch_1", value: on}]);
-    console.log("DeskLight " + (on ? "ON" : "OFF") + ":", ok);
+    for (let i = 0; i < count; i++) {
+      await sendTuyaCommand(accessId, accessSecret, token, deskPlugId,
+        [{code: "switch_1", value: false}]);
+      await new Promise((r) => setTimeout(r, 800));
+      await sendTuyaCommand(accessId, accessSecret, token, deskPlugId,
+        [{code: "switch_1", value: true}]);
+      if (i < count - 1) await new Promise((r) => setTimeout(r, 800));
+    }
+    console.log("DeskLight cycle x" + count);
   } catch (e) {
-    console.error("setDeskLight error:", e.message);
+    console.error("deskLightCycle error:", e.message);
   }
+}
+
+async function setDeskLight(on) {
+  await deskLightCycle(on ? 3 : 1);
 }
 
 async function pollDoorLogic() {
