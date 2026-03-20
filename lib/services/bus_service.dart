@@ -56,11 +56,9 @@ class BusService {
 
   // ═══ 폴링 시작/중단 ═══
   void startPolling() {
-    if (_isPolling) return;
-    _isPolling = true;
-    print('[Bus] Polling started');
-    _fetchAndSend();
-    _timer = Timer.periodic(_pollInterval, (_) => _fetchAndSend());
+    // ★ 비활성화 — 배터리 최적화 (v10.14.7)
+    print('[Bus] Polling disabled for battery optimization');
+    return;
   }
 
   void stopPolling() {

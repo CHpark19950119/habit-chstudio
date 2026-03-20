@@ -88,8 +88,12 @@ class GeofenceService extends ChangeNotifier {
 
   void _startTimer() {
     _stopTimer();
+    // ★ 집에 있으면 GPS 폴링 안 함 — 외출 시에만 작동 (v10.14.7)
+    if (_isHome) {
+      debugPrint('[Geofence] Home — GPS polling paused');
+      return;
+    }
     _timer = Timer.periodic(_checkInterval, (_) => _checkLocation());
-    // 즉시 1회 체크
     _checkLocation();
   }
 
@@ -132,7 +136,8 @@ class GeofenceService extends ChangeNotifier {
           _enterCount = 0;
           _saveIsHome(true);
           _controller.add(true); // ENTER
-          debugPrint('[Geofence] ▶ ENTER (귀가) dist=${dist.toInt()}m');
+          _stopTimer(); // ★ 귀가 → GPS 폴링 즉시 중단
+          debugPrint('[Geofence] ▶ ENTER (귀가) dist=${dist.toInt()}m — GPS stopped');
         }
       }
     } catch (e) {
