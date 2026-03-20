@@ -102,7 +102,7 @@ class SafetyNetService {
   Future<void> init() async {
     if (_initialized) return;
     final prefs = await SharedPreferences.getInstance();
-    _enabled = prefs.getBool('safety_net_enabled') ?? false;
+    _enabled = prefs.getBool('safety_net_enabled') ?? true;
 
     await _initNotifications();
     await _consumePendingActions();

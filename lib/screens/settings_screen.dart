@@ -13,6 +13,7 @@ import '../services/door_sensor_service.dart';
 import '../services/routine_service.dart';
 import '../services/data_audit_service.dart';
 import '../services/write_queue_service.dart';
+import '../services/safety_net_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -29,6 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _sleepDetectEnabled = false;
   String _wakeMode = 'sensor';
   bool _notifListenerEnabled = false;
+  bool _safetyNetEnabled = true;
 
   bool get _dk => Theme.of(context).brightness == Brightness.dark;
   Color get _textMain => _dk ? BotanicalColors.textMainDark : BotanicalColors.textMain;
@@ -58,6 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _nfc.initialize().timeout(const Duration(seconds: 5), onTimeout: () {});
       _sleepDetectEnabled = _sleepDetect.enabled;
       _wakeMode = _wake.mode;
+      _safetyNetEnabled = SafetyNetService().enabled;
       try {
         _notifListenerEnabled = await _bixbyChannel.invokeMethod<bool>('isNotificationListenerEnabled') ?? false;
       } catch (_) {}
@@ -86,6 +89,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               // ─── 기상 감지 ───
               _wakeDetectCard(),
+              const SizedBox(height: 16),
+
+              // ─── 안전망 (크리쳐 알림) ───
+              _safetyNetCard(),
               const SizedBox(height: 16),
 
               // ─── 빅스비 연동 ───
@@ -129,6 +136,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Text('도어센서, GPS, 안전망, 자동 루틴', style: BotanicalTypo.label(
             size: 11, color: _textMuted)),
         ])),
+      ]),
+    );
+  }
+
+  // ═══ 안전망 (크리쳐 확인 알림) ═══
+  Widget _safetyNetCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BotanicalDeco.card(_dk),
+      child: Row(children: [
+        Container(
+          width: 44, height: 44,
+          decoration: BoxDecoration(
+            color: const Color(0xFF8B5CF6).withOpacity(_dk ? 0.12 : 0.08),
+            borderRadius: BorderRadius.circular(14)),
+          child: const Icon(Icons.pets_rounded, size: 24,
+            color: Color(0xFF8B5CF6)),
+        ),
+        const SizedBox(width: 16),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('안전망 알림', style: BotanicalTypo.body(
+            size: 15, weight: FontWeight.w700, color: _textMain)),
+          const SizedBox(height: 2),
+          Text('기상·외출·식사·홈데이 확인', style: BotanicalTypo.label(
+            size: 11, color: _textMuted)),
+        ])),
+        Switch.adaptive(
+          value: _safetyNetEnabled,
+          activeColor: const Color(0xFF8B5CF6),
+          onChanged: (v) async {
+            await SafetyNetService().setEnabled(v);
+            _safeSetState(() => _safetyNetEnabled = v);
+          },
+        ),
       ]),
     );
   }
