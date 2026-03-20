@@ -208,7 +208,7 @@ class _AlertBtn extends StatelessWidget {
   }
 }
 
-/// 크리쳐 아바타 — sprite sheet 첫 프레임 + 호흡 애니메이션
+/// 크리쳐 아바타 — 이모지 + 글로우 호흡 애니메이션
 class _CreatureAvatar extends StatefulWidget {
   final Color accentColor;
   const _CreatureAvatar({this.accentColor = const Color(0xFF6366F1)});
@@ -240,40 +240,35 @@ class _CreatureAvatarState extends State<_CreatureAvatar>
     return AnimatedBuilder(
       animation: _breathCtrl,
       builder: (context, child) {
-        final offset = math.sin(_breathCtrl.value * math.pi) * 4;
+        final t = _breathCtrl.value;
+        final offset = math.sin(t * math.pi) * 4;
+        final glowOpacity = 0.15 + 0.15 * math.sin(t * math.pi);
         return Transform.translate(
           offset: Offset(0, -offset),
-          child: child);
+          child: Container(
+            width: 100, height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: widget.accentColor.withOpacity(glowOpacity),
+                  blurRadius: 30, spreadRadius: 8),
+              ],
+            ),
+            child: child,
+          ),
+        );
       },
       child: Container(
         width: 100, height: 100,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              widget.accentColor.withOpacity(0.2),
-              Colors.transparent]),
+          color: widget.accentColor.withOpacity(0.12),
+          border: Border.all(
+            color: widget.accentColor.withOpacity(0.3), width: 2),
         ),
-        child: Center(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(50),
-            child: SizedBox(
-              width: 80, height: 80,
-              child: FittedBox(
-                fit: BoxFit.cover,
-                alignment: Alignment.topLeft,
-                child: SizedBox(
-                  width: 128, height: 128,
-                  child: Image.asset(
-                    'assets/image/creature_3d_sheet_128.png',
-                    width: 768, height: 768,
-                    alignment: Alignment.topLeft,
-                    fit: BoxFit.none,
-                  ),
-                ),
-              ),
-            ),
-          ),
+        child: const Center(
+          child: Text('\u{1F431}', style: TextStyle(fontSize: 48)),
         ),
       ),
     );

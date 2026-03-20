@@ -153,6 +153,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String? _editType;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _fbSub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _todaySub;
   int _retryDelay = 5; // ★ 스트림 재연결 지수 백오프 (초)
 
   late AnimationController _staggerController;
@@ -204,6 +205,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void dispose() {
     _ui?.cancel();
     _fbSub?.cancel();
+    _todaySub?.cancel();
     _streamDebounce?.cancel();
     _nfc.removeListener(_onNfcChanged);
     _staggerController.dispose();
@@ -296,6 +298,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       });
     });
     _retryDelay = 5;
+
+    // ★ today doc 실시간 리스너 — CF 외부 쓰기 즉시 반영
+    _todaySub?.cancel();
+    _todaySub = FirebaseService().watchTodayData().listen((snap) {
+      if (!mounted || !snap.exists) return;
+      final data = snap.data();
+      if (data == null) return;
+      if (LocalCacheService().isWriteProtected()) return;
+      final d = _studyDate();
+      _parseTodayData(data, d);
+      _preserveNfcMovementTimes();
+      _safeSetState(() {});
+    }, onError: (e) {
+      debugPrint('[Home] today stream error: $e');
+    });
   }
 
   Future<void> _load() async {

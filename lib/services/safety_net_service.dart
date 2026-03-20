@@ -280,8 +280,8 @@ class SafetyNetService {
     // ── 5. 비정상 데이터 ──
     await _checkAbnormalData(todayKey);
 
-    // ── 6. 체류 감지 시 장소 확인 ──
-    if (routine.state == DayState.outing) {
+    // ── 6. 체류 감지 시 장소 확인 (집이면 스킵) ──
+    if (routine.state == DayState.outing && !geofence.isHome) {
       final activity = MovementService().currentActivity;
       if (activity == 'still') {
         _maybeLocationAlert(todayKey);

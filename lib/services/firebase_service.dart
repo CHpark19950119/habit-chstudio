@@ -246,6 +246,23 @@ class FirebaseService {
     });
   }
 
+  // ═══ Today doc stream ═══
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>> watchTodayData() {
+    return _db.doc(_todayDoc2).snapshots().map((snap) {
+      if (snap.exists && snap.data() != null) {
+        if (LocalCacheService().isWriteProtected()) {
+          debugPrint('[Stream:today] write-protected, skip cache update');
+          return snap;
+        }
+        _todayCache2 = snap.data();
+        _todayCacheTime2 = DateTime.now();
+        LocalCacheService().saveGeneric('today', snap.data()!);
+      }
+      return snap;
+    });
+  }
+
   // ═══ Field update (study doc) ═══
 
   Future<void> updateField(String field, dynamic value) async {
