@@ -13,7 +13,7 @@ class GeofenceService extends ChangeNotifier {
 
   static const double _radiusMeters = 150.0;  // 150m 반경
   static const int _confirmCount = 2;          // 2회 연속 확인 후 전환
-  static const Duration _checkInterval = Duration(minutes: 10);
+  static const Duration _checkInterval = Duration(minutes: 5);
 
   double? _homeLat;
   double? _homeLng;

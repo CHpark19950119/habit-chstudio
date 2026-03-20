@@ -1315,6 +1315,17 @@ const AI_TOOLS = [
     input_schema: {type: "object", properties: {}, required: []},
   },
   {
+    name: "query_date",
+    description: "특정 날짜의 timeRecords 조회. 어제/그저께 등 과거 데이터 확인 가능",
+    input_schema: {
+      type: "object",
+      properties: {
+        date: {type: "string", description: "조회할 날짜 yyyy-MM-dd"},
+      },
+      required: ["date"],
+    },
+  },
+  {
     name: "fix_timerecord",
     description: "timeRecords 시간 수정. 예: wake를 09:00으로 변경, bedTime 삭제(null)",
     input_schema: {
@@ -1605,6 +1616,39 @@ async function executeTool(name, input) {
     }
 
     return report;
+  }
+
+  if (name === "query_date") {
+    const qDate = input.date;
+    // study doc에서 해당 날짜 timeRecords 조회
+    const studyDoc = await db.doc("users/" + UID + "/data/study").get();
+    const studyData = studyDoc.exists ? studyDoc.data() : {};
+    const tr = (studyData.timeRecords || {})[qDate];
+    if (!tr) {
+      // history fallback
+      const parts = qDate.split("-");
+      const monthKey = parts[0] + "-" + parts[1];
+      const dayKey = parts[2];
+      const histDoc = await db.doc("users/" + UID + "/history/" + monthKey).get();
+      if (histDoc.exists) {
+        const days = histDoc.data().days || {};
+        const dayData = days[dayKey];
+        if (dayData && dayData.timeRecords) {
+          const htr = dayData.timeRecords;
+          let result = "📅 " + qDate + " (history)\n";
+          for (const [k, v] of Object.entries(htr)) {
+            result += "  " + k + ": " + v + "\n";
+          }
+          return result;
+        }
+      }
+      return "📅 " + qDate + " — 데이터 없음";
+    }
+    let result = "📅 " + qDate + "\n";
+    for (const [k, v] of Object.entries(tr)) {
+      result += "  " + k + ": " + v + "\n";
+    }
+    return result;
   }
 
   if (name === "fix_timerecord") {
