@@ -153,7 +153,7 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
     final chapters = <_ChapterInfo>[];
     // 챕터 분리: data-chapter 속성 기준
     final starts = <int>[];
-    final chStartRe = RegExp(r'<div class="chapter"[^>]*data-chapter="\d+"');
+    final chStartRe = RegExp(r'<div class="chapter[^"]*"[^>]*data-chapter="\d+"');
     for (final m in chStartRe.allMatches(html)) {
       starts.add(m.start);
     }
