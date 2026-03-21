@@ -603,12 +603,33 @@ async function checkSleepByPresence(iotDoc, presenceState, prevPresence, zoneDis
   // presence 조건 (필터된 거리 + configurable 임계값)
   if (presenceState !== "peaceful" || zoneDist === null || zoneDist > thresh) return null;
 
-  // bedTime 이미 기록 확인
-  const dateStr = kstStudyDate(kstNow);
-  const todayDoc = await db.doc("users/" + UID + "/data/today").get();
-  const todayData = todayDoc.exists ? todayDoc.data() : {};
-  const todayTr = todayData.timeRecords || {};
-  if (todayTr.bedTime || todayTr[dateStr]?.bedTime) return null;
+  // ★ wake 기반 날짜 귀속: wake 있고 bedTime 없는 가장 최근 날짜 찾기
+  const studyDoc = await db.doc("users/" + UID + "/data/study").get();
+  const studyData = studyDoc.exists ? studyDoc.data() : {};
+  const allTr = studyData.timeRecords || {};
+
+  // 오늘 + 최근 3일 검색 (충분한 범위)
+  let targetDate = null;
+  for (let i = 0; i < 4; i++) {
+    const d = kstStudyDate(new Date(kstNow.getTime() - i * 24 * 60 * 60 * 1000));
+    const rec = allTr[d];
+    if (rec && rec.wake && !rec.bedTime) {
+      targetDate = d;
+      break;
+    }
+  }
+  if (!targetDate) return null; // wake 없거나 이미 bedTime 있음 → 스킵
+
+  // ★ 화면 상태 체크: lastScreenOn이 30분 이내면 스킵 (폰 사용 중)
+  const iotSnap = iotDoc.exists ? iotDoc.data() : {};
+  const phone = iotSnap.phone || {};
+  if (phone.lastScreenOn && phone.lastScreenOn.toDate) {
+    const screenMin = (Date.now() - phone.lastScreenOn.toDate().getTime()) / (1000 * 60);
+    if (screenMin < 30) {
+      console.log("Sleep skip — screen active " + Math.round(screenMin) + "min ago");
+      return null;
+    }
+  }
 
   // stationarySince 30분 경과 확인
   const since = prevPresence.stationarySince;
@@ -618,12 +639,13 @@ async function checkSleepByPresence(iotDoc, presenceState, prevPresence, zoneDis
   if (elapsedMin < 30) return null;
 
   // ═══ 취침 확정 ═══
+  const dateStr = targetDate;
   const timeStr = String(kstHour).padStart(2, "0") + ":" + String(kstMin).padStart(2, "0");
 
   // 1. 전등 OFF
   setLight(false);
 
-  // 2. bedTime 듀얼라이트
+  // 2. bedTime 듀얼라이트 — targetDate에 기록
   const studySleepUpdate = {timeRecords: {}};
   studySleepUpdate.timeRecords[dateStr] = {bedTime: timeStr};
   const todayRef = db.doc("users/" + UID + "/data/today");
@@ -679,6 +701,37 @@ exports.pollDoorSensor = functions.pubsub
 // Manual test endpoint
 exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
   try {
+    // ?q=date&date=2026-03-20 → study doc timeRecords 조회
+    // ?q=date&doc=today → today doc 전체 조회
+    if (req.query.q === "date") {
+      if (req.query.doc === "today") {
+        const todayDoc = await db.doc("users/" + UID + "/data/today").get();
+        res.status(200).json(todayDoc.exists ? todayDoc.data() : {});
+        return;
+      }
+      const qDate = req.query.date || kstStudyDate();
+      const studyDoc = await db.doc("users/" + UID + "/data/study").get();
+      const studyData = studyDoc.exists ? studyDoc.data() : {};
+      const tr = (studyData.timeRecords || {})[qDate];
+      res.status(200).json({date: qDate, timeRecords: tr || null});
+      return;
+    }
+    // ?q=set&date=2026-03-20&field=bedTime&value=05:30 → timeRecords 수정
+    // ?q=set&date=2026-03-21&field=bedTime&value=__DELETE__ → 필드 삭제
+    if (req.query.q === "set") {
+      const qDate = req.query.date;
+      const field = req.query.field;
+      const value = req.query.value;
+      if (!qDate || !field) { res.status(400).json({error: "date, field required"}); return; }
+      const isDel = value === "__DELETE__";
+      const fv = isDel ? admin.firestore.FieldValue.delete() : value;
+      await Promise.all([
+        db.doc("users/" + UID + "/data/study").update({["timeRecords." + qDate + "." + field]: fv}),
+        db.doc("users/" + UID + "/data/today").update({["timeRecords." + field]: isDel ? admin.firestore.FieldValue.delete() : fv}).catch(() => {}),
+      ]);
+      res.status(200).json({ok: true, date: qDate, field, value: isDel ? "DELETED" : value});
+      return;
+    }
     const result = await pollDoorLogic();
     res.status(200).json(result);
   } catch (err) {

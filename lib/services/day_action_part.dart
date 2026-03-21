@@ -242,11 +242,17 @@ extension _DayActionHandlers on DayService {
       final records = await fb.getTimeRecords().timeout(const Duration(seconds: 5));
       final now = DateTime.now();
 
-      // UL-2: 4~7시 → 전날 bedTime 미기록이면 전날로 귀속
-      if (now.hour >= 4 && now.hour < 7) {
-        final yday = DateFormat('yyyy-MM-dd').format(now.subtract(const Duration(days: 1)));
-        if (records[yday]?.bedTime == null) dateStr = yday;
+      // ★ wake 기반 날짜 귀속: wake 있고 bedTime 없는 가장 최근 날짜
+      String? targetDate;
+      for (int i = 0; i < 4; i++) {
+        final d = DateFormat('yyyy-MM-dd').format(now.subtract(Duration(days: i)));
+        final rec = records[d];
+        if (rec?.wake != null && rec?.bedTime == null) {
+          targetDate = d;
+          break;
+        }
       }
+      if (targetDate != null) dateStr = targetDate;
 
       final e = records[dateStr];
       var meals = List<MealEntry>.from(e?.meals ?? []);

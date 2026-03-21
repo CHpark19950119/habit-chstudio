@@ -280,11 +280,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           }
         } catch (e) { debugPrint('[Home] stream todos: $e'); }
 
+        // ── prevBedTime (수면시간) — 스트림에서 최신값 갱신 ──
+        String? prevBed;
+        try {
+          final yesterday = DateFormat('yyyy-MM-dd').format(
+              DateFormat('yyyy-MM-dd').parse(d).subtract(const Duration(days: 1)));
+          final tr = data['timeRecords'] as Map<String, dynamic>?;
+          if (tr != null && tr[yesterday] is Map) {
+            prevBed = (tr[yesterday] as Map)['bedTime'] as String?;
+          }
+        } catch (_) {}
+
         _safeSetState(() {
           // ★ v10: timeRecords는 스트림에서 업데이트하지 않음 (플리커 방지)
           if (effMin != null) _effMin = effMin;
           if (orderData != null && !isProtected) _orderData = orderData;
           if (todayTodos != null && !isProtected) _todayTodos = todayTodos;
+          if (prevBed != null) _prevBedTime = prevBed;
         });
       });
     }, onError: (e) {
@@ -306,6 +318,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final data = snap.data();
       if (data == null) return;
       if (LocalCacheService().isWriteProtected()) return;
+      // ★ 로컬 캐시도 서버 값으로 갱신 (다음 앱 시작 시 stale 방지)
+      LocalCacheService().saveGeneric('today', data);
       final d = _studyDate();
       _parseTodayData(data, d);
       _preserveNfcMovementTimes();
@@ -406,6 +420,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final data = await fb.getTodayDoc();
       if (data != null) {
         _parseTodayData(data, d);
+        // ★ 로컬 캐시도 서버 값으로 갱신 (외부 수정 반영)
+        lc.saveGeneric('today', data);
       } else {
         // today 문서가 아직 없으면 study 문서 fallback
         final studyData = await fb.getStudyData();
@@ -439,19 +455,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   /// study 데이터 파싱 → UI 상태에 반영 (로컬/Firebase 공용)
+  /// ★ timeRecords는 today doc에서만 읽음 (study doc과 충돌 방지)
   void _parseStudyData(Map<String, dynamic> data, String d) {
-    // timeRecords
-    try {
-      final trRaw = data['timeRecords'] as Map<String, dynamic>?;
-      if (trRaw != null && trRaw[d] != null) {
-        final rec = TimeRecord.fromMap(d, trRaw[d] as Map<String, dynamic>);
-        _wake = rec.wake; _studyStart = rec.study; _studyEnd = rec.studyEnd;
-        _outing = rec.outing; _returnHome = rec.returnHome; _bedTime = rec.bedTime;
-        _mealStart = rec.mealStart; _mealEnd = rec.mealEnd;
-        _todayMeals = rec.meals; _noOuting = rec.noOuting;
-        _outingMinutes = rec.outingMinutes;
-      }
-    } catch (e) { debugPrint('[Home] timeRecords: $e'); }
 
     // studyTimeRecords
     try {

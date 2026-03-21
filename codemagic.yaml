@@ -7,11 +7,7 @@ workflows:
       flutter: 3.41.3
       java: 17
     triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: master
-          include: true
+      events: []
     scripts:
       - name: Get packages
         script: flutter pub get

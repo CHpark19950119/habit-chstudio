@@ -19,6 +19,8 @@ import com.google.android.gms.location.LocationServices
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import java.util.Calendar
 
 /**
@@ -26,6 +28,7 @@ import java.util.Calendar
  *
  * - "CHSTUDIO_OUT"  → movement.pending 기록 + GPS
  * - "CHSTUDIO_HOME" → pending이면 취소, confirmed out이면 귀가 기록
+ * - 화면 ON/OFF → phone.lastScreenOn 기록 (CF 취침 판정용)
  */
 class BixbyNotificationListener : NotificationListenerService() {
 
@@ -39,6 +42,7 @@ class BixbyNotificationListener : NotificationListenerService() {
         private const val GF_BOT = "8613977898:AAEuuoTVARS-a9nrDp85NWHHOYM0lRvmZmc"
         private const val GF_CHAT = "8624466505"
         private const val ACTIVITY_REQ_CODE = 1001
+        private const val SCREEN_THROTTLE_MS = 5 * 60 * 1000L  // 5분 throttle
     }
 
     private fun db() = FirebaseFirestore.getInstance()
@@ -46,6 +50,60 @@ class BixbyNotificationListener : NotificationListenerService() {
 
     // ★ 서비스 시작 시각 — 이전 알림 무시용
     private val serviceStartTime = System.currentTimeMillis()
+
+    // ★ 화면 상태 감지
+    private var screenReceiver: BroadcastReceiver? = null
+    private var lastScreenOnWrite = 0L
+
+    override fun onCreate() {
+        super.onCreate()
+        registerScreenReceiver()
+    }
+
+    override fun onDestroy() {
+        unregisterScreenReceiver()
+        super.onDestroy()
+    }
+
+    private fun registerScreenReceiver() {
+        if (screenReceiver != null) return
+        screenReceiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context, intent: Intent) {
+                when (intent.action) {
+                    Intent.ACTION_SCREEN_ON -> {
+                        val now = System.currentTimeMillis()
+                        if (now - lastScreenOnWrite < SCREEN_THROTTLE_MS) return
+                        lastScreenOnWrite = now
+                        iotRef().update(
+                            mapOf("phone.lastScreenOn" to FieldValue.serverTimestamp())
+                        ).addOnFailureListener {
+                            iotRef().set(
+                                hashMapOf("phone" to hashMapOf("lastScreenOn" to FieldValue.serverTimestamp())),
+                                SetOptions.merge()
+                            )
+                        }
+                        Log.d(TAG, "Screen ON → phone.lastScreenOn updated")
+                    }
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(screenReceiver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(screenReceiver, filter)
+        }
+        Log.d(TAG, "Screen receiver registered")
+    }
+
+    private fun unregisterScreenReceiver() {
+        screenReceiver?.let {
+            try { unregisterReceiver(it) } catch (_: Exception) {}
+        }
+        screenReceiver = null
+    }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         val notification = sbn?.notification ?: return
