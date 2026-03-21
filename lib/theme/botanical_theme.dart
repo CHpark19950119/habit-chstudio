@@ -2,75 +2,75 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// ═══════════════════════════════════════════════════════════
-/// CHEONHONG STUDIO — Premium Study Room Theme v9.3
+/// CHEONHONG STUDIO — Studio Theme v10
 /// ═══════════════════════════════════════════════════════════
 ///
-/// 컨셉: 밝은 원목 독서실 · 햇살 북카페 · 포근 · 차분 · 몰입
-/// Light: 따뜻한 크림 + 꿀빛 원목 + 소프트 세이지 그린
-/// Dark: 따뜻한 다크우드 (차가운 느낌 배제, 갈색 기조 유지)
+/// 컨셉: 전문적 · 밀도 높음 · 캐주얼 · 모던
+/// Light: 쿨 화이트 + 슬레이트 텍스트 + 인디고 액센트
+/// Dark: 다크 슬레이트 + 크림 텍스트 + 바이올렛 액센트
 
 class BotanicalColors {
   BotanicalColors._();
 
-  // ─── Primary: 소프트 세이지 그린 (밝고 부드럽게) ───
-  static const primary = Color(0xFF3A6B3A);
-  static const primaryLight = Color(0xFF5A8C5A);
-  static const primaryMuted = Color(0xFF7FA87F);
-  static const primarySurface = Color(0xFFE8F2E8);
+  // ─── Primary: 인디고 (전문적 + 신뢰감) ───
+  static const primary = Color(0xFF4F46E5);
+  static const primaryLight = Color(0xFF6366F1);
+  static const primaryMuted = Color(0xFF818CF8);
+  static const primarySurface = Color(0xFFEEF2FF);
 
-  // ─── Accent: 꿀빛 골드 (따뜻하고 밝게) ───
-  static const gold = Color(0xFFC49032);
-  static const goldLight = Color(0xFFDAAA4E);
-  static const goldMuted = Color(0xFFE8CFA0);
-  static const goldSurface = Color(0xFFFFF8EC);
+  // ─── Accent: 앰버 (포인트 + 주의) ───
+  static const gold = Color(0xFFF59E0B);
+  static const goldLight = Color(0xFFFBBF24);
+  static const goldMuted = Color(0xFFFDE68A);
+  static const goldSurface = Color(0xFFFFFBEB);
 
-  // ─── Light Mode: 햇살 크림 ───
-  static const scaffoldLight = Color(0xFFFCF9F3);   // 따뜻한 밀크 크림
-  static const cardLight = Color(0xFFFFFFFA);        // 순백에 가까운 크림
-  static const surfaceLight = Color(0xFFF5EFE5);     // 꿀빛 베이지
-  static const borderLight = Color(0xFFEAE0D2);      // 부드러운 원목 테두리
-  static const textMain = Color(0xFF2C2218);          // 따뜻한 다크 브라운
-  static const textSub = Color(0xFF6B5D4E);           // 우드 브라운
-  static const textMuted = Color(0xFF9C8E7E);         // 소프트 그레이지
-  static const textHint = Color(0xFFBDB0A0);          // 힌트
+  // ─── Light Mode: 쿨 화이트 ───
+  static const scaffoldLight = Color(0xFFF8FAFC);    // 쿨 화이트
+  static const cardLight = Color(0xFFFFFFFF);         // 순백
+  static const surfaceLight = Color(0xFFF1F5F9);     // 슬레이트 50
+  static const borderLight = Color(0xFFE2E8F0);      // 슬레이트 200
+  static const textMain = Color(0xFF0F172A);          // 슬레이트 900
+  static const textSub = Color(0xFF475569);           // 슬레이트 600
+  static const textMuted = Color(0xFF94A3B8);         // 슬레이트 400
+  static const textHint = Color(0xFFCBD5E1);          // 슬레이트 300
 
-  // ─── Dark Mode: 따뜻한 다크 우드 ───
-  static const scaffoldDark = Color(0xFF1A1612);      // 따뜻한 다크 (검지 않게)
-  static const cardDark = Color(0xFF241E18);          // 따뜻한 우드
-  static const surfaceDark = Color(0xFF2E261E);       // 원목 패널
-  static const borderDark = Color(0xFF3D3228);        // 나무결 테두리
-  static const textMainDark = Color(0xFFF5EDE4);      // 크림 화이트
-  static const textSubDark = Color(0xFFCBB89E);       // 골든 베이지
-  static const textMutedDark = Color(0xFF998A7A);     // 뮤트 브라운
-  static const lanternGold = Color(0xFFDAAA4E);       // 따뜻한 골드
+  // ─── Dark Mode: 다크 슬레이트 ───
+  static const scaffoldDark = Color(0xFF0F172A);      // 슬레이트 900
+  static const cardDark = Color(0xFF1E293B);          // 슬레이트 800
+  static const surfaceDark = Color(0xFF334155);       // 슬레이트 700
+  static const borderDark = Color(0xFF475569);        // 슬레이트 600
+  static const textMainDark = Color(0xFFF1F5F9);     // 슬레이트 100
+  static const textSubDark = Color(0xFFCBD5E1);      // 슬레이트 300
+  static const textMutedDark = Color(0xFF94A3B8);    // 슬레이트 400
+  static const lanternGold = Color(0xFF818CF8);       // 인디고 라이트 (다크 액센트)
 
-  // ─── 과목 컬러 (밝고 부드러운 톤) ───
+  // ─── 과목 컬러 (선명하고 구분력 있는 톤) ───
   // 1차 PSAT
-  static const subjectData = Color(0xFF4A8A60);       // 자료해석: 밝은 세이지
-  static const subjectVerbal = Color(0xFF5B6ABF);     // 언어논리: 라벤더 블루
-  static const subjectSituation = Color(0xFFD4893B);  // 상황판단: 앰버
+  static const subjectData = Color(0xFF10B981);       // 자료해석: 에메랄드
+  static const subjectVerbal = Color(0xFF6366F1);     // 언어논리: 인디고
+  static const subjectSituation = Color(0xFFF59E0B);  // 상황판단: 앰버
   // 2차 전공
-  static const subjectEcon = Color(0xFF2D7D9A);       // 경제학: 딥 틸
-  static const subjectIntlLaw = Color(0xFF7A5195);    // 국제법: 퍼플 와인
-  static const subjectIntlPol = Color(0xFF3B7A57);    // 국제정치학: 포레스트
+  static const subjectEcon = Color(0xFF06B6D4);       // 경제학: 시안
+  static const subjectIntlLaw = Color(0xFF8B5CF6);    // 국제법: 바이올렛
+  static const subjectIntlPol = Color(0xFF059669);    // 국제정치학: 에메랄드 다크
   // 공통
-  static const subjectConst = Color(0xFF8B5A72);      // 헌법: 로즈우드
-  static const subjectEnglish = Color(0xFF4A90A8);    // 영어: 스카이 틸
+  static const subjectConst = Color(0xFFEC4899);      // 헌법: 핑크
+  static const subjectEnglish = Color(0xFF0EA5E9);    // 영어: 스카이 블루
 
   // ─── 시맨틱 ───
-  static const success = Color(0xFF4A8A60);
-  static const warning = Color(0xFFD4893B);
-  static const error = Color(0xFFBF4A4A);
-  static const info = Color(0xFF4A90A8);
+  static const success = Color(0xFF10B981);
+  static const warning = Color(0xFFF59E0B);
+  static const error = Color(0xFFEF4444);
+  static const info = Color(0xFF3B82F6);
 
   // ─── 등급 컬러 ───
-  static const gradeSPlus = Color(0xFFDAAA4E);        // 꿀빛 골드
-  static const gradeS = Color(0xFF3A6B3A);
-  static const gradeA = Color(0xFF4A8A60);
-  static const gradeB = Color(0xFF4A90A8);
-  static const gradeC = Color(0xFFD4893B);
-  static const gradeD = Color(0xFFBF4A4A);
-  static const gradeF = Color(0xFF8A7B6B);
+  static const gradeSPlus = Color(0xFFF59E0B);        // 앰버
+  static const gradeS = Color(0xFF4F46E5);
+  static const gradeA = Color(0xFF10B981);
+  static const gradeB = Color(0xFF3B82F6);
+  static const gradeC = Color(0xFFF59E0B);
+  static const gradeD = Color(0xFFEF4444);
+  static const gradeF = Color(0xFF94A3B8);
 
   static Color subjectColor(String subject) {
     switch (subject) {
@@ -109,12 +109,12 @@ class BotanicalColors {
 
   static List<Color> weatherGradient(String main) {
     switch (main.toLowerCase()) {
-      case 'clear': return [const Color(0xFF5B9A72), const Color(0xFF7AB897)];
-      case 'clouds': return [const Color(0xFF8A7B6B), const Color(0xFFA09080)];
-      case 'rain': case 'drizzle': return [const Color(0xFF5A7A85), const Color(0xFF7A9AA0)];
-      case 'thunderstorm': return [const Color(0xFF3A3028), const Color(0xFF5A4D40)];
-      case 'snow': return [const Color(0xFFC0B5A5), const Color(0xFFDDD2C5)];
-      default: return [const Color(0xFF5B9A72), const Color(0xFF7AAA88)];
+      case 'clear': return [const Color(0xFF3B82F6), const Color(0xFF60A5FA)];
+      case 'clouds': return [const Color(0xFF64748B), const Color(0xFF94A3B8)];
+      case 'rain': case 'drizzle': return [const Color(0xFF475569), const Color(0xFF64748B)];
+      case 'thunderstorm': return [const Color(0xFF1E293B), const Color(0xFF334155)];
+      case 'snow': return [const Color(0xFFCBD5E1), const Color(0xFFE2E8F0)];
+      default: return [const Color(0xFF3B82F6), const Color(0xFF60A5FA)];
     }
   }
 }
@@ -127,11 +127,11 @@ class BotanicalSpacing {
   BotanicalSpacing._();
 
   // ─── Border Radius ───
-  static const double radiusXs = 8;
-  static const double radiusSm = 12;
-  static const double radiusMd = 16;
-  static const double radiusLg = 22;
-  static const double radiusXl = 28;
+  static const double radiusXs = 4;
+  static const double radiusSm = 8;
+  static const double radiusMd = 12;
+  static const double radiusLg = 16;
+  static const double radiusXl = 20;
 
   static final borderRadiusXs = BorderRadius.circular(radiusXs);
   static final borderRadiusSm = BorderRadius.circular(radiusSm);
@@ -174,10 +174,10 @@ class BotanicalTypo {
   BotanicalTypo._();
 
   static TextStyle heading({
-    double size = 18,
+    double size = 17,
     FontWeight weight = FontWeight.w700,
     Color? color,
-  }) => GoogleFonts.notoSerifKr(
+  }) => GoogleFonts.notoSansKr(
     fontSize: size, fontWeight: weight,
     color: color ?? BotanicalColors.textMain,
     height: 1.3,
@@ -207,18 +207,18 @@ class BotanicalTypo {
 
   static TextStyle number({
     double size = 48,
-    FontWeight weight = FontWeight.w200,
+    FontWeight weight = FontWeight.w300,
     Color? color,
-  }) => GoogleFonts.notoSerifKr(
+  }) => GoogleFonts.notoSansKr(
     fontSize: size, fontWeight: weight,
     color: color ?? BotanicalColors.textMain,
     height: 1.1,
   );
 
   static TextStyle brand({double size = 12, Color? color}) =>
-      GoogleFonts.notoSerifKr(
-        fontSize: size, fontWeight: FontWeight.w700,
-        letterSpacing: 3,
+      GoogleFonts.notoSansKr(
+        fontSize: size, fontWeight: FontWeight.w800,
+        letterSpacing: 2,
         color: color ?? BotanicalColors.primary,
       );
 }
@@ -230,41 +230,37 @@ class BotanicalTypo {
 class BotanicalDeco {
   BotanicalDeco._();
 
-  /// 기본 카드 — 밝고 깨끗한 노트카드
-  static BoxDecoration card(bool dark, {Color? color, double radius = 22}) =>
+  /// 기본 카드 — 깔끔한 보더 + 미묘한 그림자
+  static BoxDecoration card(bool dark, {Color? color, double radius = 12}) =>
       BoxDecoration(
         color: color ?? (dark ? BotanicalColors.cardDark : BotanicalColors.cardLight),
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(
           color: dark
-            ? BotanicalColors.borderDark.withOpacity(0.6)
-            : BotanicalColors.borderLight.withOpacity(0.5),
-          width: 0.5,
+            ? BotanicalColors.borderDark.withOpacity(0.4)
+            : BotanicalColors.borderLight,
+          width: 1,
         ),
         boxShadow: dark
           ? [
               BoxShadow(
-                color: Colors.black.withOpacity(0.25),
-                blurRadius: 20, offset: const Offset(0, 6)),
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 8, offset: const Offset(0, 2)),
             ]
           : [
-              // 라이트: 꿀빛 따뜻한 그림자
               BoxShadow(
-                color: const Color(0xFFCBB89E).withOpacity(0.12),
-                blurRadius: 24, offset: const Offset(0, 8)),
-              BoxShadow(
-                color: const Color(0xFFCBB89E).withOpacity(0.04),
-                blurRadius: 40, offset: const Offset(0, 16)),
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 8, offset: const Offset(0, 2)),
             ],
       );
 
   /// 서재 다크 카드
-  static BoxDecoration libraryCard({double radius = 22}) => BoxDecoration(
+  static BoxDecoration libraryCard({double radius = 12}) => BoxDecoration(
     color: BotanicalColors.cardDark,
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: BotanicalColors.borderDark),
+    border: Border.all(color: BotanicalColors.borderDark.withOpacity(0.5)),
     boxShadow: [
-      BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 24, offset: const Offset(0, 8)),
+      BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2)),
     ],
   );
 
@@ -306,16 +302,15 @@ class BotanicalDeco {
       color: dark ? BotanicalColors.borderDark : BotanicalColors.borderLight, width: 0.5),
   );
 
-  /// ★ 포근한 글래스 카드
-  static BoxDecoration warmGlass(bool dark, {double radius = 22}) => BoxDecoration(
-    color: dark ? Colors.white.withOpacity(0.04) : Colors.white.withOpacity(0.6),
+  /// ★ 글래스 카드
+  static BoxDecoration warmGlass(bool dark, {double radius = 12}) => BoxDecoration(
+    color: dark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.7),
     borderRadius: BorderRadius.circular(radius),
     border: Border.all(
-      color: dark ? BotanicalColors.borderDark.withOpacity(0.5) : BotanicalColors.borderLight.withOpacity(0.4)),
+      color: dark ? BotanicalColors.borderDark.withOpacity(0.3) : BotanicalColors.borderLight.withOpacity(0.5)),
     boxShadow: [BoxShadow(
-      color: dark ? Colors.black.withOpacity(0.15)
-        : const Color(0xFFCBB89E).withOpacity(0.08),
-      blurRadius: 16, offset: const Offset(0, 4))],
+      color: Colors.black.withOpacity(dark ? 0.1 : 0.03),
+      blurRadius: 8, offset: const Offset(0, 2))],
   );
 }
 
@@ -381,14 +376,14 @@ class BotanicalTheme {
     textTheme: GoogleFonts.notoSansKrTextTheme(),
     cardTheme: CardThemeData(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       color: BotanicalColors.cardLight,
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: BotanicalColors.scaffoldLight,
       elevation: 0, scrolledUnderElevation: 0,
-      titleTextStyle: GoogleFonts.notoSerifKr(
-        fontSize: 18, fontWeight: FontWeight.w700, color: BotanicalColors.textMain),
+      titleTextStyle: GoogleFonts.notoSansKr(
+        fontSize: 17, fontWeight: FontWeight.w700, color: BotanicalColors.textMain),
       iconTheme: const IconThemeData(color: BotanicalColors.textSub),
     ),
     dividerColor: BotanicalColors.borderLight,
@@ -401,10 +396,10 @@ class BotanicalTheme {
         s.contains(WidgetState.selected) ? BotanicalColors.primarySurface : BotanicalColors.surfaceLight),
     ),
     sliderTheme: const SliderThemeData(
-      activeTrackColor: BotanicalColors.gold, thumbColor: BotanicalColors.gold,
+      activeTrackColor: BotanicalColors.primary, thumbColor: BotanicalColors.primary,
       inactiveTrackColor: BotanicalColors.surfaceLight),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: Color(0xFFFCF9F3),
+      backgroundColor: Color(0xFFFFFFFF),
       selectedItemColor: BotanicalColors.primary,
       unselectedItemColor: BotanicalColors.textMuted, elevation: 0),
   );
@@ -417,14 +412,14 @@ class BotanicalTheme {
     textTheme: GoogleFonts.notoSansKrTextTheme(ThemeData.dark().textTheme),
     cardTheme: CardThemeData(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       color: BotanicalColors.cardDark,
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: BotanicalColors.scaffoldDark,
       elevation: 0, scrolledUnderElevation: 0,
-      titleTextStyle: GoogleFonts.notoSerifKr(
-        fontSize: 18, fontWeight: FontWeight.w700, color: BotanicalColors.textMainDark),
+      titleTextStyle: GoogleFonts.notoSansKr(
+        fontSize: 17, fontWeight: FontWeight.w700, color: BotanicalColors.textMainDark),
       iconTheme: const IconThemeData(color: BotanicalColors.textSubDark),
     ),
     dividerColor: BotanicalColors.borderDark,
@@ -439,8 +434,8 @@ class BotanicalTheme {
     sliderTheme: const SliderThemeData(
       activeTrackColor: BotanicalColors.lanternGold, thumbColor: BotanicalColors.lanternGold,
       inactiveTrackColor: BotanicalColors.surfaceDark),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: Color(0xFF1A1612),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      backgroundColor: BotanicalColors.scaffoldDark,
       selectedItemColor: BotanicalColors.lanternGold,
       unselectedItemColor: BotanicalColors.textMutedDark, elevation: 0),
   );

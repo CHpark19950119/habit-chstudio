@@ -147,11 +147,7 @@ class RoutineService extends ChangeNotifier with WidgetsBindingObserver {
 
   void startWakeReminder() {
     _wakeReminder?.cancel();
-    _wakeReminder = Timer(const Duration(minutes: 60), () {
-      if (_state == DayState.awake) {
-        TelegramService().sendNfc('⏰ 기상 60분 — 공부 시작하세요!');
-      }
-    });
+    // 기상 60분 알림 제거 — 공부는 본인이 알아서 함
   }
 
   void startMealReminder() {

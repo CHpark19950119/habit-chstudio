@@ -719,61 +719,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _paperBackground() {
-    // 홈데이모드: 인디고 계열, 일반: 보타니컬 계열
-    final colors = _isHomeDay
-      ? (_dk
-        ? [const Color(0xFF151B2E), const Color(0xFF141928),
-           const Color(0xFF161C2D), const Color(0xFF121725)]
-        : [const Color(0xFFF2F4FA), const Color(0xFFEDF1F8),
-           const Color(0xFFE8ECF5), const Color(0xFFE4E9F2)])
-      : (_dk
-        ? [const Color(0xFF1C1410), const Color(0xFF1A1210),
-           const Color(0xFF1D1512), const Color(0xFF181010)]
-        : [const Color(0xFFFDF9F2), const Color(0xFFFAF5EC),
-           const Color(0xFFF6F0E5), const Color(0xFFF2ECDF)]);
+    final colors = _dk
+      ? [BotanicalColors.scaffoldDark, BotanicalColors.scaffoldDark]
+      : [BotanicalColors.scaffoldLight, const Color(0xFFF1F5F9)];
     return Positioned.fill(
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.easeInOut,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter, end: Alignment.bottomCenter,
-            stops: const [0.0, 0.3, 0.7, 1.0],
-            colors: colors,
-          ),
-        ),
-        child: CustomPaint(painter: PaperGrainPainter(_dk)),
-      ),
+      child: Container(color: colors[0]),
     );
   }
 
   Widget _bottomNav() {
     return Container(
       decoration: BoxDecoration(
-        color: _dk ? BotanicalColors.cardDark : Colors.white,
-        border: Border(top: BorderSide(color: _border.withOpacity(0.3), width: 0.5)),
-        boxShadow: [BoxShadow(
-          color: Colors.black.withOpacity(_dk ? 0.3 : 0.04),
-          blurRadius: 20, offset: const Offset(0, -4))],
+        color: _dk ? const Color(0xFF1E293B) : Colors.white,
+        border: Border(top: BorderSide(
+          color: _dk ? BotanicalColors.borderDark.withOpacity(0.3) : BotanicalColors.borderLight,
+          width: 1)),
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            _navItem(0, Icons.dashboard_rounded, '홈'),
-            _navItem(1, Icons.checklist_rounded, 'Todo'),
-            _navItem(2, Icons.local_fire_department_rounded, '포커스'),
-            _navItem(3, Icons.bar_chart_rounded, '기록'),
-            _navItem(4, Icons.trending_up_rounded, '진행도'),
-            _navItem(5, Icons.calendar_month_rounded, '캘린더'),
+            _navItem(0, Icons.space_dashboard_outlined, Icons.space_dashboard_rounded, '홈'),
+            _navItem(1, Icons.check_circle_outline_rounded, Icons.check_circle_rounded, 'Todo'),
+            _navItem(2, Icons.timer_outlined, Icons.timer_rounded, '포커스'),
+            _navItem(3, Icons.timeline_outlined, Icons.timeline_rounded, '기록'),
+            _navItem(4, Icons.insights_outlined, Icons.insights_rounded, '진행도'),
+            _navItem(5, Icons.calendar_today_outlined, Icons.calendar_today_rounded, '캘린더'),
           ]),
         ),
       ),
     );
   }
 
-  Widget _navItem(int index, IconData icon, String label) {
+  Widget _navItem(int index, IconData icon, IconData activeIcon, String label) {
     final sel = _tab == index;
     final selColor = _dk ? BotanicalColors.lanternGold : BotanicalColors.primary;
     final c = sel ? selColor : _textMuted;
@@ -782,31 +761,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       onTap: () => _switchTab(index),
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Stack(clipBehavior: Clip.none, children: [
-            Icon(icon, size: 22, color: c),
-            if (showLive) Positioned(right: -3, top: -2,
-              child: Container(width: 7, height: 7,
-                decoration: BoxDecoration(
-                  color: BotanicalColors.primary, shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: BotanicalColors.primary.withOpacity(0.5),
-                    blurRadius: 4, spreadRadius: 1)]))),
-          ]),
-          const SizedBox(height: 3),
-          Text(label, style: BotanicalTypo.label(
-            size: 10, weight: sel ? FontWeight.w800 : FontWeight.w600, color: c)),
-          const SizedBox(height: 3),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            width: sel ? 16 : 0,
-            height: 2.5,
-            decoration: BoxDecoration(
-              color: sel ? selColor : Colors.transparent,
-              borderRadius: BorderRadius.circular(2),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: Icon(sel ? activeIcon : icon, key: ValueKey(sel), size: 22, color: c),
             ),
-          ),
+            if (showLive) Positioned(right: -3, top: -2,
+              child: Container(width: 6, height: 6,
+                decoration: BoxDecoration(
+                  color: BotanicalColors.error, shape: BoxShape.circle,
+                  border: Border.all(color: _dk ? const Color(0xFF1E293B) : Colors.white, width: 1.5)))),
+          ]),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(
+            fontSize: 10, fontWeight: sel ? FontWeight.w700 : FontWeight.w500, color: c,
+            letterSpacing: -0.2)),
         ]),
       ),
     );
