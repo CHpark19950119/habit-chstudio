@@ -125,12 +125,12 @@ extension _HomeDailyLog on _HomeScreenState {
       final nextType = i + 1 < events.length ? events[i + 1].type : '';
       switch (curr.type) {
         case 'wake':
-          if (nextType == 'outing') { label = '준비'; }
+          if (nextType == 'outing') { label = _isHomeDay ? '재택' : '준비'; }
           else if (nextType.isEmpty) {
-            // 마지막 세그먼트 (현재까지) → NFC 상태 기반
-            if (_nfc.isOut) { label = '이동'; }
-            else if (_nfc.isStudying) { label = '휴식'; } // 포커스 없으면 휴식
-            else if (_isHomeDay) { label = '재택'; }
+            // 마지막 세그먼트 (현재까지) → 홈데이 우선, NFC 상태 기반
+            if (_isHomeDay) { label = '재택'; }
+            else if (_nfc.isOut) { label = '이동'; }
+            else if (_nfc.isStudying) { label = '휴식'; }
             else { label = '자유'; }
           } else if (nextType == 'studyStart' || nextType.startsWith('focus_')) {
             label = _isHomeDay ? '재택' : '준비';

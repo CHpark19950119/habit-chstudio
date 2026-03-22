@@ -1054,7 +1054,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         Color color = _textMuted;
         String? timerStr;
 
-        if (snap.hasData && snap.data!.exists) {
+        if (snap.hasError) {
+          label = '연결 오류';
+        } else if (snap.hasData && snap.data!.exists) {
           final data = snap.data!.data() as Map<String, dynamic>? ?? {};
           final presence = data['presence'] as Map<String, dynamic>?;
           final config = data['config'] as Map<String, dynamic>?;

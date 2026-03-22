@@ -717,12 +717,25 @@ exports.pollDoorSensor = functions.pubsub
 // Manual test endpoint
 exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
   try {
+    // ?q=light&on=true/false → 전등 제어
+    if (req.query.q === "light") {
+      const on = req.query.on !== "false";
+      await setLight(on);
+      res.status(200).json({ok: true, light: on ? "ON" : "OFF"});
+      return;
+    }
+    // ?q=date&doc=today/iot → 해당 doc 전체 조회
     // ?q=date&date=2026-03-20 → study doc timeRecords 조회
-    // ?q=date&doc=today → today doc 전체 조회
     if (req.query.q === "date") {
       if (req.query.doc === "today") {
         const todayDoc = await db.doc("users/" + UID + "/data/today").get();
         res.status(200).json(todayDoc.exists ? todayDoc.data() : {});
+        return;
+      }
+      if (req.query.doc === "iot") {
+        const iotDoc = await db.doc("users/" + UID + "/data/iot").get();
+        const d = iotDoc.exists ? iotDoc.data() : {};
+        res.status(200).json({presence: d.presence, door: d.door, phone: d.phone});
         return;
       }
       const qDate = req.query.date || kstStudyDate();
