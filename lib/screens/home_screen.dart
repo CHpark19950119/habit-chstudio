@@ -792,40 +792,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       color: BotanicalColors.primary,
       onRefresh: () => _load(),
       child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
           // ═══ HEADER ═══
           _staggered(0, _weatherHeaderBar()),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
 
-          // ═══ STATUS — 지금 상태 ═══
+          // ═══ STATUS ═══
           _staggered(1, _nfcStatusCard()),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           _staggered(1, _studyTimeCard()),
-          const SizedBox(height: 10),
-          _staggered(1, _presenceCard()),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           _staggered(2, _libraryCard()),
           if (_ft.isRunning) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             _staggered(2, _activeFocusBanner()),
           ],
-          // (홈데이 배너는 헤더에 통합됨)
-          const SizedBox(height: 16),
-
-          // ═══ TODAY — 오늘 할 것 ═══
-          _staggered(3, _dashSectionHeader('TODAY')),
-          const SizedBox(height: 8),
-          _staggered(3, _orderPortalChip()),
           const SizedBox(height: 14),
 
-          // ═══ LOG — 기록 ═══
-          if (_dailyMemos.isNotEmpty || true) ...[
-            _staggered(4, _dashboardMemoWidget()),
-            const SizedBox(height: 10),
-          ],
+          // ═══ TODAY ═══
+          _staggered(3, _dashSectionHeader('TODAY')),
+          const SizedBox(height: 6),
+          _staggered(3, _orderPortalChip()),
+          const SizedBox(height: 12),
+
+          // ═══ LOG ═══
           _staggered(4, _locationSummaryCard()),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -833,9 +826,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _dashSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(left: 2),
-      child: Text(title, style: BotanicalTypo.label(
-        size: 11, weight: FontWeight.w800, letterSpacing: 2,
+      padding: const EdgeInsets.only(left: 2, top: 4),
+      child: Text(title, style: TextStyle(
+        fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.5,
         color: _textMuted)),
     );
   }
@@ -1007,48 +1000,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final wd = ['월','화','수','목','금','토','일'][now.weekday - 1];
     final w = _weatherData;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('CHEONHONG', style: BotanicalTypo.brand(
-            color: _dk ? BotanicalColors.lanternGold : BotanicalColors.primary)),
-          const SizedBox(height: 4),
-          Row(children: [
-            Text('${now.month}월 ${now.day}일 ($wd)',
-              style: BotanicalTypo.heading(size: 22, weight: FontWeight.w800, color: _textMain)),
-            if (w != null) ...[
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () async {
-                  await WeatherService().sendWeatherReport();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('📩 날씨 정보를 Telegram으로 전송했습니다'),
-                      duration: Duration(seconds: 2)));
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: _dk ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(8)),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text(w.emoji, style: const TextStyle(fontSize: 12)),
-                    const SizedBox(width: 3),
-                    Text('${w.temp.round()}°', style: BotanicalTypo.number(
-                      size: 12, weight: FontWeight.w700, color: _textSub)),
-                    if (_weather.needsUmbrella(w)) ...[
-                      const SizedBox(width: 2),
-                      const Text('☂️', style: TextStyle(fontSize: 10)),
-                    ],
-                  ]),
-                ),
-              ),
-            ],
-          ]),
-        ])),
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
+          Text('${now.month}월 ${now.day}일', style: TextStyle(
+            fontSize: 20, fontWeight: FontWeight.w800, color: _textMain,
+            letterSpacing: -0.5)),
+          Text(' $wd', style: TextStyle(
+            fontSize: 14, fontWeight: FontWeight.w500, color: _textMuted)),
+          if (w != null) ...[
+            const SizedBox(width: 10),
+            GestureDetector(
+              onTap: () async {
+                await WeatherService().sendWeatherReport();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('📩 날씨 정보를 Telegram으로 전송했습니다'),
+                    duration: Duration(seconds: 2)));
+                }
+              },
+              child: Text('${w.emoji} ${w.temp.round()}°${_weather.needsUmbrella(w) ? ' ☂️' : ''}',
+                style: TextStyle(fontSize: 13, color: _textSub)),
+            ),
+          ],
+          const Spacer(),
           _headerIconBtn(Icons.directions_bus_rounded, () async {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('버스 도착정보 조회 중...'), duration: Duration(seconds: 1)));
@@ -1058,13 +1034,90 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 const SnackBar(content: Text('텔레그램으로 전송 완료'), duration: Duration(seconds: 2)));
             }
           }),
-          const SizedBox(width: 6),
-          _headerIconBtn(Icons.edit_note_rounded, _showAddMemoDialog, size: 20),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           _headerIconBtn(Icons.settings_outlined, () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => const SettingsScreen())), size: 18),
         ]),
-      ],
+        const SizedBox(height: 4),
+        // ★ 센서 상태 인라인
+        _presenceBadge(),
+      ]),
+    );
+  }
+
+  /// 센서 상태를 헤더 아래에 작은 뱃지로 표시
+  Widget _presenceBadge() {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.doc(kIotDoc).snapshots(),
+      builder: (ctx, snap) {
+        String emoji = '📡', label = '센서 대기';
+        Color color = _textMuted;
+        String? timerStr;
+
+        if (snap.hasData && snap.data!.exists) {
+          final data = snap.data!.data() as Map<String, dynamic>? ?? {};
+          final presence = data['presence'] as Map<String, dynamic>?;
+          final config = data['config'] as Map<String, dynamic>?;
+          final bedThreshold = (config?['bedThresholdCm'] as num?)?.toInt() ?? 220;
+          if (presence != null) {
+            final state = presence['state'] as String? ?? 'unknown';
+            final filtRaw = presence['filteredDistance'];
+            final rawDist = presence['distance'];
+            final filtDist = filtRaw is num ? filtRaw.toInt() : null;
+            final dist = rawDist is num ? rawDist.toInt() : null;
+            final zoneDist = filtDist ?? dist;
+            final since = presence['stationarySince'];
+
+            switch (state) {
+              case 'peaceful':
+                final isBed = zoneDist != null && zoneDist <= bedThreshold;
+                emoji = isBed ? '🛏️' : '🪑';
+                label = isBed ? '침대' : '책상';
+                color = isBed ? const Color(0xFF8B5CF6) : BotanicalColors.primary;
+                break;
+              case 'presence':
+                emoji = '🚶'; label = '움직임'; color = BotanicalColors.warning;
+                break;
+              case 'none':
+                emoji = '—'; label = '비어있음'; color = _textMuted;
+                break;
+              default:
+                emoji = '📡'; label = state; color = _textMuted;
+            }
+
+            if (since != null && since is Timestamp && state == 'peaceful'
+                && zoneDist != null && zoneDist <= bedThreshold) {
+              final min = DateTime.now().difference(since.toDate()).inMinutes;
+              timerStr = min < 60 ? '${min}분' : '${min ~/ 60}h${min % 60}m';
+            }
+          }
+        }
+
+        return Row(children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Text(emoji, style: const TextStyle(fontSize: 10)),
+              const SizedBox(width: 3),
+              Text(label, style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+              if (timerStr != null) ...[
+                const SizedBox(width: 4),
+                Text(timerStr, style: TextStyle(
+                  fontSize: 9, fontWeight: FontWeight.w700, color: color.withOpacity(0.7))),
+              ],
+            ]),
+          ),
+          if (_sleepDurationLabel != null) ...[
+            const SizedBox(width: 6),
+            Text('😴 $_sleepDurationLabel', style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w600, color: _textMuted)),
+          ],
+        ]);
+      },
     );
   }
 
@@ -1314,46 +1367,45 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _studyTimeCard() {
     final h = _effMin ~/ 60;
     final m = _effMin % 60;
-    final pc = _dk ? BotanicalColors.primaryLight : BotanicalColors.primary;
+    final pc = BotanicalColors.primary;
+    final pct = (_effMin / 480 * 100).toInt();
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: _dk
-            ? [const Color(0xFF1E3A2F), const Color(0xFF1A2E26)]
-            : [const Color(0xFFE8F5E9), const Color(0xFFF1F8E9)]),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: BotanicalColors.primary.withOpacity(_dk ? 0.3 : 0.15))),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.timer_outlined, size: 14, color: pc),
-          const SizedBox(width: 6),
-          Text('순공시간', style: BotanicalTypo.label(
-            size: 10, weight: FontWeight.w700, color: pc)),
-        ]),
-        const SizedBox(height: 8),
-        Row(crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic, children: [
-          Text('$h', style: BotanicalTypo.number(size: 28, weight: FontWeight.w300,
-            color: _dk ? Colors.white : BotanicalColors.textMain)),
-          Text('h ', style: BotanicalTypo.label(size: 12, weight: FontWeight.w300,
-            color: _dk ? Colors.white54 : BotanicalColors.textSub)),
-          Text('${m.toString().padLeft(2, '0')}', style: BotanicalTypo.number(
-            size: 18, weight: FontWeight.w300,
-            color: _dk ? Colors.white70 : BotanicalColors.textSub)),
-          Text('m', style: BotanicalTypo.label(size: 10, weight: FontWeight.w300,
-            color: _dk ? Colors.white38 : BotanicalColors.textMuted)),
-        ]),
-        const SizedBox(height: 6),
-        ClipRRect(borderRadius: BorderRadius.circular(3),
-          child: LinearProgressIndicator(
-            value: (_effMin / 480).clamp(0.0, 1.0),
-            backgroundColor: _dk ? Colors.white.withOpacity(0.08) : pc.withOpacity(0.1),
-            valueColor: AlwaysStoppedAnimation(pc), minHeight: 3)),
-        const SizedBox(height: 3),
-        Text('${(_effMin / 480 * 100).toInt()}%', style: BotanicalTypo.label(
-          size: 9, color: _dk ? Colors.white38 : BotanicalColors.textMuted)),
+        color: _dk ? BotanicalColors.cardDark : BotanicalColors.cardLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _border.withOpacity(_dk ? 0.15 : 0.6))),
+      child: Row(children: [
+        // 큰 숫자
+        RichText(text: TextSpan(children: [
+          TextSpan(text: '$h', style: TextStyle(
+            fontSize: 26, fontWeight: FontWeight.w700, color: _textMain,
+            fontFamily: 'monospace', height: 1)),
+          TextSpan(text: 'h ', style: TextStyle(
+            fontSize: 11, fontWeight: FontWeight.w400, color: _textMuted)),
+          TextSpan(text: '${m.toString().padLeft(2, '0')}', style: TextStyle(
+            fontSize: 18, fontWeight: FontWeight.w600, color: _textSub,
+            fontFamily: 'monospace')),
+          TextSpan(text: 'm', style: TextStyle(
+            fontSize: 10, fontWeight: FontWeight.w400, color: _textMuted)),
+        ])),
+        const SizedBox(width: 12),
+        // 프로그레스
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Text('순공시간', style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w600, color: _textMuted)),
+            const Spacer(),
+            Text('$pct%', style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w700, color: pc)),
+          ]),
+          const SizedBox(height: 4),
+          ClipRRect(borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: (_effMin / 480).clamp(0.0, 1.0),
+              backgroundColor: _dk ? Colors.white.withOpacity(0.06) : pc.withOpacity(0.08),
+              valueColor: AlwaysStoppedAnimation(pc), minHeight: 4)),
+        ])),
       ]),
     );
   }

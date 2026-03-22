@@ -425,10 +425,26 @@ async function checkWakeAndNotify(iotDoc, firstOpenTime) {
 
   const dateStr = kstStudyDate(kstNow);
 
+  // ★ bedTime 기록 있으면 → 아직 안 일어난 것 (문 열림은 화장실 등)
+  // wake 기반: 가장 최근 bedTime이 있는 날 이후에 문이 열려야 진짜 기상
+  const studyDoc2 = await db.doc("users/" + UID + "/data/study").get();
+  const allTr2 = (studyDoc2.exists ? studyDoc2.data() : {}).timeRecords || {};
+  let lastBedDate = null;
+  for (let i = 0; i < 3; i++) {
+    const d = kstStudyDate(new Date(kstNow.getTime() - i * 24 * 60 * 60 * 1000));
+    if (allTr2[d]?.bedTime) { lastBedDate = d; break; }
+  }
+  // bedTime 없으면 (아직 안 잠) → wake 스킵
+  if (!lastBedDate) {
+    console.log("Wake skip — no recent bedTime found (still awake from yesterday?)");
+    return null;
+  }
+
   // ★ 기상 시각: 첫 문 열림 시간 사용 (7시 이전이면 현재 시간)
   let timeStr;
   if (firstOpenTime) {
     const fp = firstOpenTime.split(":").map(Number);
+    // 4AM 이전 firstOpenTime은 어제 잔존 → 현재 시간 사용
     timeStr = (fp[0] >= 7) ? firstOpenTime
       : String(kstHour).padStart(2, "0") + ":" + String(kstMin).padStart(2, "0");
   } else {

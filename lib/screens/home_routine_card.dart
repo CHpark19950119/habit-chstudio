@@ -36,20 +36,18 @@ extension _HomeRoutineCard on _HomeScreenState {
     final done = items.where((i) => i.active).length;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _dk ? const Color(0xFF0F1825) : const Color(0xFFFDFAF4),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _border.withOpacity(0.12))),
+        color: _dk ? BotanicalColors.cardDark : BotanicalColors.cardLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _border.withOpacity(_dk ? 0.15 : 0.6))),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         // ── 아이콘 스트립 ──
         Row(children: [
           ...items.map((i) => Expanded(child: _routineChip(i))),
-          const SizedBox(width: 6),
-          // 시간 수정 버튼
           GestureDetector(
             onTap: () => _editTimeField('wake', '기상', _wake),
-            child: Icon(Icons.tune_rounded, size: 16, color: _textMuted.withOpacity(0.4))),
+            child: Icon(Icons.tune_rounded, size: 14, color: _textMuted.withOpacity(0.3))),
         ]),
         // ── 프로그레스 ──
         const SizedBox(height: 6),
@@ -57,15 +55,15 @@ extension _HomeRoutineCard on _HomeScreenState {
           Expanded(child: ClipRRect(
             borderRadius: BorderRadius.circular(2),
             child: LinearProgressIndicator(
-              value: done / items.length, minHeight: 3,
-              backgroundColor: _dk ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03),
-              valueColor: AlwaysStoppedAnimation(_accent)))),
+              value: done / items.length, minHeight: 2.5,
+              backgroundColor: _dk ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04),
+              valueColor: AlwaysStoppedAnimation(BotanicalColors.primary)))),
           const SizedBox(width: 8),
           if (_sleepDurationLabel != null) ...[
-            Text('😴 $_sleepDurationLabel', style: TextStyle(
+            Text('😴$_sleepDurationLabel', style: TextStyle(
               fontSize: 9, fontWeight: FontWeight.w600,
-              color: const Color(0xFF6B5DAF).withOpacity(0.8))),
-            const SizedBox(width: 6),
+              color: BotanicalColors.primaryMuted)),
+            const SizedBox(width: 4),
           ],
           Text('$done/${items.length}', style: TextStyle(
             fontSize: 9, fontWeight: FontWeight.w700, color: _textMuted)),
@@ -415,38 +413,31 @@ extension _HomeRoutineCard on _HomeScreenState {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: _dk ? const Color(0xFF0F1825) : const Color(0xFFFDFAF4),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _border.withOpacity(0.12))),
+            color: _dk ? BotanicalColors.cardDark : BotanicalColors.cardLight,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _border.withOpacity(_dk ? 0.15 : 0.6))),
           child: Row(children: [
-            Text(emoji, style: const TextStyle(fontSize: 18)),
-            const SizedBox(width: 10),
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(children: [
-                  Text(label, style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w700, color: color)),
-                  if (dist != null) ...[
-                    const SizedBox(width: 6),
-                    Text('${dist}cm', style: TextStyle(
-                      fontSize: 11, color: _textMuted)),
-                  ],
-                  if (timerStr != null) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6B5DAF).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8)),
-                      child: Text(timerStr, style: const TextStyle(
-                        fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF6B5DAF)))),
-                  ],
-                ]),
-              ],
-            )),
-            Icon(Icons.sensors_rounded, size: 16, color: _textMuted.withOpacity(0.3)),
+            Text(emoji, style: const TextStyle(fontSize: 16)),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(
+              fontSize: 13, fontWeight: FontWeight.w600, color: color)),
+            if (dist != null) ...[
+              const SizedBox(width: 6),
+              Text('${dist}cm', style: TextStyle(
+                fontSize: 10, color: _textMuted)),
+            ],
+            if (timerStr != null) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4)),
+                child: Text(timerStr, style: TextStyle(
+                  fontSize: 9, fontWeight: FontWeight.w700, color: color))),
+            ],
+            const Spacer(),
+            Icon(Icons.sensors_rounded, size: 14, color: _textMuted.withOpacity(0.2)),
           ]),
         );
       },
