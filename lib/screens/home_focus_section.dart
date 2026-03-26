@@ -75,7 +75,7 @@ extension _HomeFocusSection on _HomeScreenState {
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: _textMuted.withOpacity(0.08),
+                  color: _textMuted.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10)),
                 child: Icon(Icons.tune_rounded, size: 18, color: _textMuted),
               ),
@@ -86,7 +86,7 @@ extension _HomeFocusSection on _HomeScreenState {
           // ── Hero time ──
           Center(child: ShaderMask(
             shaderCallback: (r) => LinearGradient(
-              colors: [sc, sc.withOpacity(0.4), dk ? Colors.white54 : Colors.black38],
+              colors: [sc, sc.withValues(alpha: 0.4), dk ? Colors.white54 : Colors.black38],
               begin: Alignment.topCenter, end: Alignment.bottomCenter,
             ).createShader(r),
             child: Text(
@@ -106,7 +106,7 @@ extension _HomeFocusSection on _HomeScreenState {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: sc.withOpacity(dk ? 0.12 : 0.07),
+                  color: sc.withValues(alpha: dk ? 0.12 : 0.07),
                   borderRadius: BorderRadius.circular(10)),
                 child: Text('${_ft.todaySessionCount}세션', style: TextStyle(
                   fontSize: 11, fontWeight: FontWeight.w800, color: sc,
@@ -122,15 +122,15 @@ extension _HomeFocusSection on _HomeScreenState {
             borderRadius: BorderRadius.circular(3),
             child: SizedBox(height: 3, child: LinearProgressIndicator(
               value: pct,
-              backgroundColor: dk ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04),
-              valueColor: AlwaysStoppedAnimation(sc.withOpacity(0.60)),
+              backgroundColor: dk ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.04),
+              valueColor: AlwaysStoppedAnimation(sc.withValues(alpha: 0.60)),
             )),
           ),
           const SizedBox(height: 4),
           Align(
             alignment: Alignment.centerRight,
             child: Text('${(pct * 100).toInt()}% of 8h', style: TextStyle(
-              fontSize: 9, fontWeight: FontWeight.w600, color: _textMuted.withOpacity(0.45),
+              fontSize: 9, fontWeight: FontWeight.w600, color: _textMuted.withValues(alpha: 0.45),
               fontFeatures: const [FontFeature.tabularFigures()]))),
           const SizedBox(height: 28),
 
@@ -143,7 +143,7 @@ extension _HomeFocusSection on _HomeScreenState {
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               margin: const EdgeInsets.only(right: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF3B6BA5).withOpacity(dk ? 0.15 : 0.08),
+                color: const Color(0xFF3B6BA5).withValues(alpha: dk ? 0.15 : 0.08),
                 borderRadius: BorderRadius.circular(4)),
               child: Text('1차', style: TextStyle(
                 fontSize: 8, fontWeight: FontWeight.w800,
@@ -160,7 +160,7 @@ extension _HomeFocusSection on _HomeScreenState {
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               margin: const EdgeInsets.only(right: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF7A5195).withOpacity(dk ? 0.15 : 0.08),
+                color: const Color(0xFF7A5195).withValues(alpha: dk ? 0.15 : 0.08),
                 borderRadius: BorderRadius.circular(4)),
               child: Text('2차', style: TextStyle(
                 fontSize: 8, fontWeight: FontWeight.w800,
@@ -202,15 +202,15 @@ extension _HomeFocusSection on _HomeScreenState {
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [sc.withOpacity(dk ? 0.18 : 0.12), sc.withOpacity(dk ? 0.08 : 0.04)],
+                      colors: [sc.withValues(alpha: dk ? 0.18 : 0.12), sc.withValues(alpha: dk ? 0.08 : 0.04)],
                       begin: Alignment.topLeft, end: Alignment.bottomRight),
                     borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: sc.withOpacity(0.25)),
-                    boxShadow: [BoxShadow(color: sc.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, 8))]),
+                    border: Border.all(color: sc.withValues(alpha: 0.25)),
+                    boxShadow: [BoxShadow(color: sc.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))]),
                   child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                     Container(width: 34, height: 34,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: sc.withOpacity(0.22),
-                        boxShadow: [BoxShadow(color: sc.withOpacity(0.15), blurRadius: 12)]),
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: sc.withValues(alpha: 0.22),
+                        boxShadow: [BoxShadow(color: sc.withValues(alpha: 0.15), blurRadius: 12)]),
                       child: Icon(Icons.play_arrow_rounded, size: 22, color: sc)),
                     const SizedBox(width: 10),
                     Text('시작', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: sc, letterSpacing: 0.5)),
@@ -223,16 +223,16 @@ extension _HomeFocusSection on _HomeScreenState {
 
           // ── Records divider ──
           Container(height: 1,
-            color: dk ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04)),
+            color: dk ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.04)),
           const SizedBox(height: 24),
 
           // ── Today summary ──
           _fFrostCard(
-            borderColor: sc.withOpacity(0.08),
+            borderColor: sc.withValues(alpha: 0.08),
             child: Row(children: [
               ShaderMask(
                 shaderCallback: (r) => LinearGradient(
-                  colors: [sc, sc.withOpacity(0.45)],
+                  colors: [sc, sc.withValues(alpha: 0.45)],
                 ).createShader(r),
                 child: Text(_fFmtMin(totalEff), style: const TextStyle(
                   fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white,
@@ -240,7 +240,7 @@ extension _HomeFocusSection on _HomeScreenState {
               ),
               const SizedBox(width: 8),
               Text('순공', style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w600, color: sc.withOpacity(0.5))),
+                fontSize: 10, fontWeight: FontWeight.w600, color: sc.withValues(alpha: 0.5))),
               const Spacer(),
               _fMiniStat('📖', _focusSessions.fold<int>(0, (s, c) => s + c.studyMin)),
               const SizedBox(width: 6),
@@ -268,10 +268,10 @@ extension _HomeFocusSection on _HomeScreenState {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 40),
               child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.hourglass_empty_rounded, size: 36, color: _textMuted.withOpacity(0.18)),
+                Icon(Icons.hourglass_empty_rounded, size: 36, color: _textMuted.withValues(alpha: 0.18)),
                 const SizedBox(height: 10),
                 Text('아직 기록이 없어요', style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted.withOpacity(0.4))),
+                  fontSize: 13, fontWeight: FontWeight.w500, color: _textMuted.withValues(alpha: 0.4))),
               ])),
             )
           else
@@ -303,12 +303,12 @@ extension _HomeFocusSection on _HomeScreenState {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           decoration: BoxDecoration(
-            color: sel ? c.withOpacity(dk ? 0.18 : 0.10) : Colors.transparent,
+            color: sel ? c.withValues(alpha: dk ? 0.18 : 0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: sel ? c.withOpacity(0.45) : _textMuted.withOpacity(0.12),
+              color: sel ? c.withValues(alpha: 0.45) : _textMuted.withValues(alpha: 0.12),
               width: sel ? 1.5 : 1),
-            boxShadow: sel ? [BoxShadow(color: c.withOpacity(0.10), blurRadius: 10)] : null,
+            boxShadow: sel ? [BoxShadow(color: c.withValues(alpha: 0.10), blurRadius: 10)] : null,
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Text(emoji, style: const TextStyle(fontSize: 14)),
@@ -326,7 +326,7 @@ extension _HomeFocusSection on _HomeScreenState {
     padding: const EdgeInsets.only(left: 2),
     child: Text(t, style: TextStyle(
       fontSize: 10, fontWeight: FontWeight.w800,
-      color: _textMuted.withOpacity(0.55), letterSpacing: 2.5)),
+      color: _textMuted.withValues(alpha: 0.55), letterSpacing: 2.5)),
   );
 
   Widget _fFrostCard({required Widget child, Color? borderColor}) {
@@ -338,9 +338,9 @@ extension _HomeFocusSection on _HomeScreenState {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: dk ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.65),
+            color: dk ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.65),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor ?? (dk ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.04)))),
+            border: Border.all(color: borderColor ?? (dk ? Colors.white.withValues(alpha: 0.07) : Colors.black.withValues(alpha: 0.04)))),
           child: child,
         ),
       ),
@@ -360,12 +360,12 @@ extension _HomeFocusSection on _HomeScreenState {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 14),
             decoration: BoxDecoration(
-              color: sel ? c.withOpacity(dk ? 0.10 : 0.05)
-                  : (dk ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.65)),
+              color: sel ? c.withValues(alpha: dk ? 0.10 : 0.05)
+                  : (dk ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.65)),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: sel ? c.withOpacity(0.35)
-                    : (dk ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.04)))),
+                color: sel ? c.withValues(alpha: 0.35)
+                    : (dk ? Colors.white.withValues(alpha: 0.07) : Colors.black.withValues(alpha: 0.04)))),
             child: Row(children: [
               Text(emoji, style: const TextStyle(fontSize: 18)),
               const SizedBox(width: 10),
@@ -378,7 +378,7 @@ extension _HomeFocusSection on _HomeScreenState {
               const Spacer(),
               if (sel) Container(width: 7, height: 7, decoration: BoxDecoration(
                 shape: BoxShape.circle, color: c,
-                boxShadow: [BoxShadow(color: c.withOpacity(0.4), blurRadius: 6)])),
+                boxShadow: [BoxShadow(color: c.withValues(alpha: 0.4), blurRadius: 6)])),
             ]),
           ),
         ),
@@ -394,7 +394,7 @@ extension _HomeFocusSection on _HomeScreenState {
 
     if (!cal) {
       return _fFrostCard(
-        borderColor: Colors.orange.withOpacity(0.15),
+        borderColor: Colors.orange.withValues(alpha: 0.15),
         child: Row(children: [
           const Text('📐', style: TextStyle(fontSize: 24)),
           const SizedBox(width: 12),
@@ -410,9 +410,9 @@ extension _HomeFocusSection on _HomeScreenState {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.12),
+                color: Colors.orange.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.orange.withOpacity(0.25))),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.25))),
               child: const Text('거치대 등록', style: TextStyle(
                 fontSize: 11, fontWeight: FontWeight.w700, color: Colors.orange)),
             ),
@@ -421,11 +421,11 @@ extension _HomeFocusSection on _HomeScreenState {
       );
     }
 
-    final statusColor = on ? const Color(0xFF10B981) : (en ? _textMuted.withOpacity(0.6) : _textMuted.withOpacity(0.4));
+    final statusColor = on ? const Color(0xFF10B981) : (en ? _textMuted.withValues(alpha: 0.6) : _textMuted.withValues(alpha: 0.4));
     final statusMsg = on ? '거치 감지됨' : (en ? '대기 중' : '감지 OFF');
 
     return _fFrostCard(
-      borderColor: statusColor.withOpacity(0.12),
+      borderColor: statusColor.withValues(alpha: 0.12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Text(on ? '✅' : '📐', style: const TextStyle(fontSize: 20)),
@@ -439,7 +439,7 @@ extension _HomeFocusSection on _HomeScreenState {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.12),
+                    color: Colors.orange.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(5)),
                   child: const Text('🔌', style: TextStyle(fontSize: 10))),
               ],
@@ -448,7 +448,7 @@ extension _HomeFocusSection on _HomeScreenState {
             Row(children: [
               Container(width: 6, height: 6, decoration: BoxDecoration(
                 shape: BoxShape.circle, color: statusColor,
-                boxShadow: on ? [BoxShadow(color: statusColor.withOpacity(0.5), blurRadius: 6)] : null)),
+                boxShadow: on ? [BoxShadow(color: statusColor.withValues(alpha: 0.5), blurRadius: 6)] : null)),
               const SizedBox(width: 6),
               Text(statusMsg, style: TextStyle(
                 fontSize: 10, fontWeight: FontWeight.w600, color: statusColor)),
@@ -462,7 +462,7 @@ extension _HomeFocusSection on _HomeScreenState {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: _textMuted.withOpacity(0.06),
+                color: _textMuted.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(8)),
               child: Text('재등록', style: TextStyle(
                 fontSize: 10, fontWeight: FontWeight.w700, color: _textMuted)),
@@ -477,9 +477,9 @@ extension _HomeFocusSection on _HomeScreenState {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withOpacity(0.08),
+                color: const Color(0xFF10B981).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF10B981).withOpacity(0.15))),
+                border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.15))),
               child: const Center(child: Text('감지 켜기', style: TextStyle(
                 fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF10B981)))),
             ),
@@ -509,14 +509,14 @@ extension _HomeFocusSection on _HomeScreenState {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  sc.withOpacity(_dk ? 0.18 : 0.12),
-                  sc.withOpacity(_dk ? 0.08 : 0.04),
+                  sc.withValues(alpha: _dk ? 0.18 : 0.12),
+                  sc.withValues(alpha: _dk ? 0.08 : 0.04),
                 ],
                 begin: Alignment.topLeft, end: Alignment.bottomRight),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: sc.withOpacity(0.25)),
+              border: Border.all(color: sc.withValues(alpha: 0.25)),
               boxShadow: [
-                BoxShadow(color: sc.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, 8)),
+                BoxShadow(color: sc.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8)),
               ],
             ),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -524,8 +524,8 @@ extension _HomeFocusSection on _HomeScreenState {
                 width: 34, height: 34,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: sc.withOpacity(0.22),
-                  boxShadow: [BoxShadow(color: sc.withOpacity(0.15), blurRadius: 12)]),
+                  color: sc.withValues(alpha: 0.22),
+                  boxShadow: [BoxShadow(color: sc.withValues(alpha: 0.15), blurRadius: 12)]),
                 child: Icon(Icons.play_arrow_rounded, size: 22, color: sc),
               ),
               const SizedBox(width: 10),
@@ -544,7 +544,7 @@ extension _HomeFocusSection on _HomeScreenState {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: dk ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+        color: dk ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(7)),
       child: Text('$emoji ${min}m', style: TextStyle(
         fontSize: 9, fontWeight: FontWeight.w700, color: _textSub,
@@ -563,25 +563,25 @@ extension _HomeFocusSection on _HomeScreenState {
           Container(width: 3, decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter, end: Alignment.bottomCenter,
-              colors: [sc, sc.withOpacity(0.2)]),
+              colors: [sc, sc.withValues(alpha: 0.2)]),
             borderRadius: BorderRadius.circular(2))),
           const SizedBox(width: 10),
           Expanded(child: _fFrostCard(
-            borderColor: sc.withOpacity(0.06),
+            borderColor: sc.withValues(alpha: 0.06),
             child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: sc.withOpacity(dk ? 0.12 : 0.06),
+                      color: sc.withValues(alpha: dk ? 0.12 : 0.06),
                       borderRadius: BorderRadius.circular(6)),
                     child: Text('${SubjectConfig.subjects[c.subject]?.emoji ?? '📚'} ${c.subject}',
                       style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: sc)),
                   ),
                   const Spacer(),
                   Text('#$idx', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700,
-                    color: _textMuted.withOpacity(0.3), fontFeatures: const [FontFeature.tabularFigures()])),
+                    color: _textMuted.withValues(alpha: 0.3), fontFeatures: const [FontFeature.tabularFigures()])),
                 ]),
                 const SizedBox(height: 5),
                 Text('${_fFmtTime(c.startTime)} → ${c.endTime != null ? _fFmtTime(c.endTime) : '...'}',
@@ -601,7 +601,7 @@ extension _HomeFocusSection on _HomeScreenState {
                           flex: seg.durationMin.clamp(1, 999),
                           child: Container(
                             margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                            color: segC.withOpacity(dk ? 0.45 : 0.30)));
+                            color: segC.withValues(alpha: dk ? 0.45 : 0.30)));
                       }).toList()))),
                 ],
               ])),
@@ -611,7 +611,7 @@ extension _HomeFocusSection on _HomeScreenState {
                   fontSize: 18, fontWeight: FontWeight.w900, color: sc,
                   letterSpacing: -0.5, fontFeatures: const [FontFeature.tabularFigures()])),
                 Text('순공', style: TextStyle(
-                  fontSize: 8, fontWeight: FontWeight.w600, color: sc.withOpacity(0.45))),
+                  fontSize: 8, fontWeight: FontWeight.w600, color: sc.withValues(alpha: 0.45))),
               ]),
             ]),
           )),
@@ -655,7 +655,7 @@ extension _HomeFocusSection on _HomeScreenState {
             bottom: MediaQuery.of(ctx).viewInsets.bottom + MediaQuery.of(ctx).padding.bottom + 16),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 36, height: 4, decoration: BoxDecoration(
-              color: _textMuted.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+              color: _textMuted.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 20),
             Text('거치대 각도 캘리브레이션', style: BotanicalTypo.heading(size: 17, color: _textMain)),
             const SizedBox(height: 6),
@@ -669,16 +669,16 @@ extension _HomeFocusSection on _HomeScreenState {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: calType == 'normal' ? BotanicalColors.primary.withOpacity(0.12) : _textMuted.withOpacity(0.06),
+                      color: calType == 'normal' ? BotanicalColors.primary.withValues(alpha: 0.12) : _textMuted.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: calType == 'normal' ? BotanicalColors.primary.withOpacity(0.35) : Colors.transparent)),
+                      border: Border.all(color: calType == 'normal' ? BotanicalColors.primary.withValues(alpha: 0.35) : Colors.transparent)),
                     child: Column(children: [
                       const Text('📐', style: TextStyle(fontSize: 22)),
                       const SizedBox(height: 4),
                       Text('일반', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
                         color: calType == 'normal' ? BotanicalColors.primary : _textMuted)),
                       Text(_cradle.isCalibrated ? '등록됨' : '미등록', style: TextStyle(fontSize: 9,
-                        color: _cradle.isCalibrated ? const Color(0xFF10B981) : _textMuted.withOpacity(0.5))),
+                        color: _cradle.isCalibrated ? const Color(0xFF10B981) : _textMuted.withValues(alpha: 0.5))),
                     ]),
                   ),
                 )),
@@ -688,16 +688,16 @@ extension _HomeFocusSection on _HomeScreenState {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: calType == 'charging' ? Colors.orange.withOpacity(0.12) : _textMuted.withOpacity(0.06),
+                      color: calType == 'charging' ? Colors.orange.withValues(alpha: 0.12) : _textMuted.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: calType == 'charging' ? Colors.orange.withOpacity(0.35) : Colors.transparent)),
+                      border: Border.all(color: calType == 'charging' ? Colors.orange.withValues(alpha: 0.35) : Colors.transparent)),
                     child: Column(children: [
                       const Text('🔌', style: TextStyle(fontSize: 22)),
                       const SizedBox(height: 4),
                       Text('충전용', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
                         color: calType == 'charging' ? Colors.orange : _textMuted)),
                       Text(_cradle.isChargingCalibrated ? '등록됨' : '미등록', style: TextStyle(fontSize: 9,
-                        color: _cradle.isChargingCalibrated ? const Color(0xFF10B981) : _textMuted.withOpacity(0.5))),
+                        color: _cradle.isChargingCalibrated ? const Color(0xFF10B981) : _textMuted.withValues(alpha: 0.5))),
                     ]),
                   ),
                 )),
@@ -730,7 +730,7 @@ extension _HomeFocusSection on _HomeScreenState {
               const SizedBox(height: 24),
             ] else ...[
               Icon(calType == 'charging' ? Icons.battery_charging_full_rounded : Icons.phone_android_rounded,
-                size: 48, color: _textMuted.withOpacity(0.5)),
+                size: 48, color: _textMuted.withValues(alpha: 0.5)),
               const SizedBox(height: 12),
               Text(calType == 'charging'
                 ? '충전 케이블을 꽂은 상태로\n거치대에 올려놓고 아래 버튼을 누르세요'
@@ -773,7 +773,7 @@ extension _HomeFocusSection on _HomeScreenState {
             bottom: MediaQuery.of(ctx).viewInsets.bottom + MediaQuery.of(ctx).padding.bottom + 16),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 36, height: 4, decoration: BoxDecoration(
-              color: _textMuted.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+              color: _textMuted.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 14),
             Row(children: [
               Text('과목 관리', style: BotanicalTypo.heading(size: 15, color: _textMain)),
@@ -789,7 +789,7 @@ extension _HomeFocusSection on _HomeScreenState {
                   if (ok == true) { await SubjectConfig.resetToDefaults(); setBS(() {}); setState(() {}); }
                 },
                 child: Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.orange.withOpacity(0.07),
+                  decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.07),
                     borderRadius: BorderRadius.circular(8)),
                   child: const Text('초기화', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
                     color: Colors.orange))),
@@ -801,9 +801,9 @@ extension _HomeFocusSection on _HomeScreenState {
               return Container(
                 margin: const EdgeInsets.only(bottom: 7),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(color: c.withOpacity(0.05),
+                decoration: BoxDecoration(color: c.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: c.withOpacity(0.10))),
+                  border: Border.all(color: c.withValues(alpha: 0.10))),
                 child: Row(children: [
                   Text(e.value.emoji, style: const TextStyle(fontSize: 18)),
                   const SizedBox(width: 10),
@@ -875,7 +875,7 @@ extension _HomeFocusSection on _HomeScreenState {
                 bottom: bottomInset + bottomPad + 24),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Container(width: 40, height: 4,
-                  decoration: BoxDecoration(color: muted.withOpacity(0.3),
+                  decoration: BoxDecoration(color: muted.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 16),
                 Text('수동 세션 추가', style: TextStyle(
@@ -893,7 +893,7 @@ extension _HomeFocusSection on _HomeScreenState {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: sel ? c.withOpacity(0.15) : (dk ? Colors.white.withOpacity(0.04) : Colors.grey.shade100),
+                          color: sel ? c.withValues(alpha: 0.15) : (dk ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade100),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: sel ? c : Colors.transparent, width: 1.5)),
                         child: Text('${e.value.emoji} ${e.key}', style: TextStyle(
@@ -918,7 +918,7 @@ extension _HomeFocusSection on _HomeScreenState {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: BotanicalColors.primary.withOpacity(dk ? 0.08 : 0.04),
+                    color: BotanicalColors.primary.withValues(alpha: dk ? 0.08 : 0.04),
                     borderRadius: BorderRadius.circular(12)),
                   child: Row(children: [
                     Text('순공시간', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: txt)),
@@ -1009,7 +1009,7 @@ extension _HomeFocusSection on _HomeScreenState {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: dk ? Colors.white.withOpacity(0.08) : Colors.grey.shade100,
+          color: dk ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(10)),
         child: Text(value.toString().padLeft(2, '0'),
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
@@ -1030,7 +1030,7 @@ extension _HomeFocusSection on _HomeScreenState {
           onTap: () => onChange((value - 10).clamp(0, 600)),
           child: Container(width: 32, height: 32,
             decoration: BoxDecoration(
-              color: dk ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+              color: dk ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100,
               shape: BoxShape.circle),
             child: Icon(Icons.remove, size: 16, color: muted)),
         ),
@@ -1043,7 +1043,7 @@ extension _HomeFocusSection on _HomeScreenState {
           onTap: () => onChange((value + 10).clamp(0, 600)),
           child: Container(width: 32, height: 32,
             decoration: BoxDecoration(
-              color: dk ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+              color: dk ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100,
               shape: BoxShape.circle),
             child: Icon(Icons.add, size: 16, color: muted)),
         ),
@@ -1057,9 +1057,9 @@ extension _HomeFocusSection on _HomeScreenState {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: _dk ? Colors.white.withOpacity(0.04) : Colors.white.withOpacity(0.7),
+          color: _dk ? Colors.white.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.7),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _border.withOpacity(0.3))),
+          border: Border.all(color: _border.withValues(alpha: 0.3))),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(icon, size: 18, color: _textSub),
           const SizedBox(width: 8),

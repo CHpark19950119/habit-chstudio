@@ -36,11 +36,11 @@ extension _CalendarDayDetail on _CalendarScreenState {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: _dk ? Colors.white.withOpacity(0.03) : Colors.white,
+        color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _border.withOpacity(0.15)),
+        border: Border.all(color: _border.withValues(alpha: 0.15)),
         boxShadow: _dk ? null : [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 16)]),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 16)]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // 날짜 헤더
         Row(children: [
@@ -50,7 +50,7 @@ extension _CalendarDayDetail on _CalendarScreenState {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: diff == 0 ? _accent.withOpacity(0.1) : Colors.grey.shade100,
+              color: diff == 0 ? _accent.withValues(alpha: 0.1) : Colors.grey.shade100,
               borderRadius: BorderRadius.circular(8)),
             child: Text(diffLabel, style: TextStyle(
               fontSize: 10, fontWeight: FontWeight.w800,
@@ -68,10 +68,10 @@ extension _CalendarDayDetail on _CalendarScreenState {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: _restDays.contains(_selectedDateStr)
-                    ? const Color(0xFF64748B).withOpacity(0.15) : Colors.transparent,
+                    ? const Color(0xFF64748B).withValues(alpha: 0.15) : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: _restDays.contains(_selectedDateStr)
-                    ? const Color(0xFF64748B).withOpacity(0.3) : _border.withOpacity(0.3))),
+                    ? const Color(0xFF64748B).withValues(alpha: 0.3) : _border.withValues(alpha: 0.3))),
               child: Text(
                 _restDays.contains(_selectedDateStr) ? '😴 쉬는날' : '😴',
                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
@@ -88,7 +88,7 @@ extension _CalendarDayDetail on _CalendarScreenState {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [
-                dd.color.withOpacity(0.08), dd.color.withOpacity(0.03)]),
+                dd.color.withValues(alpha: 0.08), dd.color.withValues(alpha: 0.03)]),
               borderRadius: BorderRadius.circular(12),
               border: Border(left: BorderSide(color: dd.color, width: 3))),
             child: Row(children: [
@@ -187,16 +187,16 @@ extension _CalendarDayDetail on _CalendarScreenState {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: tagColor.withOpacity(_dk ? 0.06 : 0.04),
+        color: tagColor.withValues(alpha: _dk ? 0.06 : 0.04),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: tagColor.withOpacity(0.15))),
+        border: Border.all(color: tagColor.withValues(alpha: 0.15))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // 태그 뱃지 + 제목 + D-라벨
         Row(children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: tagColor.withOpacity(0.15),
+              color: tagColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(6)),
             child: Text(_tagLabel(plan.tag), style: TextStyle(
               fontSize: 9, fontWeight: FontWeight.w800, color: tagColor))),
@@ -207,7 +207,7 @@ extension _CalendarDayDetail on _CalendarScreenState {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: _dk ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+                color: _dk ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(6)),
               child: Text(plan.label!, style: TextStyle(
                 fontSize: 10, fontWeight: FontWeight.w700, color: tagColor))),
@@ -218,9 +218,9 @@ extension _CalendarDayDetail on _CalendarScreenState {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _dk ? Colors.white.withOpacity(0.03) : Colors.white,
+              color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.white,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _border.withOpacity(0.1))),
+              border: Border.all(color: _border.withValues(alpha: 0.1))),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('💬 ', style: TextStyle(fontSize: 11)),
               Expanded(child: Text(plan.coaching!, style: TextStyle(
@@ -247,9 +247,9 @@ extension _CalendarDayDetail on _CalendarScreenState {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
-              color: const Color(0xFFF59E0B).withOpacity(_dk ? 0.08 : 0.06),
+              color: const Color(0xFFF59E0B).withValues(alpha: _dk ? 0.08 : 0.06),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.15))),
+              border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.15))),
             child: Row(children: [
               const Text('📌 ', style: TextStyle(fontSize: 10)),
               Expanded(child: Text(plan.checkpoint!, style: TextStyle(
@@ -278,9 +278,9 @@ extension _CalendarDayDetail on _CalendarScreenState {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: _dk ? Colors.white.withOpacity(0.02) : const Color(0xFFF0F9FF),
+        color: _dk ? Colors.white.withValues(alpha: 0.02) : const Color(0xFFF0F9FF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.1))),
+        border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.1))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           const Text('📋', style: TextStyle(fontSize: 12)),
@@ -292,7 +292,7 @@ extension _CalendarDayDetail on _CalendarScreenState {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: const Color(0xFF6366F1).withOpacity(0.08),
+                color: const Color(0xFF6366F1).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(6)),
               child: Text(planSub.instructor!, style: const TextStyle(
                 fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFF6366F1)))),
@@ -307,9 +307,9 @@ extension _CalendarDayDetail on _CalendarScreenState {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: _dk ? Colors.white.withOpacity(0.03) : const Color(0xFFF8FAFC),
+                color: _dk ? Colors.white.withValues(alpha: 0.03) : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: _border.withOpacity(0.1))),
+                border: Border.all(color: _border.withValues(alpha: 0.1))),
               child: Text('☑ $cp', style: TextStyle(
                 fontSize: 9, fontWeight: FontWeight.w500, color: _textMuted)),
             )).toList()),
@@ -322,7 +322,7 @@ extension _CalendarDayDetail on _CalendarScreenState {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2).withOpacity(_dk ? 0.05 : 1),
+        color: const Color(0xFFFEF2F2).withValues(alpha: _dk ? 0.05 : 1),
         borderRadius: BorderRadius.circular(12),
         border: const Border(left: BorderSide(color: Color(0xFFEF4444), width: 3))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -360,7 +360,7 @@ extension _CalendarDayDetail on _CalendarScreenState {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: _accent.withOpacity(0.1),
+              color: _accent.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8)),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(Icons.add_rounded, size: 12, color: _accent),
@@ -379,9 +379,9 @@ extension _CalendarDayDetail on _CalendarScreenState {
             margin: const EdgeInsets.only(bottom: 4),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
-              color: _dk ? Colors.white.withOpacity(0.03) : const Color(0xFFF8FAFC),
+              color: _dk ? Colors.white.withValues(alpha: 0.03) : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _border.withOpacity(0.1))),
+              border: Border.all(color: _border.withValues(alpha: 0.1))),
             child: Row(children: [
               Text('📋', style: TextStyle(fontSize: 11, color: _textMuted)),
               const SizedBox(width: 6),
@@ -455,7 +455,7 @@ extension _CalendarDayDetail on _CalendarScreenState {
               hintText: '학습과제 내용...',
               hintStyle: TextStyle(color: _textMuted),
               filled: true,
-              fillColor: _dk ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+              fillColor: _dk ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
@@ -485,11 +485,11 @@ extension _CalendarDayDetail on _CalendarScreenState {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: [
-            const Color(0xFF6366F1).withOpacity(_dk ? 0.08 : 0.05),
-            const Color(0xFF8B5CF6).withOpacity(_dk ? 0.04 : 0.02),
+            const Color(0xFF6366F1).withValues(alpha: _dk ? 0.08 : 0.05),
+            const Color(0xFF8B5CF6).withValues(alpha: _dk ? 0.04 : 0.02),
           ]),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.15))),
+          border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.15))),
         child: Row(children: [
           const Text('📋', style: TextStyle(fontSize: 16)),
           const SizedBox(width: 10),
@@ -500,7 +500,7 @@ extension _CalendarDayDetail on _CalendarScreenState {
               fontSize: 10, fontWeight: FontWeight.w500, color: _textMuted)),
           ])),
           Icon(Icons.chevron_right_rounded, size: 20,
-            color: const Color(0xFF6366F1).withOpacity(0.5)),
+            color: const Color(0xFF6366F1).withValues(alpha: 0.5)),
         ]),
       ),
     );

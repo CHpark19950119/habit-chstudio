@@ -117,7 +117,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
           padding: const EdgeInsets.only(top: 12, bottom: 8),
           child: Container(width: 40, height: 4,
             decoration: BoxDecoration(
-              color: textMuted.withOpacity(0.3),
+              color: textMuted.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2))),
         ),
 
@@ -184,9 +184,9 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: mealColor.withOpacity(dk ? 0.06 : 0.03),
+        color: mealColor.withValues(alpha: dk ? 0.06 : 0.03),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: mealColor.withOpacity(0.15))),
+        border: Border.all(color: mealColor.withValues(alpha: 0.15))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // 헤더
         Row(children: [
@@ -216,10 +216,10 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: mealColor.withOpacity(dk ? 0.12 : 0.08),
+              color: mealColor.withValues(alpha: dk ? 0.12 : 0.08),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: mealColor.withOpacity(0.2),
+                color: mealColor.withValues(alpha: 0.2),
                 style: BorderStyle.solid)),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               Icon(Icons.add_rounded, size: 18, color: mealColor),
@@ -239,10 +239,10 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
       alignment: Alignment.center,
       child: Column(children: [
         Icon(Icons.restaurant_menu_rounded, size: 28,
-          color: textMuted.withOpacity(0.3)),
+          color: textMuted.withValues(alpha: 0.3)),
         const SizedBox(height: 8),
         Text('기록된 식사가 없습니다', style: TextStyle(
-          fontSize: 12, color: textMuted.withOpacity(0.5))),
+          fontSize: 12, color: textMuted.withValues(alpha: 0.5))),
       ]),
     );
   }
@@ -256,9 +256,9 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: dk ? Colors.white.withOpacity(0.04) : Colors.white,
+        color: dk ? Colors.white.withValues(alpha: 0.04) : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: mealColor.withOpacity(0.12))),
+        border: Border.all(color: mealColor.withValues(alpha: 0.12))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // 상단: 타입 + 삭제
         Row(children: [
@@ -275,13 +275,13 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: selected
-                      ? mealColor.withOpacity(dk ? 0.2 : 0.12)
+                      ? mealColor.withValues(alpha: dk ? 0.2 : 0.12)
                       : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: selected
-                        ? mealColor.withOpacity(0.4)
-                        : textMuted.withOpacity(0.15))),
+                        ? mealColor.withValues(alpha: 0.4)
+                        : textMuted.withValues(alpha: 0.15))),
                   child: Text('${info.emoji} ${info.label}',
                     style: TextStyle(
                       fontSize: 10,
@@ -298,10 +298,10 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(dk ? 0.1 : 0.05),
+                color: Colors.red.withValues(alpha: dk ? 0.1 : 0.05),
                 borderRadius: BorderRadius.circular(6)),
               child: Icon(Icons.delete_outline_rounded, size: 16,
-                color: Colors.red.withOpacity(0.5)),
+                color: Colors.red.withValues(alpha: 0.5)),
             ),
           ),
         ]),
@@ -323,7 +323,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Icon(Icons.arrow_forward_rounded, size: 16,
-              color: textMuted.withOpacity(0.4)),
+              color: textMuted.withValues(alpha: 0.4)),
           ),
           // 종료시간
           Expanded(child: _mealTimePicker(
@@ -342,7 +342,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: mealColor.withOpacity(dk ? 0.1 : 0.06),
+                color: mealColor.withValues(alpha: dk ? 0.1 : 0.06),
                 borderRadius: BorderRadius.circular(8)),
               child: Text(duration, style: TextStyle(
                 fontSize: 11, fontWeight: FontWeight.w700,
@@ -375,12 +375,12 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: hasTime
-            ? color.withOpacity(dk ? 0.08 : 0.05)
-            : (dk ? Colors.white.withOpacity(0.03) : Colors.grey.shade50),
+            ? color.withValues(alpha: dk ? 0.08 : 0.05)
+            : (dk ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: hasTime
-            ? color.withOpacity(0.2)
-            : textMuted.withOpacity(0.1))),
+            ? color.withValues(alpha: 0.2)
+            : textMuted.withValues(alpha: 0.1))),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           if (hasTime) ...[
             // ±5분 버튼
@@ -390,7 +390,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
                 if (adj != null) onChanged(adj);
               },
               child: Icon(Icons.remove_rounded, size: 14,
-                color: textMuted.withOpacity(0.5))),
+                color: textMuted.withValues(alpha: 0.5))),
             const SizedBox(width: 4),
             Text(time!, style: TextStyle(
               fontSize: 15, fontWeight: FontWeight.w800,
@@ -402,7 +402,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
                 if (adj != null) onChanged(adj);
               },
               child: Icon(Icons.add_rounded, size: 14,
-                color: textMuted.withOpacity(0.5))),
+                color: textMuted.withValues(alpha: 0.5))),
             if (allowNull) ...[
               const SizedBox(width: 4),
               GestureDetector(
@@ -413,16 +413,16 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
                   if (idx >= 0) _meals[idx].end = null;
                 }),
                 child: Icon(Icons.close_rounded, size: 12,
-                  color: Colors.red.withOpacity(0.3)),
+                  color: Colors.red.withValues(alpha: 0.3)),
               ),
             ],
           ] else ...[
             Icon(Icons.access_time_rounded, size: 14,
-              color: textMuted.withOpacity(0.4)),
+              color: textMuted.withValues(alpha: 0.4)),
             const SizedBox(width: 4),
             Text(allowNull ? '미정' : '입력', style: TextStyle(
               fontSize: 12, fontWeight: FontWeight.w600,
-              color: textMuted.withOpacity(0.5))),
+              color: textMuted.withValues(alpha: 0.5))),
           ],
         ]),
       ),
@@ -480,12 +480,12 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: hasTime
-          ? rowColor.withOpacity(dk ? 0.08 : 0.04)
-          : (dk ? Colors.white.withOpacity(0.02) : Colors.grey.shade50),
+          ? rowColor.withValues(alpha: dk ? 0.08 : 0.04)
+          : (dk ? Colors.white.withValues(alpha: 0.02) : Colors.grey.shade50),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: hasTime
-          ? rowColor.withOpacity(0.2)
-          : (dk ? Colors.white.withOpacity(0.06) : Colors.grey.shade200))),
+          ? rowColor.withValues(alpha: 0.2)
+          : (dk ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade200))),
       child: Row(children: [
         Text(emoji, style: const TextStyle(fontSize: 20)),
         const SizedBox(width: 8),
@@ -501,9 +501,9 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: dk ? Colors.white.withOpacity(0.10) : Colors.white,
+                color: dk ? Colors.white.withValues(alpha: 0.10) : Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: rowColor.withOpacity(0.25), width: 1.5)),
+                border: Border.all(color: rowColor.withValues(alpha: 0.25), width: 1.5)),
               child: Text(time!,
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
                   color: rowColor, fontFeatures: const [FontFeature.tabularFigures()],
@@ -517,14 +517,14 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
           GestureDetector(
             onTap: () => onChanged(null),
             child: Icon(Icons.close_rounded, size: 18,
-              color: Colors.red.withOpacity(0.4))),
+              color: Colors.red.withValues(alpha: 0.4))),
         ] else ...[
           GestureDetector(
             onTap: () => onChanged(_nowStr()),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
               decoration: BoxDecoration(
-                color: rowColor.withOpacity(dk ? 0.15 : 0.1),
+                color: rowColor.withValues(alpha: dk ? 0.15 : 0.1),
                 borderRadius: BorderRadius.circular(10)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.access_time_filled_rounded, size: 14, color: rowColor),
@@ -540,7 +540,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
-                border: Border.all(color: textMuted.withOpacity(0.3)),
+                border: Border.all(color: textMuted.withValues(alpha: 0.3)),
                 borderRadius: BorderRadius.circular(10)),
               child: Text('입력', style: TextStyle(
                 fontSize: 12, fontWeight: FontWeight.w600, color: textMuted)),
@@ -557,7 +557,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
       child: Container(
         width: 32, height: 32,
         decoration: BoxDecoration(
-          color: dk ? Colors.white.withOpacity(0.08) : Colors.grey.shade100,
+          color: dk ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade100,
           shape: BoxShape.circle),
         child: Icon(icon, size: 16, color: dk ? Colors.white70 : Colors.grey.shade600)),
     );
@@ -598,7 +598,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
             style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: tc),
             decoration: InputDecoration(
               counterText: '', hintText: '00',
-              suffixText: '시', suffixStyle: TextStyle(fontSize: 13, color: tc.withOpacity(0.5)),
+              suffixText: '시', suffixStyle: TextStyle(fontSize: 13, color: tc.withValues(alpha: 0.5)),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12)),
           )),
@@ -611,14 +611,14 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
             style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: tc),
             decoration: InputDecoration(
               counterText: '', hintText: '00',
-              suffixText: '분', suffixStyle: TextStyle(fontSize: 13, color: tc.withOpacity(0.5)),
+              suffixText: '분', suffixStyle: TextStyle(fontSize: 13, color: tc.withValues(alpha: 0.5)),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12)),
           )),
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dCtx),
-            child: Text('취소', style: TextStyle(color: tc.withOpacity(0.5)))),
+            child: Text('취소', style: TextStyle(color: tc.withValues(alpha: 0.5)))),
           TextButton(
             onPressed: () {
               final h = (int.tryParse(hourCtrl.text) ?? 0).clamp(0, 23);

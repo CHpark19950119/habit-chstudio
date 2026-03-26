@@ -237,19 +237,19 @@ class BotanicalDeco {
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(
           color: dark
-            ? BotanicalColors.borderDark.withOpacity(0.4)
+            ? BotanicalColors.borderDark.withValues(alpha: 0.4)
             : BotanicalColors.borderLight,
           width: 1,
         ),
         boxShadow: dark
           ? [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withValues(alpha: 0.2),
                 blurRadius: 8, offset: const Offset(0, 2)),
             ]
           : [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 8, offset: const Offset(0, 2)),
             ],
       );
@@ -258,32 +258,32 @@ class BotanicalDeco {
   static BoxDecoration libraryCard({double radius = 12}) => BoxDecoration(
     color: BotanicalColors.cardDark,
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: BotanicalColors.borderDark.withOpacity(0.5)),
+    border: Border.all(color: BotanicalColors.borderDark.withValues(alpha: 0.5)),
     boxShadow: [
-      BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2)),
+      BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2)),
     ],
   );
 
   static BoxDecoration iconBox(Color color, bool dark, {double radius = 14}) =>
       BoxDecoration(
-        color: color.withOpacity(dark ? 0.15 : 0.08),
+        color: color.withValues(alpha: dark ? 0.15 : 0.08),
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: color.withOpacity(0.1), width: 0.5),
+        border: Border.all(color: color.withValues(alpha: 0.1), width: 0.5),
       );
 
   static BoxDecoration badge(Color color, {double radius = 20}) => BoxDecoration(
-    color: color.withOpacity(0.1),
+    color: color.withValues(alpha: 0.1),
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: color.withOpacity(0.2)),
+    border: Border.all(color: color.withValues(alpha: 0.2)),
   );
 
   static BoxDecoration selectedChip(Color color, bool dark, {double radius = 14}) =>
       BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: color, width: 1.5),
         boxShadow: [
-          BoxShadow(color: color.withOpacity(0.15), blurRadius: 12, offset: const Offset(0, 4)),
+          BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 12, offset: const Offset(0, 4)),
         ],
       );
 
@@ -304,12 +304,12 @@ class BotanicalDeco {
 
   /// ★ 글래스 카드
   static BoxDecoration warmGlass(bool dark, {double radius = 12}) => BoxDecoration(
-    color: dark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.7),
+    color: dark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
     borderRadius: BorderRadius.circular(radius),
     border: Border.all(
-      color: dark ? BotanicalColors.borderDark.withOpacity(0.3) : BotanicalColors.borderLight.withOpacity(0.5)),
+      color: dark ? BotanicalColors.borderDark.withValues(alpha: 0.3) : BotanicalColors.borderLight.withValues(alpha: 0.5)),
     boxShadow: [BoxShadow(
-      color: Colors.black.withOpacity(dark ? 0.1 : 0.03),
+      color: Colors.black.withValues(alpha: dark ? 0.1 : 0.03),
       blurRadius: 8, offset: const Offset(0, 2))],
   );
 }

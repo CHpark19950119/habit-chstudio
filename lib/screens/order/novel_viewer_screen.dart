@@ -574,7 +574,7 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
                   decoration: BoxDecoration(
                     border: Border(
                         left: BorderSide(
-                            color: _ac.withOpacity(0.35), width: 2)),
+                            color: _ac.withValues(alpha: 0.35), width: 2)),
                   ),
                   child: Text(
                     _cover.epigraph,
@@ -593,7 +593,7 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
                 '터치하여 시작',
                 style: TextStyle(
                   fontSize: 11,
-                  color: const Color(0xFF5A5040).withOpacity(0.7),
+                  color: const Color(0xFF5A5040).withValues(alpha: 0.7),
                   letterSpacing: 6,
                 ),
               ),
@@ -636,7 +636,7 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
         right: 16,
       ),
       decoration: BoxDecoration(
-        color: _bg.withOpacity(0.95),
+        color: _bg.withValues(alpha: 0.95),
         border:
             const Border(bottom: BorderSide(color: _bd, width: 0.5)),
       ),
@@ -703,7 +703,7 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
           letterSpacing: 0.5,
         ),
         labelPadding: const EdgeInsets.symmetric(horizontal: 16),
-        dividerColor: _bd.withOpacity(0.3),
+        dividerColor: _bd.withValues(alpha: 0.3),
         tabs: _chapters.map((ch) => Tab(text: ch.tabLabel)).toList(),
       ),
     );
@@ -848,7 +848,7 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
       decoration: BoxDecoration(
         border: const Border(left: BorderSide(color: _ac, width: 3)),
         gradient: LinearGradient(
-          colors: [_ac.withOpacity(0.04), Colors.transparent],
+          colors: [_ac.withValues(alpha: 0.04), Colors.transparent],
         ),
       ),
       child: Text(text,
@@ -1041,7 +1041,7 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               border: Border.all(color: const Color(0xFF5A4A30)),
-              color: _ac.withOpacity(0.12),
+              color: _ac.withValues(alpha: 0.12),
             ),
             child: Text(t,
                 style: const TextStyle(
@@ -1059,7 +1059,7 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
         margin: const EdgeInsets.symmetric(vertical: 16),
         padding: const EdgeInsets.symmetric(vertical: 28),
         decoration: BoxDecoration(
-          color: _sf.withOpacity(0.5),
+          color: _sf.withValues(alpha: 0.5),
           border: Border.all(color: _bd, width: 0.5),
         ),
         child: const Center(
@@ -1095,7 +1095,7 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
         else
           Container(
             padding: const EdgeInsets.symmetric(vertical: 28),
-            color: _sf.withOpacity(0.5),
+            color: _sf.withValues(alpha: 0.5),
             child: const Center(child: Icon(Icons.broken_image_outlined, size: 28, color: _tx3)),
           ),
         if (caption.isNotEmpty)
@@ -1154,7 +1154,7 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
                     vertical: 16, horizontal: 16),
                 decoration: BoxDecoration(
                   border: Border.all(color: _bd, width: 0.5),
-                  color: _sf.withOpacity(0.5),
+                  color: _sf.withValues(alpha: 0.5),
                 ),
                 child: const Text('제1부 끝',
                     textAlign: TextAlign.center,

@@ -148,9 +148,9 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: c.withOpacity(_dk ? 0.08 : 0.04),
+        color: c.withValues(alpha: _dk ? 0.08 : 0.04),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.withOpacity(0.15))),
+        border: Border.all(color: c.withValues(alpha: 0.15))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Text(SubjectConfig.subjects[cycle.subject]?.emoji ?? '📚',
@@ -210,7 +210,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
           return Expanded(
             flex: (w * 1000).round().clamp(1, 1000),
             child: Container(
-              color: color.withOpacity(0.7),
+              color: color.withValues(alpha: 0.7),
               margin: const EdgeInsets.only(right: 1)),
           );
         }).toList()),
@@ -275,7 +275,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: sel ? Color(e.value.colorValue).withOpacity(0.15) : null,
+                        color: sel ? Color(e.value.colorValue).withValues(alpha: 0.15) : null,
                         borderRadius: BorderRadius.circular(8),
                         border: sel ? Border.all(color: Color(e.value.colorValue)) : null),
                       child: Text('${e.value.emoji} ${e.key}', style: TextStyle(
@@ -295,7 +295,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: BotanicalColors.primarySurface.withOpacity(0.5),
+                  color: BotanicalColors.primarySurface.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(10)),
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Text('순공시간: ', style: BotanicalTypo.label(size: 12, color: _textSub)),
@@ -398,7 +398,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: sel ? Color(e.value.colorValue).withOpacity(0.15) : null,
+                      color: sel ? Color(e.value.colorValue).withValues(alpha: 0.15) : null,
                       borderRadius: BorderRadius.circular(8),
                       border: sel ? Border.all(color: Color(e.value.colorValue)) : null),
                     child: Text('${e.value.emoji} ${e.key}', style: TextStyle(
@@ -418,7 +418,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _dk ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+                    color: _dk ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(8)),
                   child: Text('${startTime.hour.toString().padLeft(2,'0')}:${startTime.minute.toString().padLeft(2,'0')}',
                     style: BotanicalTypo.label(size: 14, weight: FontWeight.w800, color: _textMain)),
@@ -435,7 +435,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _dk ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+                    color: _dk ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(8)),
                   child: Text('${endTime.hour.toString().padLeft(2,'0')}:${endTime.minute.toString().padLeft(2,'0')}',
                     style: BotanicalTypo.label(size: 14, weight: FontWeight.w800, color: _textMain)),
@@ -454,7 +454,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: BotanicalColors.primarySurface.withOpacity(0.5),
+                color: BotanicalColors.primarySurface.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(10)),
               child: Text('순공시간: ${effMin}분',
                 style: BotanicalTypo.label(size: 14, weight: FontWeight.w800,
@@ -523,9 +523,9 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          color: _dk ? Colors.white.withOpacity(0.03) : Colors.grey.shade50,
+          color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _dk ? Colors.white.withOpacity(0.06) : Colors.grey.shade200)),
+          border: Border.all(color: _dk ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade200)),
         child: Row(children: [
           Expanded(
             flex: 3,
@@ -544,9 +544,9 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
               constraints: const BoxConstraints(minWidth: 52),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
-                color: _dk ? Colors.white.withOpacity(0.08) : Colors.white,
+                color: _dk ? Colors.white.withValues(alpha: 0.08) : Colors.white,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: BotanicalColors.primary.withOpacity(0.2), width: 1.5)),
+                border: Border.all(color: BotanicalColors.primary.withValues(alpha: 0.2), width: 1.5)),
               child: Text(
                 h > 0 ? '${h}h ${m.toString().padLeft(2, '0')}m' : '${m}분',
                 textAlign: TextAlign.center,
@@ -573,10 +573,10 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
         width: 28, height: 28,
         decoration: BoxDecoration(
           color: !enabled
-            ? (_dk ? Colors.white.withOpacity(0.02) : Colors.grey.shade100)
+            ? (_dk ? Colors.white.withValues(alpha: 0.02) : Colors.grey.shade100)
             : (isAdd
-              ? BotanicalColors.primary.withOpacity(_dk ? 0.15 : 0.08)
-              : (_dk ? Colors.white.withOpacity(0.06) : Colors.grey.shade200)),
+              ? BotanicalColors.primary.withValues(alpha: _dk ? 0.15 : 0.08)
+              : (_dk ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade200)),
           shape: BoxShape.circle),
         child: Center(child: Text(label,
           style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800,

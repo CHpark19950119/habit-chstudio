@@ -313,11 +313,11 @@ extension _HomeDailyLog on _HomeScreenState {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _dk ? Colors.white.withOpacity(0.03) : Colors.white,
+        color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: _border.withOpacity(0.12)),
+        border: Border.all(color: _border.withValues(alpha: 0.12)),
         boxShadow: _dk ? null : [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 16)]),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 16)]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // ── 헤더 ──
         Row(children: [
@@ -325,8 +325,8 @@ extension _HomeDailyLog on _HomeScreenState {
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [
-                const Color(0xFF6366F1).withOpacity(0.15),
-                const Color(0xFF8B5CF6).withOpacity(0.08)]),
+                const Color(0xFF6366F1).withValues(alpha: 0.15),
+                const Color(0xFF8B5CF6).withValues(alpha: 0.08)]),
               borderRadius: BorderRadius.circular(8)),
             child: const Icon(Icons.timeline_rounded, size: 14, color: Color(0xFF6366F1))),
           const SizedBox(width: 8),
@@ -340,20 +340,20 @@ extension _HomeDailyLog on _HomeScreenState {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               margin: const EdgeInsets.only(right: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF6366F1).withOpacity(_dk ? 0.12 : 0.08),
+                color: const Color(0xFF6366F1).withValues(alpha: _dk ? 0.12 : 0.08),
                 borderRadius: BorderRadius.circular(8)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.edit_rounded, size: 11, color: const Color(0xFF6366F1).withOpacity(0.7)),
+                Icon(Icons.edit_rounded, size: 11, color: const Color(0xFF6366F1).withValues(alpha: 0.7)),
                 const SizedBox(width: 3),
                 Text('수정', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
-                  color: const Color(0xFF6366F1).withOpacity(0.7))),
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.7))),
               ]),
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: _accent.withOpacity(_dk ? 0.1 : 0.06),
+              color: _accent.withValues(alpha: _dk ? 0.1 : 0.06),
               borderRadius: BorderRadius.circular(8)),
             child: Text('${segments.first.start} ~ ${_fmt24Now()}',
               style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
@@ -400,12 +400,12 @@ extension _HomeDailyLog on _HomeScreenState {
                               left: i == 0 ? 0 : 1.5,
                               right: i == segments.length - 1 ? 0 : 1.5),
                             decoration: BoxDecoration(
-                              color: seg.color.withOpacity(_dk ? 0.75 : 0.85),
+                              color: seg.color.withValues(alpha: _dk ? 0.75 : 0.85),
                               borderRadius: BorderRadius.horizontal(
                                 left: i == 0 ? const Radius.circular(12) : Radius.zero,
                                 right: i == segments.length - 1 ? const Radius.circular(12) : Radius.zero),
                               boxShadow: [BoxShadow(
-                                color: seg.color.withOpacity(0.2),
+                                color: seg.color.withValues(alpha: 0.2),
                                 blurRadius: 4, offset: const Offset(0, 2))]),
                             child: Center(child: FittedBox(
                               fit: BoxFit.scaleDown,
@@ -459,7 +459,7 @@ extension _HomeDailyLog on _HomeScreenState {
                   Container(
                     width: 28, height: 28,
                     decoration: BoxDecoration(
-                      color: seg.color.withOpacity(_dk ? 0.1 : 0.08),
+                      color: seg.color.withValues(alpha: _dk ? 0.1 : 0.08),
                       borderRadius: BorderRadius.circular(8)),
                     child: Center(child: Text(seg.emoji, style: const TextStyle(fontSize: 14)))),
                   const SizedBox(width: 8),
@@ -479,7 +479,7 @@ extension _HomeDailyLog on _HomeScreenState {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: seg.color.withOpacity(_dk ? 0.1 : 0.08),
+                        color: seg.color.withValues(alpha: _dk ? 0.1 : 0.08),
                         borderRadius: BorderRadius.circular(8)),
                       child: Text(durStr, style: TextStyle(
                         fontSize: 10, fontWeight: FontWeight.w800, color: seg.color,
@@ -487,13 +487,13 @@ extension _HomeDailyLog on _HomeScreenState {
                     const SizedBox(height: 2),
                     Text('$pct%', style: TextStyle(
                       fontSize: 9, fontWeight: FontWeight.w600,
-                      color: _textMuted.withOpacity(0.7))),
+                      color: _textMuted.withValues(alpha: 0.7))),
                   ]),
                   // 편집 아이콘
                   if (seg.startEvent != null) ...[
                     const SizedBox(width: 6),
                     Icon(Icons.edit_rounded, size: 12,
-                      color: _textMuted.withOpacity(0.3)),
+                      color: _textMuted.withValues(alpha: 0.3)),
                   ],
                 ]),
               ),
@@ -506,7 +506,7 @@ extension _HomeDailyLog on _HomeScreenState {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: _dk ? Colors.white.withOpacity(0.03) : Colors.grey.shade50,
+            color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(12)),
           child: Row(children: [
             ...(() {
@@ -546,9 +546,9 @@ extension _HomeDailyLog on _HomeScreenState {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _dk ? Colors.white.withOpacity(0.03) : const Color(0xFFFFFBF5),
+              color: _dk ? Colors.white.withValues(alpha: 0.03) : const Color(0xFFFFFBF5),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFB07D3A).withOpacity(0.1))),
+              border: Border.all(color: const Color(0xFFB07D3A).withValues(alpha: 0.1))),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 const Text('📝', style: TextStyle(fontSize: 12)),
@@ -570,7 +570,7 @@ extension _HomeDailyLog on _HomeScreenState {
                       decoration: BoxDecoration(
                         color: memo.startsWith('📌')
                           ? const Color(0xFFB07D3A)
-                          : _textMuted.withOpacity(0.4),
+                          : _textMuted.withValues(alpha: 0.4),
                         shape: BoxShape.circle)),
                   ),
                   const SizedBox(width: 8),
@@ -584,7 +584,7 @@ extension _HomeDailyLog on _HomeScreenState {
                     child: Padding(
                       padding: const EdgeInsets.all(4),
                       child: Icon(Icons.close_rounded, size: 12,
-                        color: _textMuted.withOpacity(0.4)))),
+                        color: _textMuted.withValues(alpha: 0.4)))),
                 ]),
               )),
             ]),

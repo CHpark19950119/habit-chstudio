@@ -208,14 +208,14 @@ class _ProgressScreenState extends State<ProgressScreen>
           padding: padding,
           decoration: BoxDecoration(
             color: isDark
-                ? Colors.white.withOpacity(opacity)
-                : Colors.white.withOpacity(0.7),
+                ? Colors.white.withValues(alpha: opacity)
+                : Colors.white.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(radius),
             border: border ??
                 Border.all(
                   color: isDark
-                      ? Colors.white.withOpacity(0.08)
-                      : Colors.white.withOpacity(0.3),
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.white.withValues(alpha: 0.3),
                 ),
           ),
           child: child,
@@ -233,7 +233,7 @@ class _ProgressScreenState extends State<ProgressScreen>
         CircularProgressIndicator(
           value: avgPct / 100,
           strokeWidth: 5,
-          backgroundColor: color.withOpacity(0.12),
+          backgroundColor: color.withValues(alpha: 0.12),
           valueColor: AlwaysStoppedAnimation(color),
         ),
         Text('${avgPct.round()}%',
@@ -247,7 +247,7 @@ class _ProgressScreenState extends State<ProgressScreen>
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(height / 2),
       ),
       child: FractionallySizedBox(
@@ -256,7 +256,7 @@ class _ProgressScreenState extends State<ProgressScreen>
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-                colors: [color.withOpacity(0.6), color]),
+                colors: [color.withValues(alpha: 0.6), color]),
             borderRadius: BorderRadius.circular(height / 2),
           ),
         ),
@@ -302,18 +302,18 @@ class _ProgressScreenState extends State<ProgressScreen>
               decoration: BoxDecoration(
                 gradient: isNext
                     ? LinearGradient(colors: [
-                        color.withOpacity(isDark ? 0.15 : 0.08),
-                        color.withOpacity(isDark ? 0.05 : 0.02)
+                        color.withValues(alpha: isDark ? 0.15 : 0.08),
+                        color.withValues(alpha: isDark ? 0.05 : 0.02)
                       ])
                     : null,
                 color: isNext
                     ? null
                     : (isDark
-                        ? Colors.white.withOpacity(0.02)
+                        ? Colors.white.withValues(alpha: 0.02)
                         : Colors.grey.shade50),
                 borderRadius: BorderRadius.circular(12),
                 border:
-                    isNext ? Border.all(color: color.withOpacity(0.3)) : null,
+                    isNext ? Border.all(color: color.withValues(alpha: 0.3)) : null,
               ),
               child: Row(children: [
                 SizedBox(
@@ -323,7 +323,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                       CircularProgressIndicator(
                           value: goal.progressPercent / 100,
                           strokeWidth: 2.5,
-                          backgroundColor: color.withOpacity(0.15),
+                          backgroundColor: color.withValues(alpha: 0.15),
                           valueColor: AlwaysStoppedAnimation(color)),
                       Text('${goal.progressPercent.round()}%',
                           style: TextStyle(
@@ -343,7 +343,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 5, vertical: 1),
                               decoration: BoxDecoration(
-                                  color: color.withOpacity(0.15),
+                                  color: color.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(4)),
                               child: Text('NEXT',
                                   style: TextStyle(
@@ -389,7 +389,7 @@ class _ProgressScreenState extends State<ProgressScreen>
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-                color: color.withOpacity(isDark ? 0.2 : 0.12),
+                color: color.withValues(alpha: isDark ? 0.2 : 0.12),
                 borderRadius: BorderRadius.circular(10)),
             child: const Text('🎧', style: TextStyle(fontSize: 18)),
           ),
@@ -426,7 +426,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                 CircularProgressIndicator(
                     value: goal.progressPercent / 100,
                     strokeWidth: 2.5,
-                    backgroundColor: color.withOpacity(0.15),
+                    backgroundColor: color.withValues(alpha: 0.15),
                     valueColor: AlwaysStoppedAnimation(color)),
                 Text('${goal.progressPercent.round()}%',
                     style: TextStyle(
@@ -512,16 +512,16 @@ class _ProgressScreenState extends State<ProgressScreen>
               gradient: LinearGradient(
                 colors: [
                   _indigo(isDark),
-                  _indigo(isDark).withOpacity(0.8),
+                  _indigo(isDark).withValues(alpha: 0.8),
                 ],
               ),
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _indigo(isDark).withOpacity(0.3),
+                  color: _indigo(isDark).withValues(alpha: 0.3),
                   blurRadius: 16,
                   offset: const Offset(0, 6),
                 ),
@@ -584,7 +584,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: _indigo(isDark).withOpacity(0.12),
+                          color: _indigo(isDark).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6)),
                         child: Text('강의 $lecCount', style: TextStyle(
                           fontSize: 10, fontWeight: FontWeight.w700, color: _indigo(isDark)))),
@@ -592,7 +592,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: _emerald(isDark).withOpacity(0.12),
+                          color: _emerald(isDark).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6)),
                         child: Text('교재 $bookCount', style: TextStyle(
                           fontSize: 10, fontWeight: FontWeight.w700, color: _emerald(isDark)))),
@@ -600,7 +600,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: _amber(isDark).withOpacity(0.12),
+                          color: _amber(isDark).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6)),
                         child: Text('완료 $totalCompleted', style: TextStyle(
                           fontSize: 10, fontWeight: FontWeight.w700, color: _amber(isDark)))),
@@ -622,7 +622,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                   margin: const EdgeInsets.only(right: 12),
                   decoration: BoxDecoration(
                       color: isDark
-                          ? Colors.white.withOpacity(0.05)
+                          ? Colors.white.withValues(alpha: 0.05)
                           : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(10)),
                   child: Icon(Icons.refresh_rounded,
@@ -679,10 +679,10 @@ class _ProgressScreenState extends State<ProgressScreen>
         child: TabBar(
           controller: _roundTabCtrl,
           indicator: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(0.1) : Colors.white,
+            color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
             borderRadius: BorderRadius.circular(10),
             boxShadow: isDark ? null : [
-              BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 4, offset: const Offset(0, 2)),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 2)),
             ],
           ),
           indicatorSize: TabBarIndicatorSize.tab,
@@ -749,7 +749,7 @@ class _ProgressScreenState extends State<ProgressScreen>
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: (pct / 100).clamp(0, 1), minHeight: 6,
-            backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade200,
+            backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200,
             valueColor: AlwaysStoppedAnimation(color))),
         const SizedBox(height: 12),
         // 과목별 미니 카드
@@ -761,9 +761,9 @@ class _ProgressScreenState extends State<ProgressScreen>
             width: (MediaQuery.of(context).size.width - 80) / 2,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.04) : subjColor.withOpacity(0.06),
+              color: isDark ? Colors.white.withValues(alpha: 0.04) : subjColor.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: subjColor.withOpacity(0.15))),
+              border: Border.all(color: subjColor.withValues(alpha: 0.15))),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Text(cfg.emoji, style: const TextStyle(fontSize: 14)),
@@ -785,7 +785,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                 borderRadius: BorderRadius.circular(2),
                 child: LinearProgressIndicator(
                   value: (subjPct / 100).clamp(0, 1), minHeight: 3,
-                  backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade200,
+                  backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200,
                   valueColor: AlwaysStoppedAnimation(subjColor))),
             ]),
           );
@@ -832,16 +832,16 @@ class _ProgressScreenState extends State<ProgressScreen>
                   left: BorderSide(color: color, width: 3),
                   top: BorderSide(
                       color: isDark
-                          ? Colors.white.withOpacity(0.08)
-                          : Colors.white.withOpacity(0.3)),
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.white.withValues(alpha: 0.3)),
                   right: BorderSide(
                       color: isDark
-                          ? Colors.white.withOpacity(0.08)
-                          : Colors.white.withOpacity(0.3)),
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.white.withValues(alpha: 0.3)),
                   bottom: BorderSide(
                       color: isDark
-                          ? Colors.white.withOpacity(0.08)
-                          : Colors.white.withOpacity(0.3)),
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.white.withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -928,14 +928,14 @@ class _ProgressScreenState extends State<ProgressScreen>
                 color: selected
                     ? color
                     : (isDark
-                        ? Colors.white.withOpacity(0.05)
-                        : Colors.white.withOpacity(0.7)),
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.white.withValues(alpha: 0.7)),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                     color: selected
                         ? color
                         : (isDark
-                            ? Colors.white.withOpacity(0.08)
+                            ? Colors.white.withValues(alpha: 0.08)
                             : Colors.grey.shade300),
                     width: 1),
               ),
@@ -1008,7 +1008,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                        color: _indigo(isDark).withOpacity(
+                        color: _indigo(isDark).withValues(alpha: 
                             isDark ? 0.15 : 0.08),
                         borderRadius: BorderRadius.circular(8)),
                     child: const Center(
@@ -1047,7 +1047,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                                 value: groupProgress / 100,
                                 strokeWidth: 3,
                                 backgroundColor:
-                                    _indigo(isDark).withOpacity(0.1),
+                                    _indigo(isDark).withValues(alpha: 0.1),
                                 valueColor: AlwaysStoppedAnimation(
                                     _indigo(isDark))),
                             Text('${groupProgress.round()}%',
@@ -1128,19 +1128,19 @@ class _ProgressScreenState extends State<ProgressScreen>
           child: Container(
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withOpacity(0.06)
-                  : Colors.white.withOpacity(0.7),
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.white.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(14),
               border: isComplete
                   ? Border.all(
                       color: const Color(0xFFD97706), width: 2)
                   : Border.all(
                       color: isDark
-                          ? Colors.white.withOpacity(0.08)
-                          : Colors.white.withOpacity(0.3)),
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.white.withValues(alpha: 0.3)),
               boxShadow: [
                 BoxShadow(
-                    color: color.withOpacity(0.04),
+                    color: color.withValues(alpha: 0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 2)),
               ],
@@ -1172,7 +1172,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                              color: color.withOpacity(0.12),
+                              color: color.withValues(alpha: 0.12),
                               borderRadius:
                                   BorderRadius.circular(4)),
                           child: Text('${cfg.emoji} ${cfg.tag}',
@@ -1235,7 +1235,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                             style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: color.withOpacity(0.6))),
+                                color: color.withValues(alpha: 0.6))),
                       ]),
                       const SizedBox(height: 4),
                       // 하단: 단위 + 날짜 + 액션
@@ -1262,9 +1262,9 @@ class _ProgressScreenState extends State<ProgressScreen>
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: [color, color.withOpacity(0.7)]),
+                              gradient: LinearGradient(colors: [color, color.withValues(alpha: 0.7)]),
                               borderRadius: BorderRadius.circular(8),
-                              boxShadow: [BoxShadow(color: color.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))]),
+                              boxShadow: [BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 4, offset: const Offset(0, 2))]),
                             child: const Text('+1', style: TextStyle(
                               fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
                           ),
@@ -1282,7 +1282,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
                                   color:
-                                      color.withOpacity(0.7))),
+                                      color.withValues(alpha: 0.7))),
                         ],
                       ]),
                     ]),
@@ -1304,9 +1304,9 @@ class _ProgressScreenState extends State<ProgressScreen>
         padding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Text(label,
             style: TextStyle(
@@ -1451,7 +1451,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                       horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
                       color: const Color(0xFF6366F1)
-                          .withOpacity(0.1),
+                          .withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10)),
                   child: const Text('+ 추가',
                       style: TextStyle(
@@ -1534,16 +1534,16 @@ class _ProgressScreenState extends State<ProgressScreen>
           top: BorderSide(color: _emerald(isDark), width: 3),
           left: BorderSide(
               color: isDark
-                  ? Colors.white.withOpacity(0.08)
-                  : Colors.white.withOpacity(0.3)),
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.3)),
           right: BorderSide(
               color: isDark
-                  ? Colors.white.withOpacity(0.08)
-                  : Colors.white.withOpacity(0.3)),
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.3)),
           bottom: BorderSide(
               color: isDark
-                  ? Colors.white.withOpacity(0.08)
-                  : Colors.white.withOpacity(0.3)),
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1593,13 +1593,13 @@ class _ProgressScreenState extends State<ProgressScreen>
                                 const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: isDark
-                                  ? gColor.withOpacity(0.08)
+                                  ? gColor.withValues(alpha: 0.08)
                                   : Color(cfg.light),
                               borderRadius:
                                   BorderRadius.circular(12),
                               border: Border.all(
                                   color: gColor
-                                      .withOpacity(0.2)),
+                                      .withValues(alpha: 0.2)),
                             ),
                             child: Row(
                               children: [
@@ -1667,7 +1667,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                                         vertical: 4),
                                     decoration: BoxDecoration(
                                       color: gColor
-                                          .withOpacity(0.1),
+                                          .withValues(alpha: 0.1),
                                       borderRadius:
                                           BorderRadius
                                               .circular(6),
@@ -1763,7 +1763,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF3B6BA5).withOpacity(0.1),
+                        color: const Color(0xFF3B6BA5).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4)),
                       child: const Text('1차', style: TextStyle(
                         fontSize: 9, fontWeight: FontWeight.w800,
@@ -1780,7 +1780,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
                                 color: subject == e.key
-                                    ? Color(e.value.color).withOpacity(0.15)
+                                    ? Color(e.value.color).withValues(alpha: 0.15)
                                     : Colors.grey.shade100,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(color: subject == e.key
@@ -1799,7 +1799,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF7A5195).withOpacity(0.1),
+                        color: const Color(0xFF7A5195).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4)),
                       child: const Text('2차', style: TextStyle(
                         fontSize: 9, fontWeight: FontWeight.w800,
@@ -1816,7 +1816,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
                                 color: subject == e.key
-                                    ? Color(e.value.color).withOpacity(0.15)
+                                    ? Color(e.value.color).withValues(alpha: 0.15)
                                     : Colors.grey.shade100,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(color: subject == e.key
@@ -1907,7 +1907,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                             horizontal: 12, vertical: 10),
                         decoration: BoxDecoration(
                             color: const Color(0xFF6366F1)
-                                .withOpacity(0.1),
+                                .withValues(alpha: 0.1),
                             borderRadius:
                                 BorderRadius.circular(10)),
                         child: const Text('+ 추가',
@@ -2023,12 +2023,12 @@ class _ProgressScreenState extends State<ProgressScreen>
             const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: selected
-              ? const Color(0xFF6366F1).withOpacity(0.12)
+              ? const Color(0xFF6366F1).withValues(alpha: 0.12)
               : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
               color: selected
-                  ? const Color(0xFF6366F1).withOpacity(0.4)
+                  ? const Color(0xFF6366F1).withValues(alpha: 0.4)
                   : Colors.transparent),
         ),
         child: Text(label,

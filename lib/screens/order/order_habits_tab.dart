@@ -69,9 +69,9 @@ class OrderHabitsTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: OC.amber.withOpacity(0.12),
+            color: OC.amber.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: OC.amber.withOpacity(0.25))),
+            border: Border.all(color: OC.amber.withValues(alpha: 0.25))),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             const Text('🔥', style: TextStyle(fontSize: 11)),
             const SizedBox(width: 4),
@@ -90,7 +90,7 @@ class OrderHabitsTab extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: OC.success.withOpacity(0.12),
+                color: OC.success.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10)),
               child: const Text('🎉 정착 처리', style: TextStyle(
                 fontSize: 11, fontWeight: FontWeight.w700, color: OC.success)),
@@ -123,10 +123,10 @@ class OrderHabitsTab extends StatelessWidget {
           color: OC.card,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: done
-              ? OC.success.withOpacity(0.3) : OC.border.withOpacity(0.5)),
+              ? OC.success.withValues(alpha: 0.3) : OC.border.withValues(alpha: 0.5)),
           boxShadow: [BoxShadow(
-            color: done ? OC.success.withOpacity(0.08)
-                : OC.accent.withOpacity(0.04),
+            color: done ? OC.success.withValues(alpha: 0.08)
+                : OC.accent.withValues(alpha: 0.04),
             blurRadius: 16, offset: const Offset(0, 6))],
         ),
         child: Column(children: [
@@ -136,7 +136,7 @@ class OrderHabitsTab extends StatelessWidget {
               width: 44, height: 44,
               decoration: BoxDecoration(
                 color: done
-                    ? OC.success.withOpacity(0.12)
+                    ? OC.success.withValues(alpha: 0.12)
                     : OC.accentBg,
                 borderRadius: BorderRadius.circular(14)),
               child: Center(child: Text(focus.emoji,
@@ -165,8 +165,8 @@ class OrderHabitsTab extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: done
-                      ? OC.success.withOpacity(0.12)
-                      : OC.amber.withOpacity(0.12),
+                      ? OC.success.withValues(alpha: 0.12)
+                      : OC.amber.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10)),
                 child: Text('🔥${focus.currentStreak}일', style: TextStyle(
                   fontSize: 14, fontWeight: FontWeight.w900,
@@ -253,7 +253,7 @@ class OrderHabitsTab extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 5, vertical: 1),
                         decoration: BoxDecoration(
-                          color: OC.error.withOpacity(0.08),
+                          color: OC.error.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(4)),
                         child: Text(r.breakReason!, style: const TextStyle(
                           fontSize: 8, fontWeight: FontWeight.w600,
@@ -279,10 +279,10 @@ class OrderHabitsTab extends StatelessWidget {
         decoration: BoxDecoration(
           color: OC.card,
           borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: OC.border.withOpacity(0.5),
+          border: Border.all(color: OC.border.withValues(alpha: 0.5),
               style: BorderStyle.solid),
           boxShadow: [BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 16, offset: const Offset(0, 6))]),
         child: Column(children: [
           Container(
@@ -320,9 +320,9 @@ class OrderHabitsTab extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFF64748B).withOpacity(0.1),
+              color: const Color(0xFF64748B).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF94A3B8).withOpacity(0.2))),
+              border: Border.all(color: const Color(0xFF94A3B8).withValues(alpha: 0.2))),
             child: Text('${queue.length}개 대기 중', style: const TextStyle(
               fontSize: 10, fontWeight: FontWeight.w700,
               color: Color(0xFF94A3B8))),
@@ -368,15 +368,15 @@ class OrderHabitsTab extends StatelessWidget {
           decoration: BoxDecoration(
             color: OC.cardHi,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF94A3B8).withOpacity(0.15))),
+            border: Border.all(color: const Color(0xFF94A3B8).withValues(alpha: 0.15))),
           child: Row(children: [
             // 순위 배지 (회색 톤 — 집중과 차별)
             Container(
               width: 28, height: 28,
               decoration: BoxDecoration(
-                color: const Color(0xFF94A3B8).withOpacity(0.1),
+                color: const Color(0xFF94A3B8).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF94A3B8).withOpacity(0.2))),
+                border: Border.all(color: const Color(0xFF94A3B8).withValues(alpha: 0.2))),
               child: Center(child: Text('${h.rank}',
                 style: const TextStyle(fontSize: 12,
                   fontWeight: FontWeight.w800, color: Color(0xFF94A3B8)))),
@@ -397,7 +397,7 @@ class OrderHabitsTab extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 5, vertical: 1),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF94A3B8).withOpacity(0.1),
+                      color: const Color(0xFF94A3B8).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(5)),
                     child: const Text('대기', style: TextStyle(
                       fontSize: 8, fontWeight: FontWeight.w800,
@@ -507,7 +507,7 @@ class OrderHabitsTab extends StatelessWidget {
           color: done ? OC.successBg : OC.cardHi,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: done
-              ? OC.success.withOpacity(.2) : OC.border)),
+              ? OC.success.withValues(alpha: .2) : OC.border)),
         child: Row(children: [
           Text(h.emoji, style: const TextStyle(fontSize: 22)),
           const SizedBox(width: 12),
@@ -521,7 +521,7 @@ class OrderHabitsTab extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: OC.success.withOpacity(0.1),
+                    color: OC.success.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6)),
                   child: const Text('정착', style: TextStyle(
                     fontSize: 9, fontWeight: FontWeight.w700,
@@ -602,7 +602,7 @@ class OrderHabitsTab extends StatelessWidget {
           color: done ? OC.successBg : OC.cardHi,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: done
-              ? OC.success.withOpacity(.2) : OC.border)),
+              ? OC.success.withValues(alpha: .2) : OC.border)),
         child: Row(children: [
           Text(h.emoji, style: const TextStyle(fontSize: 22)),
           const SizedBox(width: 12),
@@ -754,10 +754,10 @@ class OrderHabitsTab extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: primary ? c.withOpacity(0.12) : OC.cardHi,
+          color: primary ? c.withValues(alpha: 0.12) : OC.cardHi,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: primary
-              ? c.withOpacity(0.3) : OC.border)),
+              ? c.withValues(alpha: 0.3) : OC.border)),
         child: Center(child: Text(label, style: TextStyle(
           fontSize: 13, fontWeight: FontWeight.w700,
           color: primary ? c : OC.text2))),
@@ -807,9 +807,9 @@ class OrderHabitsTab extends StatelessWidget {
                           width: 44, height: 44,
                           decoration: BoxDecoration(
                             color: r.length >= 21
-                                ? OC.success.withOpacity(0.12)
+                                ? OC.success.withValues(alpha: 0.12)
                                 : r.length >= 7
-                                    ? OC.amber.withOpacity(0.12)
+                                    ? OC.amber.withValues(alpha: 0.12)
                                     : OC.bgSub,
                             borderRadius: BorderRadius.circular(12)),
                           child: Center(child: Text('${r.length}',
@@ -916,7 +916,7 @@ class OrderHabitsTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xFF6366F1).withOpacity(0.1),
+        color: const Color(0xFF6366F1).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6)),
       child: Text('⚡$label$timeStr', style: const TextStyle(
         fontSize: 9, fontWeight: FontWeight.w700,
@@ -934,8 +934,8 @@ class OrderHabitsTab extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: selected
-            ? (value == 'wake' ? OC.amber.withOpacity(0.12)
-               : value == 'sleep' ? const Color(0xFF8B5CF6).withOpacity(0.12)
+            ? (value == 'wake' ? OC.amber.withValues(alpha: 0.12)
+               : value == 'sleep' ? const Color(0xFF8B5CF6).withValues(alpha: 0.12)
                : OC.bgSub)
             : OC.cardHi,
           borderRadius: BorderRadius.circular(12),
@@ -1048,7 +1048,7 @@ class OrderHabitsTab extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
                       color: rank == 1
-                          ? OC.amber.withOpacity(0.12) : OC.cardHi,
+                          ? OC.amber.withValues(alpha: 0.12) : OC.cardHi,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: rank == 1
                           ? OC.amber : OC.border)),
@@ -1137,7 +1137,7 @@ class OrderHabitsTab extends StatelessWidget {
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: triggerTime != null
-                            ? const Color(0xFF6366F1).withOpacity(0.12)
+                            ? const Color(0xFF6366F1).withValues(alpha: 0.12)
                             : OC.cardHi,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: triggerTime != null
@@ -1278,7 +1278,7 @@ class _GrowthStageCellState extends State<_GrowthStageCell>
             color: widget.count > 0 ? OC.successBg : OC.cardHi,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: widget.count > 0
-                ? OC.success.withOpacity(.2) : OC.border)),
+                ? OC.success.withValues(alpha: .2) : OC.border)),
           child: Column(children: [
             Text(widget.emoji, style: const TextStyle(fontSize: 22)),
             const SizedBox(height: 4),

@@ -724,7 +724,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       decoration: BoxDecoration(
         color: _dk ? const Color(0xFF1E293B) : Colors.white,
         border: Border(top: BorderSide(
-          color: _dk ? BotanicalColors.borderDark.withOpacity(0.3) : BotanicalColors.borderLight,
+          color: _dk ? BotanicalColors.borderDark.withValues(alpha: 0.3) : BotanicalColors.borderLight,
           width: 1)),
       ),
       child: SafeArea(
@@ -888,8 +888,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: _dk
-                ? BotanicalColors.primary.withOpacity(0.12)
-                : BotanicalColors.primary.withOpacity(0.08),
+                ? BotanicalColors.primary.withValues(alpha: 0.12)
+                : BotanicalColors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10)),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(Icons.timer_outlined, size: 13,
@@ -934,19 +934,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: _dk ? color.withOpacity(0.06) : Colors.white.withOpacity(0.85),
+          color: _dk ? color.withValues(alpha: 0.06) : Colors.white.withValues(alpha: 0.85),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: _dk
-            ? color.withOpacity(0.12) : color.withOpacity(0.08)),
+            ? color.withValues(alpha: 0.12) : color.withValues(alpha: 0.08)),
           boxShadow: _dk ? null : [
-            BoxShadow(color: color.withOpacity(0.04),
+            BoxShadow(color: color.withValues(alpha: 0.04),
               blurRadius: 12, offset: const Offset(0, 3))],
         ),
         child: Row(children: [
           Container(
             width: 40, height: 40,
             decoration: BoxDecoration(
-              color: color.withOpacity(_dk ? 0.12 : 0.08),
+              color: color.withValues(alpha: _dk ? 0.12 : 0.08),
               borderRadius: BorderRadius.circular(12)),
             child: Center(
               child: Stack(clipBehavior: Clip.none, children: [
@@ -957,7 +957,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       decoration: BoxDecoration(
                         color: BotanicalColors.success, shape: BoxShape.circle,
                         boxShadow: [BoxShadow(
-                          color: BotanicalColors.success.withOpacity(0.5),
+                          color: BotanicalColors.success.withValues(alpha: 0.5),
                           blurRadius: 6, spreadRadius: 1)]))),
               ]),
             ),
@@ -974,7 +974,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ])),
           if (trailing != null) ...[const SizedBox(width: 8), trailing],
           const SizedBox(width: 4),
-          Icon(Icons.chevron_right_rounded, size: 18, color: _textMuted.withOpacity(0.5)),
+          Icon(Icons.chevron_right_rounded, size: 18, color: _textMuted.withValues(alpha: 0.5)),
         ]),
       ),
     );
@@ -1090,7 +1090,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(4)),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Text(emoji, style: const TextStyle(fontSize: 10)),
@@ -1100,7 +1100,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               if (timerStr != null) ...[
                 const SizedBox(width: 4),
                 Text(timerStr, style: TextStyle(
-                  fontSize: 9, fontWeight: FontWeight.w700, color: color.withOpacity(0.7))),
+                  fontSize: 9, fontWeight: FontWeight.w700, color: color.withValues(alpha: 0.7))),
               ],
             ]),
           ),
@@ -1156,7 +1156,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                 decoration: BoxDecoration(
-                  color: _dk ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                  color: _dk ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(8)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text(w.emoji, style: const TextStyle(fontSize: 12)),
@@ -1175,7 +1175,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Container(
               width: 34, height: 34,
               decoration: BoxDecoration(
-                color: hcLight.withOpacity(0.1),
+                color: hcLight.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10)),
               child: Icon(Icons.home_outlined, size: 16, color: hcLight))),
           const SizedBox(width: 6),
@@ -1195,7 +1195,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Container(
         width: 34, height: 34,
         decoration: BoxDecoration(
-          color: _dk ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+          color: _dk ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(10)),
         child: Icon(icon, size: size, color: _textMuted)),
     );
@@ -1211,18 +1211,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: _dk ? const Color(0xFF2A2218).withOpacity(0.6) : const Color(0xFFFFFBF5),
+          color: _dk ? const Color(0xFF2A2218).withValues(alpha: 0.6) : const Color(0xFFFFFBF5),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFB07D3A).withOpacity(_dk ? 0.15 : 0.1)),
+          border: Border.all(color: const Color(0xFFB07D3A).withValues(alpha: _dk ? 0.15 : 0.1)),
           boxShadow: _dk ? null : [
-            BoxShadow(color: const Color(0xFFB07D3A).withOpacity(0.04),
+            BoxShadow(color: const Color(0xFFB07D3A).withValues(alpha: 0.04),
               blurRadius: 12, offset: const Offset(0, 3))]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Container(
               padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
-                color: const Color(0xFFB07D3A).withOpacity(_dk ? 0.15 : 0.08),
+                color: const Color(0xFFB07D3A).withValues(alpha: _dk ? 0.15 : 0.08),
                 borderRadius: BorderRadius.circular(8)),
               child: const Text('📝', style: TextStyle(fontSize: 12))),
             const SizedBox(width: 8),
@@ -1234,14 +1234,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFB07D3A).withOpacity(0.1),
+                  color: const Color(0xFFB07D3A).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8)),
                 child: Text('${_dailyMemos.length}', style: BotanicalTypo.label(
                   size: 10, weight: FontWeight.w800,
                   color: const Color(0xFFB07D3A)))),
             const SizedBox(width: 6),
             Icon(Icons.add_circle_outline_rounded, size: 16,
-              color: _textMuted.withOpacity(0.5)),
+              color: _textMuted.withValues(alpha: 0.5)),
           ]),
           if (_dailyMemos.isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -1253,7 +1253,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Container(
                     width: 4, height: 4,
                     decoration: BoxDecoration(
-                      color: _textMuted.withOpacity(0.3),
+                      color: _textMuted.withValues(alpha: 0.3),
                       shape: BoxShape.circle))),
                 const SizedBox(width: 8),
                 Expanded(child: Text(memo, style: BotanicalTypo.label(
@@ -1266,11 +1266,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 padding: const EdgeInsets.only(top: 4),
                 child: Text('+${_dailyMemos.length - 3}개 더보기',
                   style: BotanicalTypo.label(size: 10, weight: FontWeight.w600,
-                    color: _textMuted.withOpacity(0.5)))),
+                    color: _textMuted.withValues(alpha: 0.5)))),
           ] else ...[
             const SizedBox(height: 8),
             Text('탭하여 메모를 추가하세요', style: BotanicalTypo.label(
-              size: 11, color: _textMuted.withOpacity(0.5))),
+              size: 11, color: _textMuted.withValues(alpha: 0.5))),
           ],
         ]),
       ),
@@ -1295,7 +1295,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           color: _dk ? const Color(0xFF1A2535) : const Color(0xFFF0F4FA),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: _dk
-            ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04))),
+            ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Text('체감온도', style: BotanicalTypo.label(
@@ -1328,9 +1328,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ? [const Color(0xFF1E3A2F), const Color(0xFF1A2E26)]
               : [const Color(0xFFE8F5E9), const Color(0xFFF1F8E9)]),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: pc.withOpacity(_dk ? 0.3 : 0.15)),
+          border: Border.all(color: pc.withValues(alpha: _dk ? 0.3 : 0.15)),
           boxShadow: [BoxShadow(
-            color: pc.withOpacity(_dk ? 0.12 : 0.06),
+            color: pc.withValues(alpha: _dk ? 0.12 : 0.06),
             blurRadius: 16, offset: const Offset(0, 4))]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -1349,7 +1349,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ClipRRect(borderRadius: BorderRadius.circular(3),
             child: LinearProgressIndicator(
               value: (_effMin / 480).clamp(0.0, 1.0),
-              backgroundColor: _dk ? Colors.white.withOpacity(0.08) : pc.withOpacity(0.1),
+              backgroundColor: _dk ? Colors.white.withValues(alpha: 0.08) : pc.withValues(alpha: 0.1),
               valueColor: AlwaysStoppedAnimation(pc),
               minHeight: 3)),
         ]),
@@ -1371,7 +1371,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       decoration: BoxDecoration(
         color: _dk ? BotanicalColors.cardDark : BotanicalColors.cardLight,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _border.withOpacity(_dk ? 0.15 : 0.6))),
+        border: Border.all(color: _border.withValues(alpha: _dk ? 0.15 : 0.6))),
       child: Row(children: [
         // 큰 숫자
         RichText(text: TextSpan(children: [
@@ -1400,7 +1400,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ClipRRect(borderRadius: BorderRadius.circular(2),
             child: LinearProgressIndicator(
               value: (_effMin / 480).clamp(0.0, 1.0),
-              backgroundColor: _dk ? Colors.white.withOpacity(0.06) : pc.withOpacity(0.08),
+              backgroundColor: _dk ? Colors.white.withValues(alpha: 0.06) : pc.withValues(alpha: 0.08),
               valueColor: AlwaysStoppedAnimation(pc), minHeight: 4)),
         ])),
       ]),
@@ -1454,13 +1454,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             : [const Color(0xFFF0F0FA), const Color(0xFFEBF0F9)]),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFF5B7ABF).withOpacity(_dk ? 0.25 : 0.15))),
+          color: const Color(0xFF5B7ABF).withValues(alpha: _dk ? 0.25 : 0.15))),
       child: Row(children: [
         // 집 아이콘
         Container(
           width: 42, height: 42,
           decoration: BoxDecoration(
-            color: const Color(0xFF5B7ABF).withOpacity(_dk ? 0.15 : 0.1),
+            color: const Color(0xFF5B7ABF).withValues(alpha: _dk ? 0.15 : 0.1),
             borderRadius: BorderRadius.circular(12)),
           child: const Center(child: Text('🏡', style: TextStyle(fontSize: 20)))),
         const SizedBox(width: 12),
@@ -1477,7 +1477,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFF5B7ABF).withOpacity(_dk ? 0.12 : 0.08),
+            color: const Color(0xFF5B7ABF).withValues(alpha: _dk ? 0.12 : 0.08),
             borderRadius: BorderRadius.circular(10)),
           child: Column(children: [
             Text('${homeH}h ${homeM}m', style: BotanicalTypo.number(
@@ -1494,7 +1494,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: Container(
             width: 32, height: 32,
             decoration: BoxDecoration(
-              color: _textMuted.withOpacity(0.1),
+              color: _textMuted.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8)),
             child: Icon(Icons.close_rounded, size: 16, color: _textMuted),
           ),
@@ -1544,8 +1544,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final heroBg = _dk
       ? const [Color(0xFF151B2E), Color(0xFF1A2038)]
       : const [Color(0xFFEDF1FA), Color(0xFFE4EAF6)];
-    final cardBg = _dk ? Colors.white.withOpacity(0.04) : Colors.white;
-    final cardBorder = hc.withOpacity(_dk ? 0.15 : 0.1);
+    final cardBg = _dk ? Colors.white.withValues(alpha: 0.04) : Colors.white;
+    final cardBorder = hc.withValues(alpha: _dk ? 0.15 : 0.1);
 
     final now = DateTime.now();
     final wd = ['월','화','수','목','금','토','일'][now.weekday - 1];
@@ -1575,7 +1575,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: hc.withOpacity(_dk ? 0.1 : 0.06),
+                  color: hc.withValues(alpha: _dk ? 0.1 : 0.06),
                   borderRadius: BorderRadius.circular(10)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text(w.emoji, style: const TextStyle(fontSize: 14)),
@@ -1598,7 +1598,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 begin: Alignment.topLeft, end: Alignment.bottomRight,
                 colors: heroBg),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: hc.withOpacity(_dk ? 0.25 : 0.15))),
+              border: Border.all(color: hc.withValues(alpha: _dk ? 0.25 : 0.15))),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               // 인사
               Text(greeting, style: BotanicalTypo.heading(
@@ -1676,14 +1676,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Expanded(child: Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
-        color: c.withOpacity(_dk ? 0.1 : 0.06),
+        color: c.withValues(alpha: _dk ? 0.1 : 0.06),
         borderRadius: BorderRadius.circular(14)),
       child: Column(children: [
         Text(emoji, style: const TextStyle(fontSize: 16)),
         const SizedBox(height: 4),
         Text(value, style: BotanicalTypo.number(
           size: 14, weight: FontWeight.w700,
-          color: _dk ? Colors.white.withOpacity(0.85) : c)),
+          color: _dk ? Colors.white.withValues(alpha: 0.85) : c)),
         Text(label, style: BotanicalTypo.label(
           size: 9, color: _textMuted)),
       ]),
@@ -1701,13 +1701,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: active
-            ? const Color(0xFF5B7ABF).withOpacity(_dk ? 0.15 : 0.08)
-            : (_dk ? Colors.white.withOpacity(0.04) : Colors.white),
+            ? const Color(0xFF5B7ABF).withValues(alpha: _dk ? 0.15 : 0.08)
+            : (_dk ? Colors.white.withValues(alpha: 0.04) : Colors.white),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: active
-              ? const Color(0xFF5B7ABF).withOpacity(0.3)
-              : (_dk ? Colors.white.withOpacity(0.06) : const Color(0xFFE8E4DF)))),
+              ? const Color(0xFF5B7ABF).withValues(alpha: 0.3)
+              : (_dk ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFE8E4DF)))),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Text(emoji, style: const TextStyle(fontSize: 20)),
           const SizedBox(height: 4),
@@ -1736,16 +1736,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ? [const Color(0xFF1E3A2F), const Color(0xFF1A2E26)]
             : [const Color(0xFFE8F5E9), const Color(0xFFF1F8E9)]),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: BotanicalColors.primary.withOpacity(_dk ? 0.3 : 0.15)),
+        border: Border.all(color: BotanicalColors.primary.withValues(alpha: _dk ? 0.3 : 0.15)),
         boxShadow: [BoxShadow(
-          color: BotanicalColors.primary.withOpacity(_dk ? 0.15 : 0.08),
+          color: BotanicalColors.primary.withValues(alpha: _dk ? 0.15 : 0.08),
           blurRadius: 20, offset: const Offset(0, 6))]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
             padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
-              color: BotanicalColors.primary.withOpacity(_dk ? 0.2 : 0.1),
+              color: BotanicalColors.primary.withValues(alpha: _dk ? 0.2 : 0.1),
               borderRadius: BorderRadius.circular(8)),
             child: Icon(Icons.timer_outlined, size: 14, color: pc)),
           const SizedBox(width: 8),
@@ -1770,8 +1770,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: LinearProgressIndicator(
             value: (_effMin / 480).clamp(0.0, 1.0),
             backgroundColor: _dk
-              ? Colors.white.withOpacity(0.08)
-              : BotanicalColors.primary.withOpacity(0.1),
+              ? Colors.white.withValues(alpha: 0.08)
+              : BotanicalColors.primary.withValues(alpha: 0.1),
             valueColor: AlwaysStoppedAnimation(pc),
             minHeight: 4)),
         const SizedBox(height: 3),
@@ -1806,7 +1806,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _infoCell(String label, String value,
       Color color, IconData icon) {
     return Expanded(child: Column(children: [
-      Icon(icon, size: 16, color: color.withOpacity(0.7)),
+      Icon(icon, size: 16, color: color.withValues(alpha: 0.7)),
       const SizedBox(height: 6),
       Text(value, style: BotanicalTypo.label(
         size: 13, weight: FontWeight.w700, color: _textMain)),
@@ -1816,7 +1816,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _infoDivider() => Container(
-    width: 1, height: 45, color: _border.withOpacity(0.4));
+    width: 1, height: 45, color: _border.withValues(alpha: 0.4));
 
   // ══════════════════════════════════════════
   //  포커스 활성 배너
@@ -1831,13 +1831,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [mc.withOpacity(_dk ? 0.15 : 0.06), mc.withOpacity(_dk ? 0.05 : 0.02)]),
+            colors: [mc.withValues(alpha: _dk ? 0.15 : 0.06), mc.withValues(alpha: _dk ? 0.05 : 0.02)]),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: mc.withOpacity(0.2))),
+          border: Border.all(color: mc.withValues(alpha: 0.2))),
         child: Row(children: [
           Container(width: 10, height: 10,
             decoration: BoxDecoration(color: mc, shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: mc.withOpacity(0.5), blurRadius: 8, spreadRadius: 2)])),
+              boxShadow: [BoxShadow(color: mc.withValues(alpha: 0.5), blurRadius: 8, spreadRadius: 2)])),
           const SizedBox(width: 12),
           Text('${st.mode == 'study' ? '📖' : st.mode == 'lecture' ? '🎧' : '☕'} ${st.subject}',
             style: BotanicalTypo.label(size: 13, weight: FontWeight.w600, color: _textMain)),
@@ -1848,7 +1848,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: mc.withOpacity(_dk ? 0.15 : 0.08),
+              color: mc.withValues(alpha: _dk ? 0.15 : 0.08),
               borderRadius: BorderRadius.circular(8)),
             child: Text('순공 ${st.effectiveTimeFormatted}',
               style: BotanicalTypo.label(size: 10, weight: FontWeight.w700, color: mc))),

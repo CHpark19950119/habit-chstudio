@@ -33,13 +33,13 @@ extension _HomeTodoSection on _HomeScreenState {
           padding: padding,
           decoration: BoxDecoration(
             color: _dk
-                ? Colors.white.withOpacity(0.06)
-                : Colors.white.withOpacity(0.7),
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.white.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(
               color: _dk
-                  ? Colors.white.withOpacity(0.08)
-                  : Colors.white.withOpacity(0.4),
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.4),
             ),
           ),
           child: child,
@@ -51,9 +51,9 @@ extension _HomeTodoSection on _HomeScreenState {
   Widget _todoBadge(String label, Color c) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
     decoration: BoxDecoration(
-      color: c.withOpacity(0.08),
+      color: c.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(6),
-      border: Border.all(color: c.withOpacity(0.2))),
+      border: Border.all(color: c.withValues(alpha: 0.2))),
     child: Text(label, style: TextStyle(fontSize: 9,
       fontWeight: FontWeight.w600, color: c)));
 
@@ -69,7 +69,7 @@ extension _HomeTodoSection on _HomeScreenState {
         CircularProgressIndicator(
           value: total > 0 ? rate : 0,
           strokeWidth: 5,
-          backgroundColor: color.withOpacity(0.12),
+          backgroundColor: color.withValues(alpha: 0.12),
           valueColor: AlwaysStoppedAnimation(color),
         ),
         Column(mainAxisSize: MainAxisSize.min, children: [
@@ -236,7 +236,7 @@ extension _HomeTodoSection on _HomeScreenState {
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
       child: Column(children: [
         Icon(Icons.checklist_rounded,
-            size: 48, color: _textMuted.withOpacity(0.3)),
+            size: 48, color: _textMuted.withValues(alpha: 0.3)),
         const SizedBox(height: 12),
         Text('아직 할일이 없습니다',
             style: TextStyle(
@@ -246,7 +246,7 @@ extension _HomeTodoSection on _HomeScreenState {
         const SizedBox(height: 4),
         Text('아래에서 바로 입력하세요',
             style:
-                TextStyle(fontSize: 12, color: _textMuted.withOpacity(0.6))),
+                TextStyle(fontSize: 12, color: _textMuted.withValues(alpha: 0.6))),
       ]),
     );
   }
@@ -263,7 +263,7 @@ extension _HomeTodoSection on _HomeScreenState {
         padding: const EdgeInsets.only(right: 20),
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-            color: _todoDanger.withOpacity(0.15),
+            color: _todoDanger.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(16)),
         child: Icon(Icons.delete_outline_rounded,
             color: _todoDanger, size: 22),
@@ -295,13 +295,13 @@ extension _HomeTodoSection on _HomeScreenState {
                       height: 26,
                       decoration: BoxDecoration(
                         color: item.completed
-                            ? _todoGreen.withOpacity(0.15)
+                            ? _todoGreen.withValues(alpha: 0.15)
                             : Colors.transparent,
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: item.completed
                               ? _todoGreen
-                              : _textMuted.withOpacity(0.3),
+                              : _textMuted.withValues(alpha: 0.3),
                           width: 2,
                         ),
                       ),
@@ -324,7 +324,7 @@ extension _HomeTodoSection on _HomeScreenState {
                           color: item.completed ? _textMuted : _textMain,
                           decoration: item.completed
                               ? TextDecoration.lineThrough : null,
-                          decorationColor: _textMuted.withOpacity(0.5),
+                          decorationColor: _textMuted.withValues(alpha: 0.5),
                         ),
                         maxLines: 2, overflow: TextOverflow.ellipsis),
                     if (item.type != null || item.subject != null || item.priority != null || item.estimatedMinutes != null) ...[
@@ -470,7 +470,7 @@ extension _HomeTodoSection on _HomeScreenState {
                         ? _todoAmber
                         : rate > 0
                             ? _todoDanger
-                            : _border.withOpacity(0.4);
+                            : _border.withValues(alpha: 0.4);
                 final isToday = date == StudyDateUtils.todayKey();
                 final stagger = (progress * 7 - i).clamp(0.0, 1.0);
                 final barH = ((rate * 60).clamp(4.0, 60.0)) * stagger;
@@ -490,8 +490,8 @@ extension _HomeTodoSection on _HomeScreenState {
                             begin: Alignment.bottomCenter,
                             end: Alignment.topCenter,
                             colors: [
-                              barColor.withOpacity(0.9),
-                              barColor.withOpacity(0.5),
+                              barColor.withValues(alpha: 0.9),
+                              barColor.withValues(alpha: 0.5),
                             ],
                           ),
                           borderRadius: const BorderRadius.vertical(
@@ -547,7 +547,7 @@ extension _HomeTodoSection on _HomeScreenState {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
           child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 40, height: 4, decoration: BoxDecoration(
-              color: sub.withOpacity(0.2), borderRadius: BorderRadius.circular(2))),
+              color: sub.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 14),
             Text('할일 수정', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: txt)),
             const SizedBox(height: 14),
@@ -569,9 +569,9 @@ extension _HomeTodoSection on _HomeScreenState {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: sel ? acc.withOpacity(0.12) : Colors.transparent,
+                    color: sel ? acc.withValues(alpha: 0.12) : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: sel ? acc.withOpacity(0.4) : sub.withOpacity(0.2))),
+                    border: Border.all(color: sel ? acc.withValues(alpha: 0.4) : sub.withValues(alpha: 0.2))),
                   child: Text(TodoItem.types[k]!, style: TextStyle(fontSize: 11,
                     fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
                     color: sel ? acc : sub))),
@@ -589,9 +589,9 @@ extension _HomeTodoSection on _HomeScreenState {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: sel ? acc.withOpacity(0.12) : Colors.transparent,
+                    color: sel ? acc.withValues(alpha: 0.12) : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: sel ? acc.withOpacity(0.4) : sub.withOpacity(0.2))),
+                    border: Border.all(color: sel ? acc.withValues(alpha: 0.4) : sub.withValues(alpha: 0.2))),
                   child: Text(s, style: TextStyle(fontSize: 11,
                     fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
                     color: sel ? acc : sub))),
@@ -612,9 +612,9 @@ extension _HomeTodoSection on _HomeScreenState {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: sel ? c.withOpacity(0.12) : Colors.transparent,
+                    color: sel ? c.withValues(alpha: 0.12) : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: sel ? c.withOpacity(0.4) : sub.withOpacity(0.2))),
+                    border: Border.all(color: sel ? c.withValues(alpha: 0.4) : sub.withValues(alpha: 0.2))),
                   child: Text(label, style: TextStyle(fontSize: 11,
                     fontWeight: sel ? FontWeight.w700 : FontWeight.w500, color: sel ? c : sub))),
               );
@@ -631,9 +631,9 @@ extension _HomeTodoSection on _HomeScreenState {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: sel ? acc.withOpacity(0.12) : Colors.transparent,
+                    color: sel ? acc.withValues(alpha: 0.12) : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: sel ? acc.withOpacity(0.4) : sub.withOpacity(0.2))),
+                    border: Border.all(color: sel ? acc.withValues(alpha: 0.4) : sub.withValues(alpha: 0.2))),
                   child: Text(m >= 60 ? '${m ~/ 60}h' : '${m}m',
                     style: TextStyle(fontSize: 11,
                       fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
@@ -828,7 +828,7 @@ extension _HomeTodoSection on _HomeScreenState {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                      color: _textMuted.withOpacity(0.2),
+                      color: _textMuted.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 16),
               Text('내일 준비',
@@ -1029,7 +1029,7 @@ class _TodoStatsSheetState extends State<_TodoStatsSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-                color: widget.textMuted.withOpacity(0.2),
+                color: widget.textMuted.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(2))),
         const SizedBox(height: 16),
         Text('Todo 통계',
@@ -1090,16 +1090,16 @@ class _TodoStatsSheetState extends State<_TodoStatsSheet> {
                   decoration: BoxDecoration(
                       color: isSelected
                           ? (widget.dk
-                              ? Colors.white.withOpacity(0.06)
+                              ? Colors.white.withValues(alpha: 0.06)
                               : const Color(0xFFF0F4FF))
                           : (widget.dk
-                              ? Colors.white.withOpacity(0.02)
+                              ? Colors.white.withValues(alpha: 0.02)
                               : Colors.grey.shade50),
                       borderRadius: BorderRadius.circular(12),
                       border: isSelected
                           ? Border.all(
                               color:
-                                  BotanicalColors.primary.withOpacity(0.3))
+                                  BotanicalColors.primary.withValues(alpha: 0.3))
                           : null),
                   child: Row(children: [
                     Text(date.substring(5),
@@ -1149,7 +1149,7 @@ class _TodoStatsSheetState extends State<_TodoStatsSheet> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
           color: widget.dk
-              ? Colors.white.withOpacity(0.04)
+              ? Colors.white.withValues(alpha: 0.04)
               : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(14)),
       child:
@@ -1181,9 +1181,9 @@ class _TodoStatsSheetState extends State<_TodoStatsSheet> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-          color: widget.dk ? Colors.white.withOpacity(0.03) : Colors.white,
+          color: widget.dk ? Colors.white.withValues(alpha: 0.03) : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: widget.border.withOpacity(0.1))),
+          border: Border.all(color: widget.border.withValues(alpha: 0.1))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: td.items
@@ -1221,8 +1221,8 @@ class _TodoStatsSheetState extends State<_TodoStatsSheet> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
           gradient: LinearGradient(colors: [
-            BotanicalColors.primary.withOpacity(widget.dk ? 0.15 : 0.08),
-            BotanicalColors.gold.withOpacity(widget.dk ? 0.1 : 0.05),
+            BotanicalColors.primary.withValues(alpha: widget.dk ? 0.15 : 0.08),
+            BotanicalColors.gold.withValues(alpha: widget.dk ? 0.1 : 0.05),
           ]),
           borderRadius: BorderRadius.circular(14)),
       child:
@@ -1421,15 +1421,15 @@ class _TodoInlineAddWidgetState extends State<_TodoInlineAddWidget> {
               : const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: widget.dk
-                ? Colors.white.withOpacity(0.06)
-                : Colors.white.withOpacity(0.7),
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.white.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: _expanded
-                  ? BotanicalColors.primary.withOpacity(0.3)
+                  ? BotanicalColors.primary.withValues(alpha: 0.3)
                   : (widget.dk
-                      ? Colors.white.withOpacity(0.08)
-                      : Colors.white.withOpacity(0.4))),
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.white.withValues(alpha: 0.4))),
           ),
           child: _expanded ? _buildExpandedInput() : _buildCollapsed(),
         ),
@@ -1446,7 +1446,7 @@ class _TodoInlineAddWidgetState extends State<_TodoInlineAddWidget> {
       }),
       child: Row(children: [
         Icon(Icons.add_circle_outline_rounded,
-            size: 20, color: BotanicalColors.primary.withOpacity(0.6)),
+            size: 20, color: BotanicalColors.primary.withValues(alpha: 0.6)),
         const SizedBox(width: 10),
         Text('할일 추가...',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
@@ -1473,13 +1473,13 @@ class _TodoInlineAddWidgetState extends State<_TodoInlineAddWidget> {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: sel
-                        ? BotanicalColors.primary.withOpacity(widget.dk ? 0.15 : 0.08)
+                        ? BotanicalColors.primary.withValues(alpha: widget.dk ? 0.15 : 0.08)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: sel
-                          ? BotanicalColors.primary.withOpacity(0.4)
-                          : widget.textMuted.withOpacity(0.15))),
+                          ? BotanicalColors.primary.withValues(alpha: 0.4)
+                          : widget.textMuted.withValues(alpha: 0.15))),
                   child: Text(label, style: TextStyle(
                     fontSize: 11, fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
                     color: sel ? BotanicalColors.primary : widget.textMuted)),

@@ -267,12 +267,12 @@ class _InsightScreenState extends State<InsightScreen>
               width: 52, margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? BotanicalColors.primary.withOpacity(0.15)
-                    : (_dk ? Colors.white.withOpacity(0.04) : Colors.white),
+                    ? BotanicalColors.primary.withValues(alpha: 0.15)
+                    : (_dk ? Colors.white.withValues(alpha: 0.04) : Colors.white),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: isSelected
-                      ? BotanicalColors.primary.withOpacity(0.4)
+                      ? BotanicalColors.primary.withValues(alpha: 0.4)
                       : Colors.transparent, width: 1.5)),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Text(['월','화','수','목','금','토','일'][dt.weekday - 1],
@@ -298,9 +298,9 @@ class _InsightScreenState extends State<InsightScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _dk ? Colors.white.withOpacity(0.04) : Colors.white,
+        color: _dk ? Colors.white.withValues(alpha: 0.04) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _dk ? Colors.white.withOpacity(0.06) : Colors.grey.shade200)),
+        border: Border.all(color: _dk ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade200)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('기분 & 에너지', style: TextStyle(
           fontSize: 13, fontWeight: FontWeight.w800, color: textMain)),
@@ -317,11 +317,11 @@ class _InsightScreenState extends State<InsightScreen>
                 width: 38, height: 38,
                 decoration: BoxDecoration(
                   color: selected
-                      ? BotanicalColors.primary.withOpacity(0.15)
+                      ? BotanicalColors.primary.withValues(alpha: 0.15)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: selected ? BotanicalColors.primary.withOpacity(0.4)
+                    color: selected ? BotanicalColors.primary.withValues(alpha: 0.4)
                         : Colors.transparent)),
                 child: Center(child: Text(m, style: TextStyle(
                   fontSize: selected ? 22 : 18))),
@@ -345,8 +345,8 @@ class _InsightScreenState extends State<InsightScreen>
                 width: 32, height: 12, margin: const EdgeInsets.only(left: 4),
                 decoration: BoxDecoration(
                   color: active
-                      ? BotanicalColors.primary.withOpacity(0.2 + level * 0.16)
-                      : (_dk ? Colors.white.withOpacity(0.06) : Colors.grey.shade200),
+                      ? BotanicalColors.primary.withValues(alpha: 0.2 + level * 0.16)
+                      : (_dk ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade200),
                   borderRadius: BorderRadius.circular(4)),
               ),
             );
@@ -364,9 +364,9 @@ class _InsightScreenState extends State<InsightScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _dk ? Colors.white.withOpacity(0.04) : Colors.white,
+        color: _dk ? Colors.white.withValues(alpha: 0.04) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _dk ? Colors.white.withOpacity(0.06) : Colors.grey.shade200)),
+        border: Border.all(color: _dk ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade200)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(title, style: TextStyle(
           fontSize: 13, fontWeight: FontWeight.w800, color: textMain)),
@@ -377,7 +377,7 @@ class _InsightScreenState extends State<InsightScreen>
           style: TextStyle(fontSize: 14, color: textMain, height: 1.5),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(fontSize: 13, color: textSub.withOpacity(0.5)),
+            hintStyle: TextStyle(fontSize: 13, color: textSub.withValues(alpha: 0.5)),
             border: InputBorder.none, isDense: true,
             contentPadding: EdgeInsets.zero),
         ),
@@ -401,10 +401,10 @@ class _InsightScreenState extends State<InsightScreen>
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: _dk ? Colors.white.withOpacity(0.03) : Colors.grey.shade50,
+            color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: _dk ? Colors.white.withOpacity(0.05) : Colors.grey.shade200)),
+              color: _dk ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Text(ins.mood, style: const TextStyle(fontSize: 16)),
@@ -417,8 +417,8 @@ class _InsightScreenState extends State<InsightScreen>
                 width: 12, height: 4, margin: const EdgeInsets.only(left: 2),
                 decoration: BoxDecoration(
                   color: i < ins.energyLevel
-                      ? BotanicalColors.primary.withOpacity(0.4 + i * 0.12)
-                      : Colors.grey.withOpacity(0.15),
+                      ? BotanicalColors.primary.withValues(alpha: 0.4 + i * 0.12)
+                      : Colors.grey.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(2)),
               )),
             ]),

@@ -84,7 +84,7 @@ class _Dust extends PositionComponent with HasGameRef<_JourneyBgGame> {
     canvas.drawCircle(
       ui.Offset.zero,
       radius,
-      ui.Paint()..color = _cDust.withOpacity(opacity),
+      ui.Paint()..color = _cDust.withValues(alpha: opacity),
     );
   }
 }
@@ -134,7 +134,7 @@ class _Firefly extends PositionComponent with HasGameRef<_JourneyBgGame> {
     canvas.drawCircle(
       ui.Offset.zero,
       glow * 0.5,
-      ui.Paint()..color = _cBone.withOpacity(op),
+      ui.Paint()..color = _cBone.withValues(alpha: op),
     );
   }
 }
@@ -181,7 +181,7 @@ class _Burst extends PositionComponent {
     canvas.drawCircle(
       ui.Offset.zero,
       radius * (1 - t * 0.4),
-      ui.Paint()..color = color.withOpacity((1 - t) * 0.65),
+      ui.Paint()..color = color.withValues(alpha: (1 - t) * 0.65),
     );
   }
 }
@@ -306,9 +306,9 @@ class _JourneyScreenState extends State<JourneyScreen>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              _cBg.withOpacity(0.3),
+              _cBg.withValues(alpha: 0.3),
               Colors.transparent,
-              _cBg.withOpacity(0.6),
+              _cBg.withValues(alpha: 0.6),
             ],
             stops: const [0, 0.35, 1],
           )),
@@ -371,7 +371,7 @@ class _JourneyScreenState extends State<JourneyScreen>
                   letterSpacing: -2,
                   height: 1.1,
                   shadows: [
-                    Shadow(color: _cAc.withOpacity(0.3), blurRadius: 24)
+                    Shadow(color: _cAc.withValues(alpha: 0.3), blurRadius: 24)
                   ],
                 )),
             const SizedBox(height: 6),
@@ -380,7 +380,7 @@ class _JourneyScreenState extends State<JourneyScreen>
               height: 2,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                    colors: [_cAc, _cAc.withOpacity(0)]),
+                    colors: [_cAc, _cAc.withValues(alpha: 0)]),
               ),
             ),
           ],
@@ -396,7 +396,7 @@ class _JourneyScreenState extends State<JourneyScreen>
         '박천홍의 여정을 따라가다',
         style: TextStyle(
           fontSize: 13,
-          color: _cDust.withOpacity(0.55),
+          color: _cDust.withValues(alpha: 0.55),
           letterSpacing: 3,
           height: 1.8,
         ),
@@ -418,7 +418,7 @@ class _JourneyScreenState extends State<JourneyScreen>
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: [
                   Colors.transparent,
-                  _cDust.withOpacity(0.15 + p * 0.1),
+                  _cDust.withValues(alpha: 0.15 + p * 0.1),
                   Colors.transparent,
                 ]),
               ),
@@ -441,7 +441,7 @@ class _JourneyScreenState extends State<JourneyScreen>
         description: '1995년부터 2013년까지,\n한 사람의 뿌리를 파헤치는 소설',
         icon: Icons.menu_book_rounded,
         tags: const ['11챕터', '전반 · 후반'],
-        gradient: [_cEarth.withOpacity(0.85), _cBg.withOpacity(0.75)],
+        gradient: [_cEarth.withValues(alpha: 0.85), _cBg.withValues(alpha: 0.75)],
         accentColor: _cAc,
         pulse: _pulse,
         chapters: const [
@@ -476,8 +476,8 @@ class _JourneyScreenState extends State<JourneyScreen>
         icon: Icons.route_rounded,
         tags: const ['12섹션', '1995–2026'],
         gradient: [
-          const Color(0xFF1A2030).withOpacity(0.85),
-          _cBg.withOpacity(0.75)
+          const Color(0xFF1A2030).withValues(alpha: 0.85),
+          _cBg.withValues(alpha: 0.75)
         ],
         accentColor: _cAc2,
         pulse: _pulse,
@@ -512,8 +512,8 @@ class _JourneyScreenState extends State<JourneyScreen>
         icon: Icons.analytics_rounded,
         tags: const ['점수 분석', '경로 A/B'],
         gradient: [
-          const Color(0xFF1A1A2E).withOpacity(0.85),
-          _cBg.withOpacity(0.75)
+          const Color(0xFF1A1A2E).withValues(alpha: 0.85),
+          _cBg.withValues(alpha: 0.75)
         ],
         accentColor: const Color(0xFF6B3A8B),
         pulse: _pulse,
@@ -576,21 +576,21 @@ class _JourneyScreenState extends State<JourneyScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        border: Border.all(color: _cDust.withOpacity(op * 0.4)),
+        border: Border.all(color: _cDust.withValues(alpha: op * 0.4)),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Column(children: [
         Text(label,
             style: TextStyle(
                 fontSize: 9,
-                color: _cDust.withOpacity(op),
+                color: _cDust.withValues(alpha: op),
                 letterSpacing: 1.2)),
         const SizedBox(height: 2),
         Text(value,
             style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: _cBone.withOpacity(op + 0.3),
+                color: _cBone.withValues(alpha: op + 0.3),
                 fontFamily: 'monospace')),
       ]),
     );
@@ -603,7 +603,7 @@ class _JourneyScreenState extends State<JourneyScreen>
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          border: Border(left: BorderSide(color: _cAc.withOpacity(0.4), width: 2)),
+          border: Border(left: BorderSide(color: _cAc.withValues(alpha: 0.4), width: 2)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -612,7 +612,7 @@ class _JourneyScreenState extends State<JourneyScreen>
               '"그때는 열심히 뭔가를 해보려고 했어.\n지금은 숨고 싶어진다."',
               style: TextStyle(
                 fontSize: 13,
-                color: _cDust.withOpacity(0.5),
+                color: _cDust.withValues(alpha: 0.5),
                 height: 1.9,
                 fontStyle: FontStyle.italic,
               ),
@@ -622,7 +622,7 @@ class _JourneyScreenState extends State<JourneyScreen>
               '— 14호기 인터뷰 中',
               style: TextStyle(
                 fontSize: 10,
-                color: _cDust.withOpacity(0.3),
+                color: _cDust.withValues(alpha: 0.3),
                 letterSpacing: 0.5,
                 fontFamily: 'monospace',
               ),
@@ -726,12 +726,12 @@ class _JCardState extends State<_JCard> with SingleTickerProviderStateMixin {
                   colors: widget.gradient,
                 ),
                 border: Border.all(
-                  color: widget.accentColor.withOpacity(0.25 + p * 0.15),
+                  color: widget.accentColor.withValues(alpha: 0.25 + p * 0.15),
                 ),
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: widget.accentColor.withOpacity(0.08 + p * 0.08),
+                    color: widget.accentColor.withValues(alpha: 0.08 + p * 0.08),
                     blurRadius: 24 + p * 12,
                     spreadRadius: -4,
                   ),
@@ -756,7 +756,7 @@ class _JCardState extends State<_JCard> with SingleTickerProviderStateMixin {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 9, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: widget.accentColor.withOpacity(0.12),
+                                  color: widget.accentColor.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(t,
@@ -786,7 +786,7 @@ class _JCardState extends State<_JCard> with SingleTickerProviderStateMixin {
                         Text(widget.description,
                             style: TextStyle(
                                 fontSize: 12.5,
-                                color: _cDust.withOpacity(0.6),
+                                color: _cDust.withValues(alpha: 0.6),
                                 height: 1.7)),
                         const SizedBox(height: 14),
                         // 하단: 열기 버튼 + 펼치기
@@ -802,7 +802,7 @@ class _JCardState extends State<_JCard> with SingleTickerProviderStateMixin {
                                     turns: _expanded ? 0.25 : 0,
                                     duration: const Duration(milliseconds: 250),
                                     child: Icon(Icons.chevron_right_rounded,
-                                        color: _cDust.withOpacity(0.4),
+                                        color: _cDust.withValues(alpha: 0.4),
                                         size: 18),
                                   ),
                                   const SizedBox(width: 4),
@@ -814,7 +814,7 @@ class _JCardState extends State<_JCard> with SingleTickerProviderStateMixin {
                                             : '섹션 목록',
                                     style: TextStyle(
                                         fontSize: 11,
-                                        color: _cDust.withOpacity(0.4)),
+                                        color: _cDust.withValues(alpha: 0.4)),
                                   ),
                                 ],
                               ),
@@ -822,7 +822,7 @@ class _JCardState extends State<_JCard> with SingleTickerProviderStateMixin {
                           const Spacer(),
                           Icon(Icons.arrow_forward_rounded,
                               color: widget.accentColor
-                                  .withOpacity(0.4 + p * 0.3),
+                                  .withValues(alpha: 0.4 + p * 0.3),
                               size: 20),
                         ]),
                       ],
@@ -839,7 +839,7 @@ class _JCardState extends State<_JCard> with SingleTickerProviderStateMixin {
                         children: [
                           Container(
                             height: 1,
-                            color: widget.accentColor.withOpacity(0.1),
+                            color: widget.accentColor.withValues(alpha: 0.1),
                           ),
                           const SizedBox(height: 12),
                           Wrap(
@@ -880,14 +880,14 @@ class _JCardState extends State<_JCard> with SingleTickerProviderStateMixin {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: chipColor.withOpacity(0.25),
+        color: chipColor.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: chipColor.withOpacity(0.15)),
+        border: Border.all(color: chipColor.withValues(alpha: 0.15)),
       ),
       child: Text(text,
           style: TextStyle(
               fontSize: 10,
-              color: _cBone.withOpacity(0.7),
+              color: _cBone.withValues(alpha: 0.7),
               fontWeight: FontWeight.w500)),
     );
   }

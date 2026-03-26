@@ -122,10 +122,10 @@ class _CreatureAlertOverlayState extends State<CreatureAlertOverlay>
               color: const Color(0xFF1A1A2E),
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                color: accentColor.withOpacity(0.4), width: 2),
+                color: accentColor.withValues(alpha: 0.4), width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: accentColor.withOpacity(0.3),
+                  color: accentColor.withValues(alpha: 0.3),
                   blurRadius: 40, spreadRadius: 4),
               ],
             ),
@@ -137,7 +137,7 @@ class _CreatureAlertOverlayState extends State<CreatureAlertOverlay>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
+                  color: Colors.white.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(16)),
                 child: Column(children: [
                   Text(widget.title,
@@ -148,7 +148,7 @@ class _CreatureAlertOverlayState extends State<CreatureAlertOverlay>
                   const SizedBox(height: 6),
                   Text(widget.body,
                     style: TextStyle(
-                      fontSize: 13, color: Colors.white.withOpacity(0.7),
+                      fontSize: 13, color: Colors.white.withValues(alpha: 0.7),
                       height: 1.4),
                     textAlign: TextAlign.center),
                 ]),
@@ -159,7 +159,7 @@ class _CreatureAlertOverlayState extends State<CreatureAlertOverlay>
                 if (widget.dismissLabel != null) Expanded(
                   child: _AlertBtn(
                     label: widget.dismissLabel!,
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                     textColor: Colors.white70,
                     onTap: _handleDismiss)),
                 if (widget.dismissLabel != null && widget.confirmLabel != null)
@@ -251,7 +251,7 @@ class _CreatureAvatarState extends State<_CreatureAvatar>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: widget.accentColor.withOpacity(glowOpacity),
+                  color: widget.accentColor.withValues(alpha: glowOpacity),
                   blurRadius: 30, spreadRadius: 8),
               ],
             ),
@@ -263,9 +263,9 @@ class _CreatureAvatarState extends State<_CreatureAvatar>
         width: 100, height: 100,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: widget.accentColor.withOpacity(0.12),
+          color: widget.accentColor.withValues(alpha: 0.12),
           border: Border.all(
-            color: widget.accentColor.withOpacity(0.3), width: 2),
+            color: widget.accentColor.withValues(alpha: 0.3), width: 2),
         ),
         child: const Center(
           child: Text('\u{1F431}', style: TextStyle(fontSize: 48)),

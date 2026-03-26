@@ -142,7 +142,7 @@ class _OrderScreenState extends State<OrderScreen> {
     width: size, height: size,
     decoration: BoxDecoration(shape: BoxShape.circle,
       gradient: RadialGradient(
-        colors: [c.withOpacity(op), c.withOpacity(0)])),
+        colors: [c.withValues(alpha: op), c.withValues(alpha: 0)])),
   );
 
   // ═══════════════════════════════════════════════════
@@ -162,9 +162,9 @@ class _OrderScreenState extends State<OrderScreen> {
       if (primary != null) Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: primary.color.withOpacity(0.1),
+          color: primary.color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: primary.color.withOpacity(0.3))),
+          border: Border.all(color: primary.color.withValues(alpha: 0.3))),
         child: Text(primary.dDayLabel, style: TextStyle(
           fontSize: 13, fontWeight: FontWeight.w800, color: primary.color)),
       ),
@@ -213,7 +213,7 @@ class _OrderScreenState extends State<OrderScreen> {
           child: LinearProgressIndicator(
             value: progress, minHeight: 6,
             backgroundColor: OC.bgSub,
-            valueColor: AlwaysStoppedAnimation(OC.accent.withOpacity(0.7))))),
+            valueColor: AlwaysStoppedAnimation(OC.accent.withValues(alpha: 0.7))))),
         const SizedBox(width: 10),
         Text('${(progress * 100).toInt()}%', style: const TextStyle(
           fontSize: 12, fontWeight: FontWeight.w800, color: OC.accent)),
@@ -266,7 +266,7 @@ class _OrderScreenState extends State<OrderScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
-                color: StudyPlanData.tagColor(daily.tag!).withOpacity(0.15),
+                color: StudyPlanData.tagColor(daily.tag!).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6)),
               child: Text(StudyPlanData.tagLabel(daily.tag!), style: TextStyle(
                 fontSize: 9, fontWeight: FontWeight.w700,
@@ -326,7 +326,7 @@ class _OrderScreenState extends State<OrderScreen> {
                 child: LinearProgressIndicator(
                   value: progress, minHeight: 4,
                   backgroundColor: OC.bgSub,
-                  valueColor: AlwaysStoppedAnimation(OC.accent.withOpacity(0.7))))),
+                  valueColor: AlwaysStoppedAnimation(OC.accent.withValues(alpha: 0.7))))),
               const SizedBox(width: 8),
               Text('$done/$total', style: const TextStyle(
                 fontSize: 10, fontWeight: FontWeight.w700, color: OC.text3)),
@@ -422,7 +422,7 @@ class _OrderScreenState extends State<OrderScreen> {
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
         color: bg, borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.withOpacity(0.15))),
+        border: Border.all(color: c.withValues(alpha: 0.15))),
       child: Column(children: [
         Text(value, style: TextStyle(
           fontSize: 15, fontWeight: FontWeight.w900, color: c)),
@@ -466,7 +466,7 @@ class _OrderScreenState extends State<OrderScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: OC.card, borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: OC.border.withOpacity(0.5))),
+        border: Border.all(color: OC.border.withValues(alpha: 0.5))),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         // 수험 비용
         Row(children: [
@@ -480,7 +480,7 @@ class _OrderScreenState extends State<OrderScreen> {
         ]),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Divider(height: 1, color: OC.border.withOpacity(0.4))),
+          child: Divider(height: 1, color: OC.border.withValues(alpha: 0.4))),
         // AI 비용
         Row(children: [
           const Text('🤖', style: TextStyle(fontSize: 16)),
@@ -491,7 +491,7 @@ class _OrderScreenState extends State<OrderScreen> {
             const SizedBox(width: 6),
             Text('(+₩${_numberFormat(lastAi.amount)})', style: TextStyle(
               fontSize: 10, fontWeight: FontWeight.w600,
-              color: OC.accent.withOpacity(0.5))),
+              color: OC.accent.withValues(alpha: 0.5))),
           ],
           const Spacer(),
           Text('₩${_numberFormat(aiTotal)}', style: const TextStyle(
@@ -509,7 +509,7 @@ class _OrderScreenState extends State<OrderScreen> {
         ]),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Divider(height: 1, color: OC.border.withOpacity(0.4))),
+          child: Divider(height: 1, color: OC.border.withValues(alpha: 0.4))),
         // 합계
         Row(children: [
           const Text('합계', style: TextStyle(
@@ -617,8 +617,8 @@ class _OrderScreenState extends State<OrderScreen> {
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: OC.card, borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: OC.border.withOpacity(0.5)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03),
+          border: Border.all(color: OC.border.withValues(alpha: 0.5)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8, offset: const Offset(0, 2))]),
         child: Column(children: [
           Icon(icon, size: 22, color: c),
@@ -650,8 +650,8 @@ class _OrderScreenState extends State<OrderScreen> {
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: OC.card, borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: OC.border.withOpacity(0.5)),
-      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03),
+      border: Border.all(color: OC.border.withValues(alpha: 0.5)),
+      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03),
         blurRadius: 8, offset: const Offset(0, 2))]),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
   );

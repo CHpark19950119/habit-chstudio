@@ -573,7 +573,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       Text(title, style: BotanicalTypo.label(
         size: 12, weight: FontWeight.w800, letterSpacing: 1.0, color: _textMuted)),
       const SizedBox(width: 8),
-      Expanded(child: Container(height: 0.5, color: _border.withOpacity(0.3))),
+      Expanded(child: Container(height: 0.5, color: _border.withValues(alpha: 0.3))),
     ]),
   );
 
@@ -618,10 +618,10 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 ? [const Color(0xFF0F172A), const Color(0xFF1E1B4B)]
                 : [const Color(0xFFF8FAFC), const Color(0xFFF0F0FF)]),
             border: Border.all(color: _dk
-              ? const Color(0xFF6366F1).withOpacity(0.15)
-              : const Color(0xFF6366F1).withOpacity(0.08)),
+              ? const Color(0xFF6366F1).withValues(alpha: 0.15)
+              : const Color(0xFF6366F1).withValues(alpha: 0.08)),
             boxShadow: [BoxShadow(
-              color: const Color(0xFF6366F1).withOpacity(0.04 + _glowCtrl.value * 0.03),
+              color: const Color(0xFF6366F1).withValues(alpha: 0.04 + _glowCtrl.value * 0.03),
               blurRadius: 24, spreadRadius: -4)],
           ),
           child: Row(children: [
@@ -633,7 +633,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     value: progress * _countAnim.value,
                     strokeWidth: 6,
                     strokeCap: StrokeCap.round,
-                    backgroundColor: _dk ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                    backgroundColor: _dk ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
                     valueColor: AlwaysStoppedAnimation(
                       progress >= 1.0 ? BotanicalColors.primary : const Color(0xFF6366F1)),
                   )),
@@ -659,7 +659,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: BotanicalColors.primary.withOpacity(0.12),
+                  color: BotanicalColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10)),
                 child: Text('목표 ${(progress * 100).toInt()}%',
                   style: BotanicalTypo.label(size: 11, weight: FontWeight.w800, color: BotanicalColors.primary))),
@@ -688,7 +688,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       const SizedBox(width: 10),
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: BotanicalTypo.label(
-          size: 9, weight: FontWeight.w800, letterSpacing: 1.2, color: c.withOpacity(0.7))),
+          size: 9, weight: FontWeight.w800, letterSpacing: 1.2, color: c.withValues(alpha: 0.7))),
         Text(value, style: BotanicalTypo.body(
           size: 14, weight: FontWeight.w700, color: _textMain)),
       ]),
@@ -706,14 +706,14 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
           colors: _dk ? [const Color(0xFF1A2E26), const Color(0xFF142420)]
                       : [const Color(0xFFE8F5E9), const Color(0xFFF1F8E9)]),
-        border: Border.all(color: BotanicalColors.primary.withOpacity(0.08))),
+        border: Border.all(color: BotanicalColors.primary.withValues(alpha: 0.08))),
       clipBehavior: Clip.antiAlias,
       child: Stack(children: [
         // 보태니컬 잎사귀 장식
         Positioned(top: -15, right: -15,
           child: Container(width: 60, height: 60,
             decoration: BoxDecoration(
-              color: BotanicalColors.primary.withOpacity(_dk ? 0.06 : 0.05),
+              color: BotanicalColors.primary.withValues(alpha: _dk ? 0.06 : 0.05),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(30), topRight: Radius.circular(30),
                 bottomLeft: Radius.circular(30), bottomRight: Radius.circular(0))))),
@@ -722,7 +722,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             Row(children: [
               Container(padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  color: BotanicalColors.primary.withOpacity(_dk ? 0.12 : 0.08),
+                  color: BotanicalColors.primary.withValues(alpha: _dk ? 0.12 : 0.08),
                   borderRadius: BorderRadius.circular(7)),
                 child: const Text('🌲', style: TextStyle(fontSize: 12))),
               const SizedBox(width: 8),
@@ -745,7 +745,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   Widget _periodToggle() => Container(
     padding: const EdgeInsets.all(3),
     decoration: BoxDecoration(
-      color: _dk ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+      color: _dk ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
       borderRadius: BorderRadius.circular(10)),
     child: Row(children: [
       _togBtn('주간', _isWeekly, () => _safeSetState(() { _isWeekly = true; _chartCtrl.forward(from: 0); })),
@@ -755,7 +755,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   Widget _togBtn(String lb, bool on, VoidCallback tap) => GestureDetector(onTap: tap,
     child: AnimatedContainer(duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(color: on ? _accent.withOpacity(0.15) : Colors.transparent, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(color: on ? _accent.withValues(alpha: 0.15) : Colors.transparent, borderRadius: BorderRadius.circular(8)),
       child: Text(lb, style: BotanicalTypo.label(size: 11, weight: on ? FontWeight.w800 : FontWeight.w500, color: on ? _accent : _textMuted))));
 
   // ═══ ③ Donut Chart ═══
@@ -768,15 +768,15 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         color: _dk ? BotanicalColors.cardDark : BotanicalColors.cardLight,
-        border: Border.all(color: _border.withOpacity(0.3)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(_dk ? 0.2 : 0.04), blurRadius: 20)]),
+        border: Border.all(color: _border.withValues(alpha: 0.3)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: _dk ? 0.2 : 0.04), blurRadius: 20)]),
       clipBehavior: Clip.antiAlias,
       child: Stack(children: [
         // 보태니컬 잎사귀 장식
         Positioned(top: -18, right: -18,
           child: Container(width: 60, height: 60,
             decoration: BoxDecoration(
-              color: BotanicalColors.gold.withOpacity(_dk ? 0.05 : 0.04),
+              color: BotanicalColors.gold.withValues(alpha: _dk ? 0.05 : 0.04),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(30), topRight: Radius.circular(30),
                 bottomLeft: Radius.circular(30), bottomRight: Radius.circular(0))))),
@@ -784,7 +784,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           Row(children: [
             Container(padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
-                color: BotanicalColors.gold.withOpacity(_dk ? 0.12 : 0.08),
+                color: BotanicalColors.gold.withValues(alpha: _dk ? 0.12 : 0.08),
                 borderRadius: BorderRadius.circular(7)),
               child: const Text('🥥', style: TextStyle(fontSize: 12))),
             const SizedBox(width: 8),
@@ -803,8 +803,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                   child: Container(width: 90, height: 90,
                     decoration: BoxDecoration(shape: BoxShape.circle,
-                      color: (_dk ? Colors.white : Colors.black).withOpacity(0.05),
-                      border: Border.all(color: Colors.white.withOpacity(0.12))),
+                      color: (_dk ? Colors.white : Colors.black).withValues(alpha: 0.05),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.12))),
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Text('${total ~/ 60}h', style: BotanicalTypo.number(size: 24, weight: FontWeight.w200, color: _textMain)),
                       Text('${total % 60}m', style: BotanicalTypo.label(size: 11, color: _textMuted)),
@@ -827,7 +827,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     Text('${e.value ~/ 60}h ${e.value % 60}m', style: BotanicalTypo.label(size: 12, weight: FontWeight.w700, color: _textSub)),
                     const SizedBox(width: 8),
                     Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: c.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                      decoration: BoxDecoration(color: c.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                       child: Text('${pct.toStringAsFixed(0)}%', style: BotanicalTypo.label(size: 10, weight: FontWeight.w700, color: c))),
                   ])))));
         }),
@@ -846,12 +846,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
           colors: _dk ? [const Color(0xFF1A1E2E), const Color(0xFF141826)]
                       : [const Color(0xFFEEF0FA), const Color(0xFFF5F3FF)]),
-        border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.08))),
+        border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.08))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
-              color: const Color(0xFF6366F1).withOpacity(_dk ? 0.12 : 0.08),
+              color: const Color(0xFF6366F1).withValues(alpha: _dk ? 0.12 : 0.08),
               borderRadius: BorderRadius.circular(7)),
             child: const Text('🎯', style: TextStyle(fontSize: 12))),
           const SizedBox(width: 8),
@@ -893,7 +893,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
-                    color: barColor.withOpacity(_dk ? 0.15 : 0.10),
+                    color: barColor.withValues(alpha: _dk ? 0.15 : 0.10),
                     borderRadius: BorderRadius.circular(6)),
                   child: Text('${pct.toStringAsFixed(0)}%', style: TextStyle(
                     fontSize: 11, fontWeight: FontWeight.w800, color: barColor,
@@ -904,8 +904,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 borderRadius: BorderRadius.circular(3),
                 child: SizedBox(height: 6, child: LinearProgressIndicator(
                   value: (pct / 100 * _chartAnim.value).clamp(0.0, 1.0),
-                  backgroundColor: _dk ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04),
-                  valueColor: AlwaysStoppedAnimation(barColor.withOpacity(0.70)),
+                  backgroundColor: _dk ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.04),
+                  valueColor: AlwaysStoppedAnimation(barColor.withValues(alpha: 0.70)),
                 )))),
               const SizedBox(height: 4),
               Row(children: [
@@ -947,12 +947,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
           colors: _dk ? [const Color(0xFF1E2A1A), const Color(0xFF16221A)]
                       : [const Color(0xFFEDF7EE), const Color(0xFFF5FBF2)]),
-        border: Border.all(color: BotanicalColors.primary.withOpacity(0.08))),
+        border: Border.all(color: BotanicalColors.primary.withValues(alpha: 0.08))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
-              color: BotanicalColors.primary.withOpacity(_dk ? 0.12 : 0.08),
+              color: BotanicalColors.primary.withValues(alpha: _dk ? 0.12 : 0.08),
               borderRadius: BorderRadius.circular(7)),
             child: const Text('⏰', style: TextStyle(fontSize: 12))),
           const SizedBox(width: 8),
@@ -970,7 +970,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               final ratio = v / maxMin;
               // Heat color: 0 → grey, low → yellow, high → green
               final barColor = v == 0
-                  ? (_dk ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04))
+                  ? (_dk ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.04))
                   : Color.lerp(const Color(0xFFF59E0B), const Color(0xFF10B981), ratio)!;
               return Expanded(
                 child: Padding(
@@ -981,7 +981,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                       if (v > 0)
                         Text('${v}', style: TextStyle(
                           fontSize: 7, fontWeight: FontWeight.w700,
-                          color: _textMuted.withOpacity(0.6),
+                          color: _textMuted.withValues(alpha: 0.6),
                           fontFeatures: const [FontFeature.tabularFigures()])),
                       const SizedBox(height: 2),
                       Flexible(
@@ -989,7 +989,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                           width: double.infinity,
                           height: v > 0 ? ((ratio * 80).clamp(4, 80) * _chartAnim.value) : 2,
                           decoration: BoxDecoration(
-                            color: barColor.withOpacity(_chartAnim.value),
+                            color: barColor.withValues(alpha: _chartAnim.value),
                             borderRadius: BorderRadius.circular(3),
                           ),
                         )),
@@ -997,7 +997,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                       const SizedBox(height: 4),
                       Text('${h}', style: TextStyle(
                         fontSize: 8, fontWeight: FontWeight.w600,
-                        color: _textMuted.withOpacity(0.5),
+                        color: _textMuted.withValues(alpha: 0.5),
                         fontFeatures: const [FontFeature.tabularFigures()])),
                     ],
                   ),
@@ -1037,14 +1037,14 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       border: Border.all(color: _dk
         ? Color.lerp(const Color(0xFF334155), const Color(0xFF38BDF8), _pulseCtrl.value * 0.15)!
         : const Color(0xFFCBD5E1)),
-      boxShadow: _dk ? [BoxShadow(color: const Color(0xFF38BDF8).withOpacity(0.04 + _pulseCtrl.value * 0.02),
+      boxShadow: _dk ? [BoxShadow(color: const Color(0xFF38BDF8).withValues(alpha: 0.04 + _pulseCtrl.value * 0.02),
         blurRadius: 20, spreadRadius: -2)] : null),
     child: CustomPaint(
       painter: _CyberGridPainter(dark: _dk, pulse: _pulseCtrl.value),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: const Color(0xFF38BDF8).withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: const Color(0xFF38BDF8).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
             child: const Icon(Icons.bedtime_rounded, size: 16, color: Color(0xFF38BDF8))),
           const SizedBox(width: 10),
           Text('기상·취침 패턴', style: BotanicalTypo.body(size: 15, weight: FontWeight.w700,
@@ -1052,9 +1052,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           const Spacer(),
           AnimatedBuilder(animation: _pulseCtrl, builder: (_, __) =>
             Container(width: 6, height: 6, decoration: BoxDecoration(
-              color: const Color(0xFF38BDF8).withOpacity(0.3 + _pulseCtrl.value * 0.7),
+              color: const Color(0xFF38BDF8).withValues(alpha: 0.3 + _pulseCtrl.value * 0.7),
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: const Color(0xFF38BDF8).withOpacity(_pulseCtrl.value * 0.4), blurRadius: 6)]))),
+              boxShadow: [BoxShadow(color: const Color(0xFF38BDF8).withValues(alpha: _pulseCtrl.value * 0.4), blurRadius: 6)]))),
         ]),
         const SizedBox(height: 16),
 
@@ -1079,9 +1079,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFF38BDF8).withOpacity(_dk ? 0.06 : 0.04),
+                color: const Color(0xFF38BDF8).withValues(alpha: _dk ? 0.06 : 0.04),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.1))),
+                border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.1))),
               child: Row(children: [
                 const Text('💤', style: TextStyle(fontSize: 14)),
                 const SizedBox(width: 8),
@@ -1104,7 +1104,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         ]),
         const SizedBox(height: 4),
         Text('  기상 시간', style: BotanicalTypo.label(size: 10, weight: FontWeight.w700,
-          color: BotanicalColors.gold.withOpacity(0.8))),
+          color: BotanicalColors.gold.withValues(alpha: 0.8))),
         const SizedBox(height: 4),
         SizedBox(height: 75, child: AnimatedBuilder(animation: _chartAnim,
           builder: (_, __) => CustomPaint(size: const Size(double.infinity, 75),
@@ -1117,12 +1117,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               color: _dk ? const Color(0xFF64748B) : BotanicalColors.textMuted))).toList()),
 
         const SizedBox(height: 14),
-        Container(height: 1, color: (_dk ? Colors.white : Colors.black).withOpacity(0.06)),
+        Container(height: 1, color: (_dk ? Colors.white : Colors.black).withValues(alpha: 0.06)),
         const SizedBox(height: 14),
 
         // ── 취침 영역 ──
         Text('  취침 시간', style: BotanicalTypo.label(size: 10, weight: FontWeight.w700,
-          color: const Color(0xFF6B5DAF).withOpacity(0.8))),
+          color: const Color(0xFF6B5DAF).withValues(alpha: 0.8))),
         const SizedBox(height: 4),
         SizedBox(height: 75, child: AnimatedBuilder(animation: _chartAnim,
           builder: (_, __) => CustomPaint(size: const Size(double.infinity, 75),
@@ -1165,14 +1165,14 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           colors: _dk
             ? [const Color(0xFF1A1F2E), const Color(0xFF1E2636)]
             : [const Color(0xFFFFFBF0), const Color(0xFFF8F4FF)]),
-        border: Border.all(color: BotanicalColors.gold.withOpacity(_dk ? 0.1 : 0.06)),
+        border: Border.all(color: BotanicalColors.gold.withValues(alpha: _dk ? 0.1 : 0.06)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [BotanicalColors.gold.withOpacity(0.15), BotanicalColors.gold.withOpacity(0.05)]),
+                colors: [BotanicalColors.gold.withValues(alpha: 0.15), BotanicalColors.gold.withValues(alpha: 0.05)]),
               borderRadius: BorderRadius.circular(12)),
             child: const Icon(Icons.schedule_rounded, size: 18, color: BotanicalColors.gold)),
           const SizedBox(width: 12),
@@ -1195,10 +1195,10 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     margin: const EdgeInsets.symmetric(horizontal: 0.5),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [item.color, item.color.withOpacity(0.6)]),
+                        colors: [item.color, item.color.withValues(alpha: 0.6)]),
                       borderRadius: BorderRadius.circular(4),
                       boxShadow: [BoxShadow(
-                        color: item.color.withOpacity(0.15), blurRadius: 3)])),
+                        color: item.color.withValues(alpha: 0.15), blurRadius: 3)])),
                 );
               }).toList())))),
         const SizedBox(height: 20),
@@ -1212,14 +1212,14 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: item.color.withOpacity(_dk ? 0.06 : 0.04),
+                color: item.color.withValues(alpha: _dk ? 0.06 : 0.04),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: item.color.withOpacity(0.08))),
+                border: Border.all(color: item.color.withValues(alpha: 0.08))),
               child: Row(children: [
                 Container(
                   width: 36, height: 36,
                   decoration: BoxDecoration(
-                    color: item.color.withOpacity(_dk ? 0.12 : 0.08),
+                    color: item.color.withValues(alpha: _dk ? 0.12 : 0.08),
                     borderRadius: BorderRadius.circular(10)),
                   child: Center(child: Text(item.emoji, style: const TextStyle(fontSize: 18))),
                 ),
@@ -1258,7 +1258,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         Row(children: [
           Container(padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              color: BotanicalColors.info.withOpacity(0.1),
+              color: BotanicalColors.info.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10)),
             child: const Icon(Icons.analytics_rounded, size: 16, color: BotanicalColors.info)),
           const SizedBox(width: 10),
@@ -1268,7 +1268,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: BotanicalColors.primary.withOpacity(0.12),
+              color: BotanicalColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10)),
             child: Text('목표 $progress%',
               style: BotanicalTypo.label(size: 11, weight: FontWeight.w800, color: BotanicalColors.primary))),
@@ -1294,7 +1294,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: _dk ? Colors.white.withOpacity(0.03) : Colors.grey.shade50,
+            color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(10)),
           child: Row(children: [
             Text(_getStudyComment(), style: BotanicalTypo.label(
@@ -1359,14 +1359,14 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           colors: _dk
             ? [const Color(0xFF141E30), const Color(0xFF1A1E2E)]
             : [const Color(0xFFF5F3FF), const Color(0xFFF0F9FF)]),
-        border: Border.all(color: const Color(0xFF6366F1).withOpacity(_dk ? 0.12 : 0.06)),
+        border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: _dk ? 0.12 : 0.06)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [const Color(0xFF6366F1).withOpacity(0.2), const Color(0xFF8B5CF6).withOpacity(0.1)]),
+                colors: [const Color(0xFF6366F1).withValues(alpha: 0.2), const Color(0xFF8B5CF6).withValues(alpha: 0.1)]),
               borderRadius: BorderRadius.circular(12)),
             child: const Icon(Icons.pie_chart_rounded, size: 16, color: Color(0xFF8B5CF6))),
           const SizedBox(width: 10),
@@ -1377,7 +1377,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFF8B5CF6).withOpacity(0.1),
+              color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8)),
             child: Text('${totalMin ~/ 60}h ${totalMin % 60}m',
               style: BotanicalTypo.body(size: 12, weight: FontWeight.w800, color: const Color(0xFF8B5CF6))),
@@ -1420,7 +1420,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: c.color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                    color: c.color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                   child: Text('${(pct * 100).round()}%', style: BotanicalTypo.label(
                     size: 9, weight: FontWeight.w700, color: c.color)),
                 ),
@@ -1431,16 +1431,16 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   child: Stack(children: [
                     Container(height: 8,
                       decoration: BoxDecoration(
-                        color: _dk ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+                        color: _dk ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
                         borderRadius: BorderRadius.circular(5))),
                     FractionallySizedBox(widthFactor: pct * _chartAnim.value,
                       child: Container(height: 8,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [c.color, c.color.withOpacity(0.5)]),
+                            colors: [c.color, c.color.withValues(alpha: 0.5)]),
                           borderRadius: BorderRadius.circular(5),
                           boxShadow: [BoxShadow(
-                            color: c.color.withOpacity(0.2), blurRadius: 4)]))),
+                            color: c.color.withValues(alpha: 0.2), blurRadius: 4)]))),
                   ]))),
               const SizedBox(height: 2),
               Text('일평균 ${_fmtMin(avgPerDay)}', style: BotanicalTypo.label(
@@ -1455,7 +1455,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: _dk ? Colors.white.withOpacity(0.03) : Colors.grey.shade50,
+              color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
               borderRadius: BorderRadius.circular(14)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('오늘 vs 7일 평균', style: BotanicalTypo.label(
@@ -1479,7 +1479,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: (diff >= 0 ? BotanicalColors.primary : const Color(0xFFEF4444)).withOpacity(0.1),
+                        color: (diff >= 0 ? BotanicalColors.primary : const Color(0xFFEF4444)).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6)),
                       child: Text('$sign${_fmtMin(diff.abs())}',
                         style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
@@ -1526,7 +1526,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         Row(children: [
           Container(padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFF6B5DAF).withOpacity(0.1),
+              color: const Color(0xFF6B5DAF).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12)),
             child: const Icon(Icons.bedtime_rounded, size: 16, color: Color(0xFF6B5DAF))),
           const SizedBox(width: 10),
@@ -1565,7 +1565,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     Container(
                       height: ((24 * (1 - normalized)).clamp(4, 24).toDouble()) * _chartAnim.value,
                       decoration: BoxDecoration(
-                        color: (i == 0 ? const Color(0xFFF59E0B) : const Color(0xFFF59E0B).withOpacity(0.3)),
+                        color: (i == 0 ? const Color(0xFFF59E0B) : const Color(0xFFF59E0B).withValues(alpha: 0.3)),
                         borderRadius: BorderRadius.circular(3))),
                   ])),
                 ));
@@ -1588,9 +1588,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     return Expanded(child: Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(_dk ? 0.08 : 0.06),
+        color: color.withValues(alpha: _dk ? 0.08 : 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.1))),
+        border: Border.all(color: color.withValues(alpha: 0.1))),
       child: Column(children: [
         Text(value, style: BotanicalTypo.body(
           size: 14, weight: FontWeight.w800, color: color)),
@@ -1608,13 +1608,13 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       height: 44,
       decoration: BoxDecoration(
         color: _dk
-          ? Colors.white.withOpacity(0.06)
-          : Colors.black.withOpacity(0.04),
+          ? Colors.white.withValues(alpha: 0.06)
+          : Colors.black.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: _dk
-            ? Colors.white.withOpacity(0.08)
-            : Colors.black.withOpacity(0.06)),
+            ? Colors.white.withValues(alpha: 0.08)
+            : Colors.black.withValues(alpha: 0.06)),
       ),
       padding: const EdgeInsets.all(3),
       child: LayoutBuilder(builder: (ctx, box) {
@@ -1630,16 +1630,16 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               child: Container(
                 decoration: BoxDecoration(
                   color: _dk
-                    ? BotanicalColors.lanternGold.withOpacity(0.15)
+                    ? BotanicalColors.lanternGold.withValues(alpha: 0.15)
                     : Colors.white,
                   borderRadius: BorderRadius.circular(11),
                   boxShadow: _dk ? null : [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withValues(alpha: 0.06),
                       blurRadius: 8, offset: const Offset(0, 2)),
                   ],
                   border: _dk ? Border.all(
-                    color: BotanicalColors.lanternGold.withOpacity(0.2)) : null,
+                    color: BotanicalColors.lanternGold.withValues(alpha: 0.2)) : null,
                 ),
               ),
             ),
@@ -1700,11 +1700,11 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         ),
         border: Border.all(
           color: _dk
-            ? const Color(0xFF6B5DAF).withOpacity(0.15)
-            : const Color(0xFF6B5DAF).withOpacity(0.08)),
+            ? const Color(0xFF6B5DAF).withValues(alpha: 0.15)
+            : const Color(0xFF6B5DAF).withValues(alpha: 0.08)),
         boxShadow: _dk ? null : [
           BoxShadow(
-            color: const Color(0xFF6B5DAF).withOpacity(0.06),
+            color: const Color(0xFF6B5DAF).withValues(alpha: 0.06),
             blurRadius: 20, offset: const Offset(0, 6)),
         ],
       ),
@@ -1715,7 +1715,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF6B5DAF).withOpacity(_dk ? 0.15 : 0.1),
+                color: const Color(0xFF6B5DAF).withValues(alpha: _dk ? 0.15 : 0.1),
                 borderRadius: BorderRadius.circular(12)),
               child: const Text('📖', style: TextStyle(fontSize: 18)),
             ),
@@ -1732,10 +1732,10 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             if (_diaryLoading)
               SizedBox(width: 16, height: 16,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2, color: const Color(0xFF6B5DAF).withOpacity(0.5)))
+                  strokeWidth: 2, color: const Color(0xFF6B5DAF).withValues(alpha: 0.5)))
             else if (hasDiary)
               Icon(Icons.check_circle_rounded, size: 18,
-                color: BotanicalColors.primary.withOpacity(0.6)),
+                color: BotanicalColors.primary.withValues(alpha: 0.6)),
           ]),
           const SizedBox(height: 16),
           // 기분 선택
@@ -1754,11 +1754,11 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: sel
-                        ? const Color(0xFF6B5DAF).withOpacity(_dk ? 0.2 : 0.12)
+                        ? const Color(0xFF6B5DAF).withValues(alpha: _dk ? 0.2 : 0.12)
                         : Colors.transparent,
                       borderRadius: BorderRadius.circular(10),
                       border: sel ? Border.all(
-                        color: const Color(0xFF6B5DAF).withOpacity(0.3)) : null,
+                        color: const Color(0xFF6B5DAF).withValues(alpha: 0.3)) : null,
                     ),
                     child: Text(m, style: TextStyle(fontSize: sel ? 20 : 17)),
                   ),
@@ -1771,13 +1771,13 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           Container(
             decoration: BoxDecoration(
               color: _dk
-                ? Colors.white.withOpacity(0.04)
-                : Colors.white.withOpacity(0.7),
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.white.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: _dk
-                  ? Colors.white.withOpacity(0.06)
-                  : Colors.black.withOpacity(0.04)),
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.04)),
             ),
             child: TextField(
               maxLines: 4, minLines: 3,
@@ -1789,7 +1789,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               decoration: InputDecoration(
                 hintText: '오늘 하루는 어땠나요? 자유롭게 적어보세요...',
                 hintStyle: TextStyle(
-                  fontSize: 13, color: _textMuted.withOpacity(0.5)),
+                  fontSize: 13, color: _textMuted.withValues(alpha: 0.5)),
                 contentPadding: const EdgeInsets.all(16),
                 border: InputBorder.none,
               ),
@@ -1805,13 +1805,13 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   margin: const EdgeInsets.only(right: 8),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(_dk ? 0.1 : 0.06),
+                    color: Colors.red.withValues(alpha: _dk ? 0.1 : 0.06),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.red.withOpacity(0.15)),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.15)),
                   ),
                   child: Text('삭제', style: TextStyle(
                     fontSize: 12, fontWeight: FontWeight.w600,
-                    color: Colors.red.withOpacity(0.7))),
+                    color: Colors.red.withValues(alpha: 0.7))),
                 ),
               ),
             GestureDetector(
@@ -1821,12 +1821,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: [
                     const Color(0xFF6B5DAF),
-                    const Color(0xFF6B5DAF).withOpacity(0.7),
+                    const Color(0xFF6B5DAF).withValues(alpha: 0.7),
                   ]),
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF6B5DAF).withOpacity(0.2),
+                      color: const Color(0xFF6B5DAF).withValues(alpha: 0.2),
                       blurRadius: 8, offset: const Offset(0, 2)),
                   ],
                 ),
@@ -1951,10 +1951,10 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             : [const Color(0xFFF0F9FF), const Color(0xFFF5F3FF)]),
         border: Border.all(
           color: _dk
-            ? const Color(0xFF38BDF8).withOpacity(0.12)
-            : const Color(0xFF6366F1).withOpacity(0.08)),
+            ? const Color(0xFF38BDF8).withValues(alpha: 0.12)
+            : const Color(0xFF6366F1).withValues(alpha: 0.08)),
         boxShadow: _dk ? null : [
-          BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.05),
+          BoxShadow(color: const Color(0xFF6366F1).withValues(alpha: 0.05),
             blurRadius: 24, offset: const Offset(0, 8))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1994,7 +1994,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               child: AnimatedBuilder(animation: _chartAnim, builder: (_, __) =>
                 LinearProgressIndicator(
                   value: progress * _chartAnim.value,
-                  backgroundColor: _dk ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                  backgroundColor: _dk ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
                   valueColor: AlwaysStoppedAnimation(
                     progress >= 1.0 ? BotanicalColors.primary : const Color(0xFF6366F1)),
                 )))),
@@ -2019,7 +2019,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   Widget _dailyMiniChip(String emoji, String text) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
     decoration: BoxDecoration(
-      color: _dk ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+      color: _dk ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
       borderRadius: BorderRadius.circular(8)),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       Text(emoji, style: const TextStyle(fontSize: 11)),
@@ -2045,19 +2045,19 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: _dk ? color.withOpacity(0.06) : Colors.white.withOpacity(0.85),
+          color: _dk ? color.withValues(alpha: 0.06) : Colors.white.withValues(alpha: 0.85),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: _dk
-            ? color.withOpacity(0.12) : color.withOpacity(0.08)),
+            ? color.withValues(alpha: 0.12) : color.withValues(alpha: 0.08)),
           boxShadow: _dk ? null : [
-            BoxShadow(color: color.withOpacity(0.04),
+            BoxShadow(color: color.withValues(alpha: 0.04),
               blurRadius: 12, offset: const Offset(0, 3))],
         ),
         child: Row(children: [
           Container(
             width: 40, height: 40,
             decoration: BoxDecoration(
-              color: color.withOpacity(_dk ? 0.12 : 0.08),
+              color: color.withValues(alpha: _dk ? 0.12 : 0.08),
               borderRadius: BorderRadius.circular(12)),
             child: Center(child: Text(icon, style: const TextStyle(fontSize: 20))),
           ),
@@ -2100,12 +2100,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
           colors: _dk ? [const Color(0xFF1A1E2E), const Color(0xFF141826)]
                       : [const Color(0xFFF5F3FF), const Color(0xFFEEF0FA)]),
-        border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.08))),
+        border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.08))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
-              color: const Color(0xFF8B5CF6).withOpacity(_dk ? 0.12 : 0.08),
+              color: const Color(0xFF8B5CF6).withValues(alpha: _dk ? 0.12 : 0.08),
               borderRadius: BorderRadius.circular(7)),
             child: const Text('📈', style: TextStyle(fontSize: 12))),
           const SizedBox(width: 8),
@@ -2121,7 +2121,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFF8B5CF6).withOpacity(_dk ? 0.12 : 0.08),
+              color: const Color(0xFF8B5CF6).withValues(alpha: _dk ? 0.12 : 0.08),
               borderRadius: BorderRadius.circular(8)),
             child: Text('$studyDays/${_isWeekly ? 7 : 30}일',
               style: BotanicalTypo.label(size: 10, weight: FontWeight.w700, color: const Color(0xFF8B5CF6)))),
@@ -2141,9 +2141,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: BotanicalColors.gold.withOpacity(_dk ? 0.08 : 0.05),
+              color: BotanicalColors.gold.withValues(alpha: _dk ? 0.08 : 0.05),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: BotanicalColors.gold.withOpacity(0.12))),
+              border: Border.all(color: BotanicalColors.gold.withValues(alpha: 0.12))),
             child: Row(children: [
               const Text('🏆', style: TextStyle(fontSize: 14)),
               const SizedBox(width: 8),
@@ -2191,12 +2191,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         color: _dk ? BotanicalColors.cardDark : BotanicalColors.cardLight,
-        border: Border.all(color: _border.withOpacity(0.3))),
+        border: Border.all(color: _border.withValues(alpha: 0.3))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
-              color: r1Color.withOpacity(_dk ? 0.12 : 0.08),
+              color: r1Color.withValues(alpha: _dk ? 0.12 : 0.08),
               borderRadius: BorderRadius.circular(7)),
             child: const Text('📋', style: TextStyle(fontSize: 12))),
           const SizedBox(width: 8),
@@ -2219,7 +2219,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             if (sharedMin > 0) Expanded(
               flex: (sharedMin * _chartAnim.value).round().clamp(1, sharedMin),
               child: Container(
-                color: _dk ? Colors.white.withOpacity(0.1) : Colors.grey.shade300)),
+                color: _dk ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade300)),
             // 남은 공간 (애니메이션 진행 중)
             if (_chartAnim.value < 1.0) Expanded(
               flex: (total * (1 - _chartAnim.value)).round().clamp(1, total),
@@ -2235,7 +2235,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         ]),
         if (r1Subjects.isNotEmpty || r2Subjects.isNotEmpty) ...[
           const SizedBox(height: 14),
-          Divider(height: 1, color: _border.withOpacity(0.15)),
+          Divider(height: 1, color: _border.withValues(alpha: 0.15)),
           const SizedBox(height: 12),
           // 과목별 세부
           Wrap(spacing: 8, runSpacing: 6, children:
@@ -2246,9 +2246,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: c.withOpacity(_dk ? 0.1 : 0.06),
+                  color: c.withValues(alpha: _dk ? 0.1 : 0.06),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: c.withOpacity(0.2))),
+                  border: Border.all(color: c.withValues(alpha: 0.2))),
                 child: Text('${SubjectConfig.subjects[e.key]?.emoji ?? '📚'} ${e.key} ${_fmt(e.value)}',
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: c)),
               );
@@ -2287,12 +2287,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
           colors: _dk ? [const Color(0xFF1A2E26), const Color(0xFF142420)]
                       : [const Color(0xFFE8F5E9), const Color(0xFFF1F8E9)]),
-        border: Border.all(color: BotanicalColors.primary.withOpacity(0.08))),
+        border: Border.all(color: BotanicalColors.primary.withValues(alpha: 0.08))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
-              color: BotanicalColors.primary.withOpacity(_dk ? 0.12 : 0.08),
+              color: BotanicalColors.primary.withValues(alpha: _dk ? 0.12 : 0.08),
               borderRadius: BorderRadius.circular(7)),
             child: const Text('📊', style: TextStyle(fontSize: 12))),
           const SizedBox(width: 8),
@@ -2328,16 +2328,16 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   child: Stack(children: [
                     Container(height: 10,
                       decoration: BoxDecoration(
-                        color: _dk ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+                        color: _dk ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
                         borderRadius: BorderRadius.circular(5))),
                     FractionallySizedBox(widthFactor: pct * _chartAnim.value,
                       child: Container(height: 10,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [c, c.withOpacity(0.6)]),
+                            colors: [c, c.withValues(alpha: 0.6)]),
                           borderRadius: BorderRadius.circular(5),
                           boxShadow: [BoxShadow(
-                            color: c.withOpacity(0.20), blurRadius: 6)]))),
+                            color: c.withValues(alpha: 0.20), blurRadius: 6)]))),
                   ]))),
             ]),
           );
@@ -2371,7 +2371,7 @@ class _BarChartPainter extends CustomPainter {
     for (int g = 1; g <= 3; g++) {
       final gy = h * (1 - g / 4);
       final gridPaint = Paint()
-        ..color = border.withOpacity(0.12)
+        ..color = border.withValues(alpha: 0.12)
         ..strokeWidth = 0.5;
       // 점선 효과
       for (double dx = 0; dx < w; dx += 6) {
@@ -2380,7 +2380,7 @@ class _BarChartPainter extends CustomPainter {
       // 시간 라벨
       final hrLabel = '${(maxMin * g / 4 / 60).round()}h';
       final tp = TextPainter(
-        text: TextSpan(text: hrLabel, style: TextStyle(fontSize: 8, color: txtMuted.withOpacity(0.4))),
+        text: TextSpan(text: hrLabel, style: TextStyle(fontSize: 8, color: txtMuted.withValues(alpha: 0.4))),
         textDirection: TextDirection.ltr)..layout();
       tp.paint(canvas, Offset(w - tp.width, gy - 10));
     }
@@ -2399,7 +2399,7 @@ class _BarChartPainter extends CustomPainter {
       canvas.drawPath(areaPath, Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
-          colors: [primary.withOpacity(0.08), primary.withOpacity(0.0)],
+          colors: [primary.withValues(alpha: 0.08), primary.withValues(alpha: 0.0)],
         ).createShader(Rect.fromLTWH(0, 0, w, h)));
     }
 
@@ -2413,17 +2413,17 @@ class _BarChartPainter extends CustomPainter {
       final rect = RRect.fromRectAndRadius(Rect.fromLTWH(x, h - barH, bw, barH), Radius.circular(isWeekly ? 6 : 3));
       if (isRest) {
         // ★ 쉬는날: 점선 패턴 느낌의 반투명 바
-        canvas.drawRRect(rect, Paint()..color = border.withOpacity(0.3));
+        canvas.drawRRect(rect, Paint()..color = border.withValues(alpha: 0.3));
         // 쉬는날 마커
         final restTp = TextPainter(text: TextSpan(text: '😴', style: const TextStyle(fontSize: 10)),
           textDirection: TextDirection.ltr)..layout();
         restTp.paint(canvas, Offset(x + bw / 2 - restTp.width / 2, h - barH - 14));
       } else if (d.minutes > 0) {
-        final colors = isToday ? [gold, gold.withOpacity(0.6)] : [primary, primary.withOpacity(0.5)];
+        final colors = isToday ? [gold, gold.withValues(alpha: 0.6)] : [primary, primary.withValues(alpha: 0.5)];
         canvas.drawRRect(rect, Paint()..shader = LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: colors).createShader(rect.outerRect));
-        if (isToday) canvas.drawRRect(rect, Paint()..color = gold.withOpacity(0.15 * progress)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
+        if (isToday) canvas.drawRRect(rect, Paint()..color = gold.withValues(alpha: 0.15 * progress)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
       } else {
-        canvas.drawRRect(rect, Paint()..color = border.withOpacity(0.5));
+        canvas.drawRRect(rect, Paint()..color = border.withValues(alpha: 0.5));
       }
       final showLabel = isWeekly || i % 5 == 0 || i == data.length - 1;
       if (showLabel) {
@@ -2449,8 +2449,8 @@ class _CyberGridPainter extends CustomPainter {
   _CyberGridPainter({required this.dark, this.pulse = 0});
   @override
   void paint(Canvas canvas, Size size) {
-    final base = (dark ? Colors.white : Colors.black).withOpacity(dark ? 0.03 : 0.025);
-    final hl = const Color(0xFF38BDF8).withOpacity(0.02 + pulse * 0.01);
+    final base = (dark ? Colors.white : Colors.black).withValues(alpha: dark ? 0.03 : 0.025);
+    final hl = const Color(0xFF38BDF8).withValues(alpha: 0.02 + pulse * 0.01);
     const g = 20.0;
     for (double x = 0; x < size.width; x += g) canvas.drawLine(Offset(x, 0), Offset(x, size.height), Paint()..color = base..strokeWidth = 0.5);
     for (double y = 0; y < size.height; y += g) {
@@ -2473,7 +2473,7 @@ class _DonutPainter extends CustomPainter {
     final r = size.width / 2 - 14;
     final total = entries.fold(0.0, (s, e) => s + e.value);
     if (total == 0) return;
-    canvas.drawCircle(c, r, Paint()..style = PaintingStyle.stroke..strokeWidth = 24..color = (dark ? Colors.white : Colors.black).withOpacity(0.04));
+    canvas.drawCircle(c, r, Paint()..style = PaintingStyle.stroke..strokeWidth = 24..color = (dark ? Colors.white : Colors.black).withValues(alpha: 0.04));
     double a = -pi / 2;
     for (final e in entries) {
       final sweep = (e.value / total) * 2 * pi * progress;
@@ -2513,9 +2513,9 @@ class _SingleLineChartPainter extends CustomPainter {
       final y = mapY(realM);
       if (y < 0 || y > h) continue;
       canvas.drawLine(Offset(0, y), Offset(w, y),
-        Paint()..color = (dark ? Colors.white : Colors.black).withOpacity(0.05)..strokeWidth = 0.5);
+        Paint()..color = (dark ? Colors.white : Colors.black).withValues(alpha: 0.05)..strokeWidth = 0.5);
       final label = '${hr % 24}';
-      TextPainter(text: TextSpan(text: label, style: TextStyle(fontSize: 8, color: (dark ? Colors.white : Colors.black).withOpacity(0.2))),
+      TextPainter(text: TextSpan(text: label, style: TextStyle(fontSize: 8, color: (dark ? Colors.white : Colors.black).withValues(alpha: 0.2))),
         textDirection: TextDirection.ltr)..layout()..paint(canvas, Offset(0, y - 10));
     }
 
@@ -2542,11 +2542,11 @@ class _SingleLineChartPainter extends CustomPainter {
     final total = metrics.fold(0.0, (s, m) => s + m.length);
     final drawn = Path(); var rem = total * progress;
     for (final m in metrics) { if (rem <= 0) break; drawn.addPath(m.extractPath(0, rem.clamp(0, m.length)), Offset.zero); rem -= m.length; }
-    canvas.drawPath(drawn, Paint()..style = PaintingStyle.stroke..strokeWidth = 6..color = color.withOpacity(0.12)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+    canvas.drawPath(drawn, Paint()..style = PaintingStyle.stroke..strokeWidth = 6..color = color.withValues(alpha: 0.12)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
     canvas.drawPath(drawn, Paint()..style = PaintingStyle.stroke..strokeWidth = 2.5..color = color..strokeCap = StrokeCap.round);
     for (int pi = 0; pi < pts.length; pi++) {
       final p = pts[pi];
-      canvas.drawCircle(p, 5, Paint()..color = color.withOpacity(0.15));
+      canvas.drawCircle(p, 5, Paint()..color = color.withValues(alpha: 0.15));
       canvas.drawCircle(p, 3, Paint()..color = color);
       // 시간 라벨 (★ 올바른 data 인덱스 사용)
       final dataIdx = ptDataIdx[pi];
@@ -2554,7 +2554,7 @@ class _SingleLineChartPainter extends CustomPainter {
       if (m != null) {
         final hr = (m ~/ 60) % 24; final mn = m % 60;
         final label = '${hr.toString().padLeft(2,'0')}:${mn.toString().padLeft(2,'0')}';
-        TextPainter(text: TextSpan(text: label, style: TextStyle(fontSize: 7, fontWeight: FontWeight.w600, color: color.withOpacity(0.8))),
+        TextPainter(text: TextSpan(text: label, style: TextStyle(fontSize: 7, fontWeight: FontWeight.w600, color: color.withValues(alpha: 0.8))),
           textDirection: TextDirection.ltr)..layout()..paint(canvas, Offset(p.dx - 12, p.dy > h / 2 ? p.dy - 12 : p.dy + 4));
       }
     }
@@ -2589,16 +2589,16 @@ class _TrendLinePainter extends CustomPainter {
     // Grid lines
     for (int g = 1; g <= 3; g++) {
       final gy = h * (1 - g / 4);
-      final p = Paint()..color = (dark ? Colors.white : Colors.black).withOpacity(0.05)..strokeWidth = 0.5;
+      final p = Paint()..color = (dark ? Colors.white : Colors.black).withValues(alpha: 0.05)..strokeWidth = 0.5;
       for (double dx = 0; dx < w; dx += 6) canvas.drawLine(Offset(dx, gy), Offset(dx + 3, gy), p);
       final hrs = (maxMin * g / 4 / 60).round();
-      TextPainter(text: TextSpan(text: '${hrs}h', style: TextStyle(fontSize: 8, color: txtMuted.withOpacity(0.4))),
+      TextPainter(text: TextSpan(text: '${hrs}h', style: TextStyle(fontSize: 8, color: txtMuted.withValues(alpha: 0.4))),
         textDirection: TextDirection.ltr)..layout()..paint(canvas, Offset(0, gy - 10));
     }
 
     // Average line
     final avgY = h * (1 - avgMin / maxMin) * progress;
-    final avgP = Paint()..color = accent.withOpacity(0.3)..strokeWidth = 1..style = PaintingStyle.stroke;
+    final avgP = Paint()..color = accent.withValues(alpha: 0.3)..strokeWidth = 1..style = PaintingStyle.stroke;
     for (double dx = 0; dx < w; dx += 8) canvas.drawLine(Offset(dx, avgY), Offset(dx + 4, avgY), avgP);
 
     // Build points
@@ -2617,7 +2617,7 @@ class _TrendLinePainter extends CustomPainter {
       canvas.drawPath(fillPath, Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
-          colors: [accent.withOpacity(0.15), accent.withOpacity(0.02)],
+          colors: [accent.withValues(alpha: 0.15), accent.withValues(alpha: 0.02)],
         ).createShader(Rect.fromLTWH(0, 0, w, h)));
     }
 
@@ -2637,17 +2637,17 @@ class _TrendLinePainter extends CustomPainter {
       final isBest = i == bestI && data[i].minutes > 0;
       final isRest = data[i].isRestDay;
       final r = isBest ? 5.0 : 3.0;
-      final pc = isRest ? txtMuted.withOpacity(0.2) : (isBest ? const Color(0xFFF59E0B) : accent);
+      final pc = isRest ? txtMuted.withValues(alpha: 0.2) : (isBest ? const Color(0xFFF59E0B) : accent);
       if (!isRest || data[i].minutes > 0) {
         canvas.drawCircle(pts[i], r, Paint()..color = pc);
-        if (isBest) canvas.drawCircle(pts[i], r + 3, Paint()..color = pc.withOpacity(0.2)..style = PaintingStyle.stroke..strokeWidth = 2);
+        if (isBest) canvas.drawCircle(pts[i], r + 3, Paint()..color = pc.withValues(alpha: 0.2)..style = PaintingStyle.stroke..strokeWidth = 2);
       }
       // X-axis labels
       final showLabel = data.length <= 7 || i % 5 == 0 || i == data.length - 1;
       if (showLabel) {
         TextPainter(text: TextSpan(text: data[i].label,
           style: TextStyle(fontSize: 8, fontWeight: isBest ? FontWeight.w800 : FontWeight.w500,
-            color: isBest ? pc : txtMuted.withOpacity(0.5))),
+            color: isBest ? pc : txtMuted.withValues(alpha: 0.5))),
           textDirection: TextDirection.ltr)..layout()..paint(canvas, Offset(pts[i].dx - 6, h + 6));
       }
     }

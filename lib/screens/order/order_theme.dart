@@ -73,8 +73,8 @@ Widget orderSectionCard({
     padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(
       color: OC.card, borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: OC.border.withOpacity(.5)),
-      boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04),
+      border: Border.all(color: OC.border.withValues(alpha: .5)),
+      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .04),
         blurRadius: 16, offset: const Offset(0, 6))]),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
@@ -148,7 +148,7 @@ Widget sheetBtn(String text, Color bg, Color fg, VoidCallback onTap) {
       decoration: BoxDecoration(
         color: bg, borderRadius: BorderRadius.circular(16),
         boxShadow: bg == OC.accent
-            ? [BoxShadow(color: OC.accent.withOpacity(.25),
+            ? [BoxShadow(color: OC.accent.withValues(alpha: .25),
                 blurRadius: 8, offset: const Offset(0, 3))]
             : null),
       child: Center(child: Text(text, style: TextStyle(

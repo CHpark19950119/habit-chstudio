@@ -173,7 +173,7 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
 
   Widget _miniDivider() => Container(
     width: 1, height: 24,
-    color: OC.border.withOpacity(0.3));
+    color: OC.border.withValues(alpha: 0.3));
 
   // ═══════════════════════════════════════════════════
   //  SECTION HEADER
@@ -183,7 +183,7 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
       Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: OC.accent.withOpacity(0.08),
+          color: OC.accent.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(8)),
         child: Icon(icon, size: 14, color: OC.accent)),
       const SizedBox(width: 8),
@@ -201,7 +201,7 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
         ),
       ],
       const Spacer(),
-      Expanded(child: Container(height: 0.5, color: OC.border.withOpacity(0.3))),
+      Expanded(child: Container(height: 0.5, color: OC.border.withValues(alpha: 0.3))),
     ]);
   }
 
@@ -224,7 +224,7 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
           decoration: BoxDecoration(
             color: OC.card,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: OC.border.withOpacity(0.3))),
+            border: Border.all(color: OC.border.withValues(alpha: 0.3))),
           child: IntrinsicHeight(child: Row(children: [
             // Left accent bar
             Container(width: 3,
@@ -252,7 +252,7 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
-                        color: accentC.withOpacity(0.1),
+                        color: accentC.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6)),
                       child: Text(dDay, style: TextStyle(
                         fontSize: 10, fontWeight: FontWeight.w800, color: accentC)),
@@ -260,7 +260,7 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
                   ],
                   const SizedBox(width: 4),
                   Icon(Icons.chevron_right_rounded,
-                    size: 16, color: OC.text4.withOpacity(0.4)),
+                    size: 16, color: OC.text4.withValues(alpha: 0.4)),
                 ]),
                 // 2행: 프로그레스 바
                 if (total > 0) ...[
@@ -269,7 +269,7 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
                     borderRadius: BorderRadius.circular(2),
                     child: LinearProgressIndicator(
                       value: progress, minHeight: 3,
-                      backgroundColor: OC.border.withOpacity(0.2),
+                      backgroundColor: OC.border.withValues(alpha: 0.2),
                       valueColor: AlwaysStoppedAnimation(accentC))),
                 ],
               ]),
@@ -327,11 +327,11 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
         duration: const Duration(milliseconds: 300),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: done ? OC.accent.withOpacity(0.06) : OC.card,
+          color: done ? OC.accent.withValues(alpha: 0.06) : OC.card,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: done ? OC.accent.withOpacity(0.25) : OC.border.withOpacity(0.4)),
-          boxShadow: done ? [BoxShadow(color: OC.accent.withOpacity(0.06),
+            color: done ? OC.accent.withValues(alpha: 0.25) : OC.border.withValues(alpha: 0.4)),
+          boxShadow: done ? [BoxShadow(color: OC.accent.withValues(alpha: 0.06),
             blurRadius: 12, offset: const Offset(0, 4))] : null),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // Top row: emoji + check
@@ -345,7 +345,7 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
                 shape: BoxShape.circle,
                 color: done ? OC.accent : Colors.transparent,
                 border: Border.all(
-                  color: done ? OC.accent : OC.text4.withOpacity(0.4), width: 2)),
+                  color: done ? OC.accent : OC.text4.withValues(alpha: 0.4), width: 2)),
               child: done
                   ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
                   : null,
@@ -363,9 +363,9 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
             child: LinearProgressIndicator(
               value: streakPct.clamp(0, 1),
               minHeight: 3,
-              backgroundColor: OC.border.withOpacity(0.2),
+              backgroundColor: OC.border.withValues(alpha: 0.2),
               valueColor: AlwaysStoppedAnimation(
-                streak >= h.targetDays ? OC.success : OC.amber.withOpacity(0.7)))),
+                streak >= h.targetDays ? OC.success : OC.amber.withValues(alpha: 0.7)))),
           const SizedBox(height: 6),
           Row(children: [
             Text(h.growthEmoji, style: const TextStyle(fontSize: 12)),
@@ -391,15 +391,15 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: [
-            OC.accentBg.withOpacity(0.5), OC.accentBg.withOpacity(0.2)]),
+            OC.accentBg.withValues(alpha: 0.5), OC.accentBg.withValues(alpha: 0.2)]),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: OC.accent.withOpacity(0.12))),
+          border: Border.all(color: OC.accent.withValues(alpha: 0.12))),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.add_rounded, size: 16, color: OC.accent.withOpacity(0.6)),
+          Icon(Icons.add_rounded, size: 16, color: OC.accent.withValues(alpha: 0.6)),
           const SizedBox(width: 6),
           Text(label, style: TextStyle(
             fontSize: 12, fontWeight: FontWeight.w700,
-            color: OC.accent.withOpacity(0.6))),
+            color: OC.accent.withValues(alpha: 0.6))),
         ]),
       ),
     );
@@ -408,7 +408,7 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
   Widget _emptyState(String text, IconData icon) => Container(
     padding: const EdgeInsets.symmetric(vertical: 30),
     child: Column(children: [
-      Icon(icon, size: 32, color: OC.text4.withOpacity(0.4)),
+      Icon(icon, size: 32, color: OC.text4.withValues(alpha: 0.4)),
       const SizedBox(height: 10),
       Text(text, textAlign: TextAlign.center, style: const TextStyle(
         fontSize: 12, color: OC.text4, height: 1.5)),
@@ -437,8 +437,8 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
       decoration: BoxDecoration(
         color: OC.card,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: OC.border.withOpacity(0.3)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03),
+        border: Border.all(color: OC.border.withValues(alpha: 0.3)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03),
           blurRadius: 12, offset: const Offset(0, 4))]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // ── 목표 성과 ──
@@ -457,14 +457,14 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
               if (completed.isNotEmpty) Expanded(
                 flex: completed.length,
                 child: Container(
-                  color: OC.success.withOpacity(0.8),
+                  color: OC.success.withValues(alpha: 0.8),
                   alignment: Alignment.center,
                   child: Text('${completed.length} 달성', style: const TextStyle(
                     fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white)))),
               if (failed.isNotEmpty) Expanded(
                 flex: failed.length,
                 child: Container(
-                  color: OC.error.withOpacity(0.7),
+                  color: OC.error.withValues(alpha: 0.7),
                   alignment: Alignment.center,
                   child: Text('${failed.length} 실패', style: const TextStyle(
                     fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white)))),
@@ -485,7 +485,7 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
         // Divider
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Container(height: 0.5, color: OC.border.withOpacity(0.3))),
+          child: Container(height: 0.5, color: OC.border.withValues(alpha: 0.3))),
 
         // ── 습관 성과 ──
         Row(children: [
@@ -509,7 +509,7 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
         if (totalFinished > 0) ...[
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Container(height: 0.5, color: OC.border.withOpacity(0.3))),
+            child: Container(height: 0.5, color: OC.border.withValues(alpha: 0.3))),
           const Text('최근 기록', style: TextStyle(
             fontSize: 11, fontWeight: FontWeight.w700, color: OC.text3)),
           const SizedBox(height: 8),
@@ -523,9 +523,9 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
     child: Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
-        color: c.withOpacity(0.06),
+        color: c.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.withOpacity(0.1))),
+        border: Border.all(color: c.withValues(alpha: 0.1))),
       child: Column(children: [
         Text(value, style: TextStyle(
           fontSize: 15, fontWeight: FontWeight.w900, color: c)),
@@ -591,7 +591,7 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: OC.bgSub.withOpacity(0.5),
+        color: OC.bgSub.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         GestureDetector(
@@ -662,9 +662,9 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
   Widget _archiveChip(String text, Color c) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
     decoration: BoxDecoration(
-      color: c.withOpacity(0.08),
+      color: c.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(6),
-      border: Border.all(color: c.withOpacity(0.15))),
+      border: Border.all(color: c.withValues(alpha: 0.15))),
     child: Text(text, style: TextStyle(
       fontSize: 9, fontWeight: FontWeight.w800, color: c)),
   );
@@ -679,7 +679,7 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
         Container(
           width: 20, height: 20,
           decoration: BoxDecoration(
-            shape: BoxShape.circle, color: c.withOpacity(0.1)),
+            shape: BoxShape.circle, color: c.withValues(alpha: 0.1)),
           child: Icon(
             g.isCompleted ? Icons.check_rounded : Icons.close_rounded,
             size: 12, color: c)),
@@ -687,13 +687,13 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
         Expanded(child: Text(g.title, style: TextStyle(
           fontSize: 12, color: OC.text3,
           decoration: TextDecoration.lineThrough,
-          decorationColor: c.withOpacity(0.3)))),
+          decorationColor: c.withValues(alpha: 0.3)))),
         if (g.failedNote != null && g.failedNote!.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(right: 6),
             child: Tooltip(message: g.failedNote!,
               child: Icon(Icons.info_outline_rounded, size: 14,
-                color: OC.text4.withOpacity(0.5)))),
+                color: OC.text4.withValues(alpha: 0.5)))),
         Text(date, style: const TextStyle(fontSize: 9, color: OC.text4)),
       ]),
     );
@@ -766,7 +766,7 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
                         height: 4,
                         margin: EdgeInsets.only(right: i < total - 1 ? 3 : 0),
                         decoration: BoxDecoration(
-                          color: isDone ? OC.accent : OC.border.withOpacity(0.3),
+                          color: isDone ? OC.accent : OC.border.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(2)),
                       ));
                     })),
@@ -1120,9 +1120,9 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
     Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: c.withOpacity(0.06),
+        color: c.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.withOpacity(0.12))),
+        border: Border.all(color: c.withValues(alpha: 0.12))),
       child: Text(value, style: TextStyle(
         fontSize: 15, fontWeight: FontWeight.w800, color: c)),
     ),

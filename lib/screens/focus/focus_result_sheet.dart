@@ -52,7 +52,7 @@ void showFocusResultDialog({
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: c.withOpacity(0.08),
+            color: c.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(16)),
           child: Column(children: [
             Text('순공 ${cycle.effectiveMin}분', style: TextStyle(
@@ -71,9 +71,9 @@ void showFocusResultDialog({
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: _concentrationColor(concentrationRate).withOpacity(0.08),
+              color: _concentrationColor(concentrationRate).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _concentrationColor(concentrationRate).withOpacity(0.2))),
+              border: Border.all(color: _concentrationColor(concentrationRate).withValues(alpha: 0.2))),
             child: Column(children: [
               Text('집중도', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
                 color: textMuted)),
@@ -85,7 +85,7 @@ void showFocusResultDialog({
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF8B5CF6).withOpacity(0.15),
+                    color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8)),
                   child: Text('보너스 +$bonus EXP',
                     style: const TextStyle(color: Color(0xFFA78BFA), fontSize: 11,

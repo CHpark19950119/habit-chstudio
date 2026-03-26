@@ -20,9 +20,9 @@ extension _HomeOrderSection on _HomeScreenState {
     // 테마 색상
     final cardBg = _dk ? const Color(0xFF1A1A2E) : Colors.white;
     final borderC = _dk ? const Color(0xFF2D2D44) : const Color(0xFFE8E4DF);
-    final subtleBg = _dk ? Colors.white.withOpacity(0.04) : const Color(0xFFF8F7F5);
-    final subtleBorder = _dk ? Colors.white.withOpacity(0.08) : const Color(0xFFEEE9E2);
-    final labelC = _dk ? Colors.white.withOpacity(0.4) : const Color(0xFF94A3B8);
+    final subtleBg = _dk ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF8F7F5);
+    final subtleBorder = _dk ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFEEE9E2);
+    final labelC = _dk ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF94A3B8);
     final mainC = _dk ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B);
 
     return GestureDetector(
@@ -138,7 +138,7 @@ extension _HomeOrderSection on _HomeScreenState {
   }
 
   Widget _compassDivider(Color c) => Container(
-    height: 1, color: c.withOpacity(0.5));
+    height: 1, color: c.withValues(alpha: 0.5));
 
   // ═══ 습관 카드 (2열 그리드 아이템) ═══
   Widget _focusHabitCard(OrderHabit h, Color bg, Color border, Color label, Color main, [double? width]) {
@@ -153,7 +153,7 @@ extension _HomeOrderSection on _HomeScreenState {
         color: bg,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: done
-            ? const Color(0xFF22C55E).withOpacity(0.3) : border)),
+            ? const Color(0xFF22C55E).withValues(alpha: 0.3) : border)),
       child: Row(children: [
         Text(h.emoji, style: const TextStyle(fontSize: 16)),
         const SizedBox(width: 8),
@@ -220,8 +220,8 @@ extension _HomeOrderSection on _HomeScreenState {
               done ? Icons.check_circle : Icons.radio_button_unchecked,
               size: 18,
               color: done
-                  ? const Color(0xFF22C55E).withOpacity(0.7)
-                  : _textMuted.withOpacity(0.3)),
+                  ? const Color(0xFF22C55E).withValues(alpha: 0.7)
+                  : _textMuted.withValues(alpha: 0.3)),
             const SizedBox(width: 10),
             Expanded(child: Text(
               '${h.emoji} ${h.title}',
@@ -283,7 +283,7 @@ extension _HomeOrderSection on _HomeScreenState {
         Container(
           width: 50, height: 3,
           decoration: BoxDecoration(
-            color: _dk ? Colors.white.withOpacity(0.06) : const Color(0xFFE8E4DF),
+            color: _dk ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFE8E4DF),
             borderRadius: BorderRadius.circular(2)),
           child: FractionallySizedBox(
             alignment: Alignment.centerLeft,
@@ -369,9 +369,9 @@ extension _HomeOrderSection on _HomeScreenState {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: _dk ? Colors.white.withOpacity(0.03) : Colors.white.withOpacity(0.7),
+          color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.7),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _border.withOpacity(0.15))),
+          border: Border.all(color: _border.withValues(alpha: 0.15))),
         child: Column(children: [
           Text(emoji, style: const TextStyle(fontSize: 20)),
           const SizedBox(height: 4),

@@ -39,8 +39,8 @@ class _FocusScreenState extends State<FocusScreen>
 
   // theme-aware colors — no hardcoding
   Color get _bg => _dk ? const Color(0xFF111015) : const Color(0xFFF6F4F0);
-  Color get _card => _dk ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.65);
-  Color get _cardBorder => _dk ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.04);
+  Color get _card => _dk ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.65);
+  Color get _cardBorder => _dk ? Colors.white.withValues(alpha: 0.07) : Colors.black.withValues(alpha: 0.04);
   Color get _t1 => _dk ? const Color(0xFFF2ECE4) : const Color(0xFF1A1714);
   Color get _t2 => _dk ? const Color(0xFFB8A898) : const Color(0xFF5C5048);
   Color get _t3 => _dk ? const Color(0xFF7A6E62) : const Color(0xFF9A8E82);
@@ -235,7 +235,7 @@ class _FocusScreenState extends State<FocusScreen>
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: _t3.withOpacity(0.08),
+                  color: _t3.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10)),
                 child: Icon(Icons.tune_rounded, size: 18, color: _t3),
               ),
@@ -253,7 +253,7 @@ class _FocusScreenState extends State<FocusScreen>
               final m = mins % 60;
               return ShaderMask(
                 shaderCallback: (r) => LinearGradient(
-                  colors: [_accent, _accent.withOpacity(0.4), _dk ? Colors.white54 : Colors.black38],
+                  colors: [_accent, _accent.withValues(alpha: 0.4), _dk ? Colors.white54 : Colors.black38],
                   begin: Alignment.topCenter, end: Alignment.bottomCenter,
                 ).createShader(r),
                 child: Text(
@@ -273,7 +273,7 @@ class _FocusScreenState extends State<FocusScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _accent.withOpacity(_dk ? 0.12 : 0.07),
+                  color: _accent.withValues(alpha: _dk ? 0.12 : 0.07),
                   borderRadius: BorderRadius.circular(10)),
                 child: Text('${_fs.todaySessionCount}세션', style: TextStyle(
                   fontSize: 11, fontWeight: FontWeight.w800, color: _accent,
@@ -294,15 +294,15 @@ class _FocusScreenState extends State<FocusScreen>
                   borderRadius: BorderRadius.circular(3),
                   child: SizedBox(height: 3, child: LinearProgressIndicator(
                     value: pct * v,
-                    backgroundColor: _dk ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04),
-                    valueColor: AlwaysStoppedAnimation(_accent.withOpacity(0.60)),
+                    backgroundColor: _dk ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.04),
+                    valueColor: AlwaysStoppedAnimation(_accent.withValues(alpha: 0.60)),
                   )),
                 ),
                 const SizedBox(height: 4),
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text('${(pct * 100).toInt()}% of 8h', style: TextStyle(
-                    fontSize: 9, fontWeight: FontWeight.w600, color: _t3.withOpacity(0.45),
+                    fontSize: 9, fontWeight: FontWeight.w600, color: _t3.withValues(alpha: 0.45),
                     fontFeatures: const [FontFeature.tabularFigures()]))),
               ]);
             },
@@ -326,12 +326,12 @@ class _FocusScreenState extends State<FocusScreen>
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                     decoration: BoxDecoration(
-                      color: sel ? c.withOpacity(_dk ? 0.18 : 0.10) : Colors.transparent,
+                      color: sel ? c.withValues(alpha: _dk ? 0.18 : 0.10) : Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: sel ? c.withOpacity(0.45) : _t3.withOpacity(0.12),
+                        color: sel ? c.withValues(alpha: 0.45) : _t3.withValues(alpha: 0.12),
                         width: sel ? 1.5 : 1),
-                      boxShadow: sel ? [BoxShadow(color: c.withOpacity(0.10), blurRadius: 10)] : null,
+                      boxShadow: sel ? [BoxShadow(color: c.withValues(alpha: 0.10), blurRadius: 10)] : null,
                     ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Text(e.value.emoji, style: const TextStyle(fontSize: 14)),
@@ -368,7 +368,7 @@ class _FocusScreenState extends State<FocusScreen>
           // ── Records divider ──
           Row(children: [
             Expanded(child: Container(height: 1,
-              color: _dk ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04))),
+              color: _dk ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.04))),
           ]),
           const SizedBox(height: 24),
 
@@ -388,11 +388,11 @@ class _FocusScreenState extends State<FocusScreen>
           _frost(
             blur: 12,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            borderColor: _accent.withOpacity(0.08),
+            borderColor: _accent.withValues(alpha: 0.08),
             child: Row(children: [
               ShaderMask(
                 shaderCallback: (r) => LinearGradient(
-                  colors: [_accent, _accent.withOpacity(0.45)],
+                  colors: [_accent, _accent.withValues(alpha: 0.45)],
                 ).createShader(r),
                 child: Text(_fmtMin(totalEff), style: const TextStyle(
                   fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white,
@@ -400,7 +400,7 @@ class _FocusScreenState extends State<FocusScreen>
               ),
               const SizedBox(width: 8),
               Text('순공', style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w600, color: _accent.withOpacity(0.5))),
+                fontSize: 10, fontWeight: FontWeight.w600, color: _accent.withValues(alpha: 0.5))),
               const Spacer(),
               _miniStat('📖', _todaySessions.fold<int>(0, (s, c) => s + c.studyMin)),
               const SizedBox(width: 6),
@@ -429,10 +429,10 @@ class _FocusScreenState extends State<FocusScreen>
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 40),
               child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.hourglass_empty_rounded, size: 36, color: _t3.withOpacity(0.18)),
+                Icon(Icons.hourglass_empty_rounded, size: 36, color: _t3.withValues(alpha: 0.18)),
                 const SizedBox(height: 10),
                 Text('아직 기록이 없어요', style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w500, color: _t3.withOpacity(0.4))),
+                  fontSize: 13, fontWeight: FontWeight.w500, color: _t3.withValues(alpha: 0.4))),
               ])),
             )
           else
@@ -447,7 +447,7 @@ class _FocusScreenState extends State<FocusScreen>
     padding: const EdgeInsets.only(left: 2),
     child: Text(t, style: TextStyle(
       fontSize: 10, fontWeight: FontWeight.w800,
-      color: _t3.withOpacity(0.55), letterSpacing: 2.5)),
+      color: _t3.withValues(alpha: 0.55), letterSpacing: 2.5)),
   );
 
   Widget _modeChip(String emoji, String label, String desc, String m) {
@@ -459,8 +459,8 @@ class _FocusScreenState extends State<FocusScreen>
         blur: sel ? 14 : 8,
         radius: 16,
         padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 14),
-        borderColor: sel ? c.withOpacity(0.35) : _cardBorder,
-        fillColor: sel ? c.withOpacity(_dk ? 0.10 : 0.05) : _card,
+        borderColor: sel ? c.withValues(alpha: 0.35) : _cardBorder,
+        fillColor: sel ? c.withValues(alpha: _dk ? 0.10 : 0.05) : _card,
         child: Row(children: [
           Text(emoji, style: const TextStyle(fontSize: 18)),
           const SizedBox(width: 10),
@@ -473,7 +473,7 @@ class _FocusScreenState extends State<FocusScreen>
           const Spacer(),
           if (sel) Container(width: 7, height: 7, decoration: BoxDecoration(
             shape: BoxShape.circle, color: c,
-            boxShadow: [BoxShadow(color: c.withOpacity(0.4), blurRadius: 6)])),
+            boxShadow: [BoxShadow(color: c.withValues(alpha: 0.4), blurRadius: 6)])),
         ]),
       ),
     );
@@ -489,8 +489,8 @@ class _FocusScreenState extends State<FocusScreen>
       return _frost(
         blur: 12, radius: 16,
         padding: const EdgeInsets.all(16),
-        borderColor: Colors.orange.withOpacity(0.15),
-        fillColor: Colors.orange.withOpacity(_dk ? 0.04 : 0.02),
+        borderColor: Colors.orange.withValues(alpha: 0.15),
+        fillColor: Colors.orange.withValues(alpha: _dk ? 0.04 : 0.02),
         child: Row(children: [
           const Text('📐', style: TextStyle(fontSize: 24)),
           const SizedBox(width: 12),
@@ -507,9 +507,9 @@ class _FocusScreenState extends State<FocusScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.12),
+                color: Colors.orange.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.orange.withOpacity(0.25))),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.25))),
               child: const Text('거치대 등록', style: TextStyle(
                 fontSize: 11, fontWeight: FontWeight.w700, color: Colors.orange)),
             ),
@@ -519,14 +519,14 @@ class _FocusScreenState extends State<FocusScreen>
     }
 
     // Calibrated
-    final statusColor = on ? const Color(0xFF10B981) : (en ? _t3.withOpacity(0.6) : _t3.withOpacity(0.4));
+    final statusColor = on ? const Color(0xFF10B981) : (en ? _t3.withValues(alpha: 0.6) : _t3.withValues(alpha: 0.4));
     final statusMsg = on ? '거치 감지됨' : (en ? '대기 중' : '감지 OFF');
 
     return _frost(
       blur: 12, radius: 16,
       padding: const EdgeInsets.all(16),
-      borderColor: statusColor.withOpacity(0.12),
-      fillColor: statusColor.withOpacity(_dk ? 0.03 : 0.02),
+      borderColor: statusColor.withValues(alpha: 0.12),
+      fillColor: statusColor.withValues(alpha: _dk ? 0.03 : 0.02),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Text(on ? '✅' : '📐', style: const TextStyle(fontSize: 20)),
@@ -540,7 +540,7 @@ class _FocusScreenState extends State<FocusScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.12),
+                    color: Colors.orange.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(5)),
                   child: const Text('🔌', style: TextStyle(fontSize: 10))),
               ],
@@ -549,7 +549,7 @@ class _FocusScreenState extends State<FocusScreen>
             Row(children: [
               Container(width: 6, height: 6, decoration: BoxDecoration(
                 shape: BoxShape.circle, color: statusColor,
-                boxShadow: on ? [BoxShadow(color: statusColor.withOpacity(0.5), blurRadius: 6)] : null)),
+                boxShadow: on ? [BoxShadow(color: statusColor.withValues(alpha: 0.5), blurRadius: 6)] : null)),
               const SizedBox(width: 6),
               Text(statusMsg, style: TextStyle(
                 fontSize: 10, fontWeight: FontWeight.w600, color: statusColor)),
@@ -563,7 +563,7 @@ class _FocusScreenState extends State<FocusScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: _t3.withOpacity(0.06),
+                color: _t3.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(8)),
               child: Text('재등록', style: TextStyle(
                 fontSize: 10, fontWeight: FontWeight.w700, color: _t3)),
@@ -578,9 +578,9 @@ class _FocusScreenState extends State<FocusScreen>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withOpacity(0.08),
+                color: const Color(0xFF10B981).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF10B981).withOpacity(0.15))),
+                border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.15))),
               child: const Center(child: Text('감지 켜기', style: TextStyle(
                 fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF10B981)))),
             ),
@@ -603,14 +603,14 @@ class _FocusScreenState extends State<FocusScreen>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  _accent.withOpacity(_dk ? 0.18 : 0.12),
-                  _accent.withOpacity(_dk ? 0.08 : 0.04),
+                  _accent.withValues(alpha: _dk ? 0.18 : 0.12),
+                  _accent.withValues(alpha: _dk ? 0.08 : 0.04),
                 ],
                 begin: Alignment.topLeft, end: Alignment.bottomRight),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: _accent.withOpacity(0.25)),
+              border: Border.all(color: _accent.withValues(alpha: 0.25)),
               boxShadow: [
-                BoxShadow(color: _accent.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, 8)),
+                BoxShadow(color: _accent.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8)),
               ],
             ),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -618,8 +618,8 @@ class _FocusScreenState extends State<FocusScreen>
                 width: 34, height: 34,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _accent.withOpacity(0.22),
-                  boxShadow: [BoxShadow(color: _accent.withOpacity(0.15), blurRadius: 12)]),
+                  color: _accent.withValues(alpha: 0.22),
+                  boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.15), blurRadius: 12)]),
                 child: Icon(Icons.play_arrow_rounded, size: 22, color: _accent),
               ),
               const SizedBox(width: 10),
@@ -637,7 +637,7 @@ class _FocusScreenState extends State<FocusScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: _dk ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+        color: _dk ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(7)),
       child: Text('$emoji ${min}m', style: TextStyle(
         fontSize: 9, fontWeight: FontWeight.w700, color: _t2,
@@ -647,7 +647,7 @@ class _FocusScreenState extends State<FocusScreen>
 
   Widget _weeklyChart() {
     if (_weeklyData.isEmpty) {
-      return Center(child: Text('데이터 로딩...', style: TextStyle(fontSize: 11, color: _t3.withOpacity(0.4))));
+      return Center(child: Text('데이터 로딩...', style: TextStyle(fontSize: 11, color: _t3.withValues(alpha: 0.4))));
     }
     final entries = _weeklyData.entries.toList();
     final maxVal = entries.map((e) => e.value).reduce(max).clamp(1, 9999);
@@ -660,7 +660,7 @@ class _FocusScreenState extends State<FocusScreen>
         final ratio = e.value / maxVal;
         final dt = DateTime.parse(e.key);
         final wd = ['월','화','수','목','금','토','일'][dt.weekday - 1];
-        final bc = isToday ? _accent : _accent.withOpacity(_dk ? 0.20 : 0.14);
+        final bc = isToday ? _accent : _accent.withValues(alpha: _dk ? 0.20 : 0.14);
 
         return Expanded(child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 3),
@@ -668,7 +668,7 @@ class _FocusScreenState extends State<FocusScreen>
             if (e.value > 0)
               Text(_fmtMin(e.value), style: TextStyle(
                 fontSize: 8, fontWeight: FontWeight.w700,
-                color: isToday ? _accent : _t3.withOpacity(0.6),
+                color: isToday ? _accent : _t3.withValues(alpha: 0.6),
                 fontFeatures: const [FontFeature.tabularFigures()])),
             const SizedBox(height: 3),
             AnimatedContainer(
@@ -679,14 +679,14 @@ class _FocusScreenState extends State<FocusScreen>
                 color: bc,
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: isToday ? [
-                  BoxShadow(color: _accent.withOpacity(0.18), blurRadius: 8, offset: const Offset(0, 2)),
+                  BoxShadow(color: _accent.withValues(alpha: 0.18), blurRadius: 8, offset: const Offset(0, 2)),
                 ] : null,
               ),
             ),
             const SizedBox(height: 5),
             Text(wd, style: TextStyle(
               fontSize: 9, fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
-              color: isToday ? _accent : _t3.withOpacity(0.6))),
+              color: isToday ? _accent : _t3.withValues(alpha: 0.6))),
           ]),
         ));
       }).toList(),
@@ -703,27 +703,27 @@ class _FocusScreenState extends State<FocusScreen>
           Container(width: 3, decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter, end: Alignment.bottomCenter,
-              colors: [sc, sc.withOpacity(0.2)]),
+              colors: [sc, sc.withValues(alpha: 0.2)]),
             borderRadius: BorderRadius.circular(2))),
           const SizedBox(width: 10),
           Expanded(child: _frost(
             blur: 10, radius: 14,
             padding: const EdgeInsets.all(12),
-            borderColor: sc.withOpacity(0.06),
+            borderColor: sc.withValues(alpha: 0.06),
             child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: sc.withOpacity(_dk ? 0.12 : 0.06),
+                      color: sc.withValues(alpha: _dk ? 0.12 : 0.06),
                       borderRadius: BorderRadius.circular(6)),
                     child: Text('${SubjectConfig.subjects[c.subject]?.emoji ?? '📚'} ${c.subject}',
                       style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: sc)),
                   ),
                   const Spacer(),
                   Text('#$idx', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700,
-                    color: _t3.withOpacity(0.3), fontFeatures: const [FontFeature.tabularFigures()])),
+                    color: _t3.withValues(alpha: 0.3), fontFeatures: const [FontFeature.tabularFigures()])),
                 ]),
                 const SizedBox(height: 5),
                 Text('${_fmtTime(c.startTime)} → ${c.endTime != null ? _fmtTime(c.endTime) : '...'}',
@@ -743,7 +743,7 @@ class _FocusScreenState extends State<FocusScreen>
                           flex: seg.durationMin.clamp(1, 999),
                           child: Container(
                             margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                            color: segC.withOpacity(_dk ? 0.45 : 0.30)));
+                            color: segC.withValues(alpha: _dk ? 0.45 : 0.30)));
                       }).toList()))),
                 ],
               ])),
@@ -753,7 +753,7 @@ class _FocusScreenState extends State<FocusScreen>
                   fontSize: 18, fontWeight: FontWeight.w900, color: sc,
                   letterSpacing: -0.5, fontFeatures: const [FontFeature.tabularFigures()])),
                 Text('순공', style: TextStyle(
-                  fontSize: 8, fontWeight: FontWeight.w600, color: sc.withOpacity(0.45))),
+                  fontSize: 8, fontWeight: FontWeight.w600, color: sc.withValues(alpha: 0.45))),
               ]),
             ]),
           )),
@@ -815,7 +815,7 @@ class _FocusScreenState extends State<FocusScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(colors: [
-                    dc.withOpacity(0.05 + _pulseCtrl.value * 0.04),
+                    dc.withValues(alpha: 0.05 + _pulseCtrl.value * 0.04),
                     Colors.transparent,
                   ]),
                 ),
@@ -834,25 +834,25 @@ class _FocusScreenState extends State<FocusScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Colors.white.withOpacity(0.07))),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.07))),
                     child: Row(children: [
                       GestureDetector(
                         onTap: () => _showSubjectPicker(st.subject),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
-                            color: sc.withOpacity(0.14),
+                            color: sc.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: sc.withOpacity(0.25))),
+                            border: Border.all(color: sc.withValues(alpha: 0.25))),
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
                             Text(SubjectConfig.subjects[st.subject]?.emoji ?? '📚',
                               style: const TextStyle(fontSize: 13)),
                             const SizedBox(width: 5),
                             Text(st.subject, style: TextStyle(
                               fontSize: 12, fontWeight: FontWeight.w700, color: sc)),
-                            Icon(Icons.unfold_more_rounded, size: 13, color: sc.withOpacity(0.5)),
+                            Icon(Icons.unfold_more_rounded, size: 13, color: sc.withValues(alpha: 0.5)),
                           ]),
                         ),
                       ),
@@ -862,7 +862,7 @@ class _FocusScreenState extends State<FocusScreen>
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withOpacity(0.12),
+                          color: const Color(0xFF10B981).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10)),
                         child: Text('순공 ${st.effectiveTimeFormatted}', style: const TextStyle(
                           fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF10B981),
@@ -884,9 +884,9 @@ class _FocusScreenState extends State<FocusScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.03),
+                      color: Colors.white.withValues(alpha: 0.03),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withOpacity(0.05))),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.05))),
                     child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
                       _imStat('📖', '${st.totalStudyMin}m'),
                       _imDiv(),
@@ -909,7 +909,7 @@ class _FocusScreenState extends State<FocusScreen>
                   final op = isRest ? 0.4 + _pulseCtrl.value * 0.6 : 0.7 + _pulseCtrl.value * 0.3;
                   return Text('$mE $mL', style: TextStyle(
                     fontSize: 15, fontWeight: FontWeight.w600,
-                    color: dc.withOpacity(op), letterSpacing: 2));
+                    color: dc.withValues(alpha: op), letterSpacing: 2));
                 },
               ),
               const SizedBox(height: 18),
@@ -918,7 +918,7 @@ class _FocusScreenState extends State<FocusScreen>
                   animation: _pulseCtrl,
                   builder: (_, __) => Container(width: 240, height: 240,
                     decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [
-                      BoxShadow(color: sc.withOpacity(0.07 + _pulseCtrl.value * 0.05),
+                      BoxShadow(color: sc.withValues(alpha: 0.07 + _pulseCtrl.value * 0.05),
                         blurRadius: 44, spreadRadius: 12),
                     ])),
                 ),
@@ -931,7 +931,7 @@ class _FocusScreenState extends State<FocusScreen>
                     fontFeatures: [FontFeature.tabularFigures()])),
                   const SizedBox(height: 4),
                   Text('seg ${st.segmentTimeFormatted}', style: TextStyle(
-                    fontSize: 11, color: Colors.white.withOpacity(0.25),
+                    fontSize: 11, color: Colors.white.withValues(alpha: 0.25),
                     fontFamily: 'monospace', fontFeatures: const [FontFeature.tabularFigures()])),
                 ]),
               ])),
@@ -940,13 +940,13 @@ class _FocusScreenState extends State<FocusScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: dc.withOpacity(0.10), borderRadius: BorderRadius.circular(8)),
+                    color: dc.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(8)),
                   child: Text('사이클 ${st.cycleCount + 1}', style: TextStyle(
-                    fontSize: 10, fontWeight: FontWeight.w600, color: dc.withOpacity(0.7))),
+                    fontSize: 10, fontWeight: FontWeight.w600, color: dc.withValues(alpha: 0.7))),
                 ),
                 const SizedBox(width: 10),
                 Text('${(st.cycleProgress * 90).round()}/90분', style: TextStyle(
-                  fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.3),
+                  fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.3),
                   fontFeatures: const [FontFeature.tabularFigures()])),
               ]),
             ]))),
@@ -961,8 +961,8 @@ class _FocusScreenState extends State<FocusScreen>
               child: ClipRRect(borderRadius: BorderRadius.circular(3),
                 child: LinearProgressIndicator(
                   value: st.cycleProgress.clamp(0.0, 1.0), minHeight: 3,
-                  backgroundColor: Colors.white.withOpacity(0.05),
-                  valueColor: AlwaysStoppedAnimation(dc.withOpacity(0.55)))),
+                  backgroundColor: Colors.white.withValues(alpha: 0.05),
+                  valueColor: AlwaysStoppedAnimation(dc.withValues(alpha: 0.55)))),
             ),
             const SizedBox(height: 10),
 
@@ -993,9 +993,9 @@ class _FocusScreenState extends State<FocusScreen>
   }
 
   Widget _imStat(String e, String v) => Text('$e $v', style: TextStyle(
-    fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white.withOpacity(0.6),
+    fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: 0.6),
     fontFeatures: const [FontFeature.tabularFigures()]));
-  Widget _imDiv() => Container(width: 1, height: 20, color: Colors.white.withOpacity(0.05));
+  Widget _imDiv() => Container(width: 1, height: 20, color: Colors.white.withValues(alpha: 0.05));
 
   Widget _cradleDot() {
     final on = _fs.isOnCradle;
@@ -1003,12 +1003,12 @@ class _FocusScreenState extends State<FocusScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: c.withOpacity(0.14), borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.withOpacity(0.3))),
+        color: c.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: c.withValues(alpha: 0.3))),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Container(width: 6, height: 6, decoration: BoxDecoration(
           shape: BoxShape.circle, color: c,
-          boxShadow: on ? [BoxShadow(color: c.withOpacity(0.5), blurRadius: 5)] : null)),
+          boxShadow: on ? [BoxShadow(color: c.withValues(alpha: 0.5), blurRadius: 5)] : null)),
         const SizedBox(width: 4),
         Text(on ? '거치' : '미감지', style: TextStyle(
           fontSize: 9, fontWeight: FontWeight.w600, color: c)),
@@ -1024,14 +1024,14 @@ class _FocusScreenState extends State<FocusScreen>
         child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
           child: AnimatedContainer(duration: const Duration(milliseconds: 180), height: 48,
             decoration: BoxDecoration(
-              color: sel ? c.withOpacity(0.18) : Colors.white.withOpacity(0.03),
+              color: sel ? c.withValues(alpha: 0.18) : Colors.white.withValues(alpha: 0.03),
               borderRadius: BorderRadius.circular(12),
-              border: sel ? Border.all(color: c.withOpacity(0.45), width: 1.5)
-                  : Border.all(color: Colors.white.withOpacity(0.05))),
+              border: sel ? Border.all(color: c.withValues(alpha: 0.45), width: 1.5)
+                  : Border.all(color: Colors.white.withValues(alpha: 0.05))),
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
               Text(emoji, style: const TextStyle(fontSize: 16)),
               Text(label, style: TextStyle(fontSize: 9, fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                color: sel ? c : Colors.white.withOpacity(0.35))),
+                color: sel ? c : Colors.white.withValues(alpha: 0.35))),
             ]))))));
   }
 
@@ -1042,8 +1042,8 @@ class _FocusScreenState extends State<FocusScreen>
         child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
           child: Container(width: 48, height: 48,
             decoration: BoxDecoration(
-              color: c.withOpacity(0.10), borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: c.withOpacity(0.22))),
+              color: c.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: c.withValues(alpha: 0.22))),
             child: Icon(icon, color: c, size: size)))));
   }
 
@@ -1061,24 +1061,24 @@ class _FocusScreenState extends State<FocusScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 14),
             decoration: BoxDecoration(
-              color: sc.withOpacity(0.05), borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: sc.withOpacity(0.10))),
+              color: sc.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: sc.withValues(alpha: 0.10))),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Row(children: [
                 const Text('⏱️', style: TextStyle(fontSize: 12)),
                 const SizedBox(width: 5),
                 Text('문제', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
-                  color: Colors.white.withOpacity(0.4), letterSpacing: 1)),
+                  color: Colors.white.withValues(alpha: 0.4), letterSpacing: 1)),
                 const Spacer(),
                 if (laps.isNotEmpty)
                   Text('${laps.length}문제', style: TextStyle(
-                    fontSize: 9, fontWeight: FontWeight.w700, color: sc.withOpacity(0.7))),
+                    fontSize: 9, fontWeight: FontWeight.w700, color: sc.withValues(alpha: 0.7))),
               ]),
               const SizedBox(height: 6),
               Row(children: [
                 Text(_fs.subTimerActive ? str : '--:--', style: TextStyle(
                   fontSize: 28, fontWeight: FontWeight.w300,
-                  color: _fs.subTimerActive ? sc : Colors.white.withOpacity(0.15),
+                  color: _fs.subTimerActive ? sc : Colors.white.withValues(alpha: 0.15),
                   fontFamily: 'monospace', letterSpacing: 2,
                   fontFeatures: const [FontFeature.tabularFigures()])),
                 const Spacer(),
@@ -1093,9 +1093,9 @@ class _FocusScreenState extends State<FocusScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                     decoration: BoxDecoration(
-                      color: sc.withOpacity(_fs.subTimerActive ? 0.18 : 0.10),
+                      color: sc.withValues(alpha: _fs.subTimerActive ? 0.18 : 0.10),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: sc.withOpacity(0.25))),
+                      border: Border.all(color: sc.withValues(alpha: 0.25))),
                     child: Text(_fs.subTimerActive ? '다음' : '시작', style: TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w700, color: sc)),
                   ),
@@ -1107,7 +1107,7 @@ class _FocusScreenState extends State<FocusScreen>
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
+                        color: Colors.red.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
                       child: const Text('정지', style: TextStyle(
                         fontSize: 12, fontWeight: FontWeight.w700, color: Colors.redAccent))),
                   ),
@@ -1119,10 +1119,10 @@ class _FocusScreenState extends State<FocusScreen>
                   final lap = e.value;
                   final i = laps.length - e.key;
                   return Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Text('#$i', style: TextStyle(fontSize: 8, color: Colors.white.withOpacity(0.25))),
+                    Text('#$i', style: TextStyle(fontSize: 8, color: Colors.white.withValues(alpha: 0.25))),
                     Text('${lap.seconds ~/ 60}:${(lap.seconds % 60).toString().padLeft(2, '0')}',
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                        color: Colors.white.withOpacity(0.5), fontFamily: 'monospace',
+                        color: Colors.white.withValues(alpha: 0.5), fontFamily: 'monospace',
                         fontFeatures: const [FontFeature.tabularFigures()])),
                   ]));
                 }).toList()),
@@ -1137,13 +1137,13 @@ class _FocusScreenState extends State<FocusScreen>
     final mm = sec ~/ 60; final ss = sec % 60;
     final rate = _fs.concentrationRate;
     return Positioned.fill(child: Container(
-      color: Colors.black.withOpacity(0.75),
+      color: Colors.black.withValues(alpha: 0.75),
       child: SafeArea(child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
         const Text('☕', style: TextStyle(fontSize: 52)),
         const SizedBox(height: 14),
         const Text('휴식 중', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
-        Text('거치대에 올려놓으면 재개', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13)),
+        Text('거치대에 올려놓으면 재개', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13)),
         const SizedBox(height: 18),
         Text('${mm.toString().padLeft(2,'0')}:${ss.toString().padLeft(2,'0')}',
           style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 34,
@@ -1154,8 +1154,8 @@ class _FocusScreenState extends State<FocusScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.08))),
+              color: Colors.white.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08))),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               const Text('집중도 ', style: TextStyle(color: Colors.white38, fontSize: 12)),
               Text('$rate%', style: TextStyle(
@@ -1169,9 +1169,9 @@ class _FocusScreenState extends State<FocusScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
             decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withOpacity(0.18),
+              color: const Color(0xFF10B981).withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFF10B981).withOpacity(0.35))),
+              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.35))),
             child: const Text('수동 재개', style: TextStyle(
               color: Color(0xFF10B981), fontSize: 13, fontWeight: FontWeight.w700)),
           ),
@@ -1246,7 +1246,7 @@ class _FocusScreenState extends State<FocusScreen>
         padding: const EdgeInsets.all(20),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(width: 36, height: 4, decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(2))),
+            color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 16),
           Wrap(spacing: 8, runSpacing: 8,
             children: SubjectConfig.subjects.entries.map((e) {
@@ -1257,15 +1257,15 @@ class _FocusScreenState extends State<FocusScreen>
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: sel ? c.withOpacity(0.18) : Colors.white.withOpacity(0.04),
+                    color: sel ? c.withValues(alpha: 0.18) : Colors.white.withValues(alpha: 0.04),
                     borderRadius: BorderRadius.circular(12),
-                    border: sel ? Border.all(color: c.withOpacity(0.45), width: 1.5) : null),
+                    border: sel ? Border.all(color: c.withValues(alpha: 0.45), width: 1.5) : null),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Text(e.value.emoji, style: const TextStyle(fontSize: 16)),
                     const SizedBox(width: 6),
                     Text(e.key, style: TextStyle(fontSize: 13,
                       fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                      color: sel ? c : Colors.white.withOpacity(0.65))),
+                      color: sel ? c : Colors.white.withValues(alpha: 0.65))),
                   ]),
                 ),
               );
@@ -1288,7 +1288,7 @@ class _FocusScreenState extends State<FocusScreen>
             bottom: MediaQuery.of(ctx).viewInsets.bottom + MediaQuery.of(ctx).padding.bottom + 16),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 36, height: 4, decoration: BoxDecoration(
-              color: _t3.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+              color: _t3.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 20),
             Text('거치대 각도 캘리브레이션', style: BotanicalTypo.heading(size: 17, color: _t1)),
             const SizedBox(height: 6),
@@ -1302,16 +1302,16 @@ class _FocusScreenState extends State<FocusScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: calType == 'normal' ? BotanicalColors.primary.withOpacity(0.12) : _t3.withOpacity(0.06),
+                      color: calType == 'normal' ? BotanicalColors.primary.withValues(alpha: 0.12) : _t3.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: calType == 'normal' ? BotanicalColors.primary.withOpacity(0.35) : Colors.transparent)),
+                      border: Border.all(color: calType == 'normal' ? BotanicalColors.primary.withValues(alpha: 0.35) : Colors.transparent)),
                     child: Column(children: [
                       Text('📐', style: const TextStyle(fontSize: 22)),
                       const SizedBox(height: 4),
                       Text('일반', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
                         color: calType == 'normal' ? BotanicalColors.primary : _t3)),
                       Text(_cradle.isCalibrated ? '등록됨' : '미등록', style: TextStyle(fontSize: 9,
-                        color: _cradle.isCalibrated ? const Color(0xFF10B981) : _t3.withOpacity(0.5))),
+                        color: _cradle.isCalibrated ? const Color(0xFF10B981) : _t3.withValues(alpha: 0.5))),
                     ]),
                   ),
                 )),
@@ -1321,16 +1321,16 @@ class _FocusScreenState extends State<FocusScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: calType == 'charging' ? Colors.orange.withOpacity(0.12) : _t3.withOpacity(0.06),
+                      color: calType == 'charging' ? Colors.orange.withValues(alpha: 0.12) : _t3.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: calType == 'charging' ? Colors.orange.withOpacity(0.35) : Colors.transparent)),
+                      border: Border.all(color: calType == 'charging' ? Colors.orange.withValues(alpha: 0.35) : Colors.transparent)),
                     child: Column(children: [
                       const Text('🔌', style: TextStyle(fontSize: 22)),
                       const SizedBox(height: 4),
                       Text('충전용', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
                         color: calType == 'charging' ? Colors.orange : _t3)),
                       Text(_cradle.isChargingCalibrated ? '등록됨' : '미등록', style: TextStyle(fontSize: 9,
-                        color: _cradle.isChargingCalibrated ? const Color(0xFF10B981) : _t3.withOpacity(0.5))),
+                        color: _cradle.isChargingCalibrated ? const Color(0xFF10B981) : _t3.withValues(alpha: 0.5))),
                     ]),
                   ),
                 )),
@@ -1363,7 +1363,7 @@ class _FocusScreenState extends State<FocusScreen>
               const SizedBox(height: 24),
             ] else ...[
               Icon(calType == 'charging' ? Icons.battery_charging_full_rounded : Icons.phone_android_rounded,
-                size: 48, color: _t3.withOpacity(0.5)),
+                size: 48, color: _t3.withValues(alpha: 0.5)),
               const SizedBox(height: 12),
               Text(calType == 'charging'
                 ? '충전 케이블을 꽂은 상태로\n거치대에 올려놓고 아래 버튼을 누르세요'
@@ -1405,7 +1405,7 @@ class _FocusScreenState extends State<FocusScreen>
             bottom: MediaQuery.of(ctx).viewInsets.bottom + MediaQuery.of(ctx).padding.bottom + 16),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 36, height: 4, decoration: BoxDecoration(
-              color: _t3.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+              color: _t3.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 14),
             Row(children: [
               Text('과목 관리', style: BotanicalTypo.heading(size: 15, color: _t1)),
@@ -1421,7 +1421,7 @@ class _FocusScreenState extends State<FocusScreen>
                   if (ok == true) { await SubjectConfig.resetToDefaults(); setBS(() {}); setState(() {}); }
                 },
                 child: Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.orange.withOpacity(0.07),
+                  decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.07),
                     borderRadius: BorderRadius.circular(8)),
                   child: Text('초기화', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
                     color: Colors.orange))),
@@ -1430,7 +1430,7 @@ class _FocusScreenState extends State<FocusScreen>
               GestureDetector(
                 onTap: () => _addSubjectDlg(ctx, setBS),
                 child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: BotanicalColors.primary.withOpacity(0.08),
+                  decoration: BoxDecoration(color: BotanicalColors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8)),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.add_rounded, size: 14, color: BotanicalColors.primary),
@@ -1445,9 +1445,9 @@ class _FocusScreenState extends State<FocusScreen>
               return Container(
                 margin: const EdgeInsets.only(bottom: 7),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(color: c.withOpacity(0.05),
+                decoration: BoxDecoration(color: c.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: c.withOpacity(0.10))),
+                  border: Border.all(color: c.withValues(alpha: 0.10))),
                 child: Row(children: [
                   Text(e.value.emoji, style: const TextStyle(fontSize: 18)),
                   const SizedBox(width: 10),
@@ -1567,11 +1567,11 @@ class _RingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTWH(4, 4, size.width - 8, size.height - 8);
     final p = Paint()..style = PaintingStyle.stroke..strokeWidth = 8..strokeCap = StrokeCap.round;
-    p.color = color.withOpacity(0.10);
+    p.color = color.withValues(alpha: 0.10);
     canvas.drawArc(rect, -pi / 2, 2 * pi, false, p);
     if (progress > 0) {
       p.shader = SweepGradient(
-        colors: [color.withOpacity(0.35), color],
+        colors: [color.withValues(alpha: 0.35), color],
         transform: const GradientRotation(-pi / 2),
       ).createShader(rect);
       canvas.drawArc(rect, -pi / 2, 2 * pi * progress.clamp(0.0, 1.0), false, p);

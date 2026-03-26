@@ -40,14 +40,14 @@ extension _HomeRoutineCard on _HomeScreenState {
       decoration: BoxDecoration(
         color: _dk ? BotanicalColors.cardDark : BotanicalColors.cardLight,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _border.withOpacity(_dk ? 0.15 : 0.6))),
+        border: Border.all(color: _border.withValues(alpha: _dk ? 0.15 : 0.6))),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         // ── 아이콘 스트립 ──
         Row(children: [
           ...items.map((i) => Expanded(child: _routineChip(i))),
           GestureDetector(
             onTap: () => _editTimeField('wake', '기상', _wake),
-            child: Icon(Icons.tune_rounded, size: 14, color: _textMuted.withOpacity(0.3))),
+            child: Icon(Icons.tune_rounded, size: 14, color: _textMuted.withValues(alpha: 0.3))),
         ]),
         // ── 프로그레스 ──
         const SizedBox(height: 6),
@@ -56,7 +56,7 @@ extension _HomeRoutineCard on _HomeScreenState {
             borderRadius: BorderRadius.circular(2),
             child: LinearProgressIndicator(
               value: done / items.length, minHeight: 2.5,
-              backgroundColor: _dk ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04),
+              backgroundColor: _dk ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.04),
               valueColor: AlwaysStoppedAnimation(BotanicalColors.primary)))),
           const SizedBox(width: 8),
           if (_sleepDurationLabel != null) ...[
@@ -83,16 +83,16 @@ extension _HomeRoutineCard on _HomeScreenState {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: i.active
-              ? i.color.withOpacity(_dk ? 0.12 : 0.08)
-              : (_dk ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02)),
+              ? i.color.withValues(alpha: _dk ? 0.12 : 0.08)
+              : (_dk ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02)),
             border: Border.all(
-              color: i.active ? i.color.withOpacity(0.3) : Colors.transparent, width: 1.5)),
+              color: i.active ? i.color.withValues(alpha: 0.3) : Colors.transparent, width: 1.5)),
           child: Stack(alignment: Alignment.center, children: [
             Text(i.emoji, style: TextStyle(fontSize: i.active ? 16 : 14)),
             if (i.live) Positioned(right: 0, top: 0,
               child: Container(width: 7, height: 7,
                 decoration: BoxDecoration(color: i.color, shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: i.color.withOpacity(0.5), blurRadius: 4)]))),
+                  boxShadow: [BoxShadow(color: i.color.withValues(alpha: 0.5), blurRadius: 4)]))),
           ]),
         ),
         const SizedBox(height: 3),
@@ -102,7 +102,7 @@ extension _HomeRoutineCard on _HomeScreenState {
           style: TextStyle(
             fontSize: i.time != null ? 9 : 8,
             fontWeight: i.active ? FontWeight.w700 : FontWeight.w500,
-            color: i.active ? (_dk ? Colors.white70 : i.color) : _textMuted.withOpacity(0.5)),
+            color: i.active ? (_dk ? Colors.white70 : i.color) : _textMuted.withValues(alpha: 0.5)),
           maxLines: 1, overflow: TextOverflow.clip,
         ),
       ]),
@@ -162,7 +162,7 @@ extension _HomeRoutineCard on _HomeScreenState {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: BotanicalColors.primary.withOpacity(_dk ? 0.08 : 0.04),
+              color: BotanicalColors.primary.withValues(alpha: _dk ? 0.08 : 0.04),
               borderRadius: BorderRadius.circular(12)),
             child: Row(children: [
               Text('📚', style: const TextStyle(fontSize: 20)),
@@ -280,7 +280,7 @@ extension _HomeRoutineCard on _HomeScreenState {
 
   Widget _pulseDot(Color c) => Container(width: 8, height: 8,
     decoration: BoxDecoration(color: c, shape: BoxShape.circle,
-      boxShadow: [BoxShadow(color: c.withOpacity(0.5), blurRadius: 6, spreadRadius: 1)]));
+      boxShadow: [BoxShadow(color: c.withValues(alpha: 0.5), blurRadius: 6, spreadRadius: 1)]));
 
   Future<void> _quickWake() async {
     await WakeService().recordWake();
@@ -415,7 +415,7 @@ extension _HomeRoutineCard on _HomeScreenState {
           decoration: BoxDecoration(
             color: _dk ? BotanicalColors.cardDark : BotanicalColors.cardLight,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _border.withOpacity(_dk ? 0.15 : 0.6))),
+            border: Border.all(color: _border.withValues(alpha: _dk ? 0.15 : 0.6))),
           child: Row(children: [
             Text(emoji, style: const TextStyle(fontSize: 16)),
             const SizedBox(width: 8),
@@ -431,13 +431,13 @@ extension _HomeRoutineCard on _HomeScreenState {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4)),
                 child: Text(timerStr, style: TextStyle(
                   fontSize: 9, fontWeight: FontWeight.w700, color: color))),
             ],
             const Spacer(),
-            Icon(Icons.sensors_rounded, size: 14, color: _textMuted.withOpacity(0.2)),
+            Icon(Icons.sensors_rounded, size: 14, color: _textMuted.withValues(alpha: 0.2)),
           ]),
         );
       },

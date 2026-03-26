@@ -441,7 +441,7 @@ class _CalendarScreenState extends State<CalendarScreen>
           child: Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: _dk ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+              color: _dk ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
               borderRadius: BorderRadius.circular(8)),
             child: Icon(Icons.chevron_left_rounded, size: 20, color: _textSub))),
         const SizedBox(width: 8),
@@ -453,7 +453,7 @@ class _CalendarScreenState extends State<CalendarScreen>
           child: Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: _dk ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+              color: _dk ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
               borderRadius: BorderRadius.circular(8)),
             child: Icon(Icons.chevron_right_rounded, size: 20, color: _textSub))),
         const Spacer(),
@@ -474,7 +474,7 @@ class _CalendarScreenState extends State<CalendarScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: _accent.withOpacity(0.1),
+              color: _accent.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8)),
             child: Text('오늘', style: TextStyle(
               fontSize: 11, fontWeight: FontWeight.w700, color: _accent)))),
@@ -485,7 +485,7 @@ class _CalendarScreenState extends State<CalendarScreen>
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [
-                nearest.color, nearest.color.withOpacity(0.7)]),
+                nearest.color, nearest.color.withValues(alpha: 0.7)]),
               borderRadius: BorderRadius.circular(10)),
             child: Text(nearest.dDayLabel, style: const TextStyle(
               fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white))),
@@ -512,11 +512,11 @@ class _CalendarScreenState extends State<CalendarScreen>
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
       decoration: BoxDecoration(
-        color: _dk ? Colors.white.withOpacity(0.03) : Colors.white,
+        color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _border.withOpacity(0.15)),
+        border: Border.all(color: _border.withValues(alpha: 0.15)),
         boxShadow: _dk ? null : [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 16)]),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 16)]),
       child: Column(children: [
         // 요일 헤더
         Padding(
@@ -524,8 +524,8 @@ class _CalendarScreenState extends State<CalendarScreen>
           child: Row(children: List.generate(7, (i) => Expanded(
             child: Center(child: Text(weekLabels[i], style: TextStyle(
               fontSize: 11, fontWeight: FontWeight.w700,
-              color: i == 0 ? const Color(0xFFEF4444).withOpacity(0.7)
-                   : i == 6 ? const Color(0xFF3B82F6).withOpacity(0.7)
+              color: i == 0 ? const Color(0xFFEF4444).withValues(alpha: 0.7)
+                   : i == 6 ? const Color(0xFF3B82F6).withValues(alpha: 0.7)
                    : _textMuted)))))),
         ),
         const SizedBox(height: 6),
@@ -600,24 +600,24 @@ class _CalendarScreenState extends State<CalendarScreen>
         margin: const EdgeInsets.all(1.5),
         decoration: BoxDecoration(
           color: isSelected
-            ? _accent.withOpacity(_dk ? 0.15 : 0.08)
+            ? _accent.withValues(alpha: _dk ? 0.15 : 0.08)
             : isHomeDay
-              ? const Color(0xFF5B7ABF).withOpacity(_dk ? 0.15 : 0.10)
-              : _dk ? Colors.white.withOpacity(0.02) : const Color(0xFFF8FAFC),
+              ? const Color(0xFF5B7ABF).withValues(alpha: _dk ? 0.15 : 0.10)
+              : _dk ? Colors.white.withValues(alpha: 0.02) : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
-              ? _accent.withOpacity(0.5)
+              ? _accent.withValues(alpha: 0.5)
               : isHomeDay
-                ? const Color(0xFF5B7ABF).withOpacity(0.4)
+                ? const Color(0xFF5B7ABF).withValues(alpha: 0.4)
                 : isToday
-                  ? _accent.withOpacity(0.3)
+                  ? _accent.withValues(alpha: 0.3)
                   : (hasPlanExam)
-                    ? const Color(0xFFEF4444).withOpacity(0.25)
-                    : _border.withOpacity(0.1),
+                    ? const Color(0xFFEF4444).withValues(alpha: 0.25)
+                    : _border.withValues(alpha: 0.1),
             width: isSelected ? 2 : isHomeDay ? 1.5 : isToday ? 1.5 : (hasPlanExam) ? 1 : 0.5),
           boxShadow: isSelected ? [
-            BoxShadow(color: _accent.withOpacity(0.1), blurRadius: 8)
+            BoxShadow(color: _accent.withValues(alpha: 0.1), blurRadius: 8)
           ] : null,
         ),
         clipBehavior: Clip.antiAlias,
@@ -648,8 +648,8 @@ class _CalendarScreenState extends State<CalendarScreen>
               gradient: LinearGradient(
                 begin: Alignment.topLeft, end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withOpacity(0.08), Colors.transparent,
-                  Colors.transparent, Colors.white.withOpacity(0.03),
+                  Colors.white.withValues(alpha: 0.08), Colors.transparent,
+                  Colors.transparent, Colors.white.withValues(alpha: 0.03),
                 ],
               ),
             ),
@@ -669,9 +669,9 @@ class _CalendarScreenState extends State<CalendarScreen>
                          : isSelected ? _accent
                          : isToday ? _accent
                          : isRestDay ? _textMuted
-                         : isSunday ? const Color(0xFFEF4444).withOpacity(isPast ? 0.4 : 0.8)
-                         : dow == 6 ? const Color(0xFF3B82F6).withOpacity(isPast ? 0.4 : 0.8)
-                         : isPast ? _textMuted.withOpacity(0.5)
+                         : isSunday ? const Color(0xFFEF4444).withValues(alpha: isPast ? 0.4 : 0.8)
+                         : dow == 6 ? const Color(0xFF3B82F6).withValues(alpha: isPast ? 0.4 : 0.8)
+                         : isPast ? _textMuted.withValues(alpha: 0.5)
                          : _textMain,
                     decoration: isRestDay ? TextDecoration.lineThrough : null,
                   )),
@@ -686,7 +686,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                   Center(child: Text(timeLabel, style: TextStyle(
                     fontSize: studyMin >= 240 ? 14 : 12,
                     fontWeight: FontWeight.w800,
-                    color: _dk ? Colors.white.withOpacity(0.9) : const Color(0xFF1E293B),
+                    color: _dk ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF1E293B),
                   )))
                 // ★ 2-A: Plan 일일계획 제목 표시
                 else if (dailyPlan != null && dailyPlan.title != null)
@@ -696,7 +696,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                       : dailyPlan.title!,
                     style: TextStyle(
                       fontSize: 8, fontWeight: FontWeight.w600,
-                      color: StudyPlanData.tagColor(dailyPlan.tag ?? 'rest').withOpacity(0.8)),
+                      color: StudyPlanData.tagColor(dailyPlan.tag ?? 'rest').withValues(alpha: 0.8)),
                     maxLines: 1, overflow: TextOverflow.clip))
                 else if (isFuture && planDDays.isNotEmpty)
                   Center(child: Text(
@@ -709,7 +709,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                 else if (timeLabel.isEmpty && isSunday && !isFuture && !isToday)
                   Center(child: Text('OFF', style: TextStyle(
                     fontSize: 8, fontWeight: FontWeight.w600,
-                    color: _textMuted.withOpacity(0.4)))),
+                    color: _textMuted.withValues(alpha: 0.4)))),
                 const Spacer(),
                 // ★ 2-A: Plan 태그 색상 바
                 if (dailyPlan != null && dailyPlan.tag != null && timeLabel.isEmpty)
@@ -717,7 +717,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                     height: 2, width: double.infinity,
                     margin: const EdgeInsets.only(bottom: 2),
                     decoration: BoxDecoration(
-                      color: StudyPlanData.tagColor(dailyPlan.tag!).withOpacity(0.4),
+                      color: StudyPlanData.tagColor(dailyPlan.tag!).withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(1))),
                 // 하단: 과목 바 + 인디케이터
                 if (subjectMinutes.isNotEmpty) _buildSubjectBar(subjectMinutes),
@@ -759,7 +759,7 @@ class _CalendarScreenState extends State<CalendarScreen>
   Widget _dot(Color c) => Container(
     width: 5, height: 5,
     margin: const EdgeInsets.symmetric(horizontal: 1.5),
-    decoration: BoxDecoration(shape: BoxShape.circle, color: c.withOpacity(0.85)));
+    decoration: BoxDecoration(shape: BoxShape.circle, color: c.withValues(alpha: 0.85)));
 
   // ══════════════════════════════════════════
   //  ★ 1-C Fix: 월간 요약 — 프로그레스바 명확화
@@ -792,9 +792,9 @@ class _CalendarScreenState extends State<CalendarScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: _dk ? Colors.white.withOpacity(0.03) : Colors.white,
+        color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _border.withOpacity(0.15))),
+        border: Border.all(color: _border.withValues(alpha: 0.15))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           const Text('📚', style: TextStyle(fontSize: 16)),
@@ -814,9 +814,9 @@ class _CalendarScreenState extends State<CalendarScreen>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _dk ? Colors.white.withOpacity(0.02) : const Color(0xFFF8FAFC),
+              color: _dk ? Colors.white.withValues(alpha: 0.02) : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _border.withOpacity(0.1))),
+              border: Border.all(color: _border.withValues(alpha: 0.1))),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Container(
@@ -870,7 +870,7 @@ class _CalendarScreenState extends State<CalendarScreen>
         borderRadius: BorderRadius.circular(3),
         child: LinearProgressIndicator(
           value: progress.clamp(0.0, 1.0),
-          backgroundColor: _dk ? Colors.white.withOpacity(0.06) : Colors.grey.shade200,
+          backgroundColor: _dk ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade200,
           valueColor: AlwaysStoppedAnimation(_accent),
           minHeight: 6)),
       const SizedBox(height: 3),
@@ -901,15 +901,15 @@ class _EmptyDayPainter extends CustomPainter {
     // 진한 배경
     final bgPaint = Paint()
       ..color = dk
-        ? const Color(0xFF2A0A0A).withOpacity(0.7)
+        ? const Color(0xFF2A0A0A).withValues(alpha: 0.7)
         : const Color(0xFFFCE4E4);
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
 
     // 굵은 대각 빗금
     final linePaint = Paint()
       ..color = dk
-        ? const Color(0xFFEF4444).withOpacity(0.2)
-        : const Color(0xFFEF4444).withOpacity(0.15)
+        ? const Color(0xFFEF4444).withValues(alpha: 0.2)
+        : const Color(0xFFEF4444).withValues(alpha: 0.15)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
@@ -928,8 +928,8 @@ class _EmptyDayPainter extends CustomPainter {
       ..shader = LinearGradient(
         begin: Alignment.bottomCenter, end: Alignment.center,
         colors: [
-          dk ? const Color(0xFFB91C1C).withOpacity(0.25)
-             : const Color(0xFFEF4444).withOpacity(0.12),
+          dk ? const Color(0xFFB91C1C).withValues(alpha: 0.25)
+             : const Color(0xFFEF4444).withValues(alpha: 0.12),
           Colors.transparent,
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));

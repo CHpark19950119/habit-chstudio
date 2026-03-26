@@ -124,7 +124,7 @@ class _OrderLifeTabState extends State<OrderLifeTab>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: _ac.withOpacity(0.03),
+              color: _ac.withValues(alpha: 0.03),
               border: const Border(left: BorderSide(color: _ac, width: 2)),
             ),
             child: Text(m.headerQuote, style: const TextStyle(fontFamily: 'NotoSerifKR', fontSize: 12, color: _tx2, height: 1.8)),
@@ -244,9 +244,9 @@ class _OrderLifeTabState extends State<OrderLifeTab>
   Widget _chip(String text, Color c) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
-      color: c.withOpacity(0.1),
+      color: c.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(4),
-      border: Border.all(color: c.withOpacity(0.3)),
+      border: Border.all(color: c.withValues(alpha: 0.3)),
     ),
     child: Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c)),
   );
@@ -366,7 +366,7 @@ class _OrderLifeTabState extends State<OrderLifeTab>
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-              color: _ac.withOpacity(0.07),
+              color: _ac.withValues(alpha: 0.07),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(r.period, style: const TextStyle(fontFamily: 'monospace', fontSize: 15, fontWeight: FontWeight.w700, color: _ac)),
                 if (r.tags.isNotEmpty) Padding(
@@ -409,7 +409,7 @@ class _OrderLifeTabState extends State<OrderLifeTab>
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(14, 14, 12, 12),
           decoration: BoxDecoration(
-            color: r.color.withOpacity(0.06),
+            color: r.color.withValues(alpha: 0.06),
             border: const Border(bottom: BorderSide(color: _bd)),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -439,7 +439,7 @@ class _OrderLifeTabState extends State<OrderLifeTab>
             ...r.details.asMap().entries.map((e) => Column(children: [
               if (e.key > 0) Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Container(height: 1, color: _bd.withOpacity(0.5)),
+                child: Container(height: 1, color: _bd.withValues(alpha: 0.5)),
               ),
               Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: _rich(e.value)),
             ])),
@@ -653,7 +653,7 @@ class _OrderLifeTabState extends State<OrderLifeTab>
             return Stack(clipBehavior: Clip.none, children: [
               Container(decoration: BoxDecoration(color: _sf2, border: Border.all(color: _bd, width: 0.5))),
               Positioned(left: 0, top: 0, bottom: 0, width: w * (score / 100).clamp(0.0, 1.0),
-                child: Container(color: (isPassing ? _gn : _rd).withOpacity(0.45))),
+                child: Container(color: (isPassing ? _gn : _rd).withValues(alpha: 0.45))),
               Positioned(left: w * (cutoff / 100).clamp(0.0, 1.0) - 1, top: -3, bottom: -3,
                 child: Container(width: 2, color: _tx)),
             ]);
@@ -731,7 +731,7 @@ class _OrderLifeTabState extends State<OrderLifeTab>
           margin: const EdgeInsets.only(top: 4),
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: _cy.withOpacity(0.05),
+            color: _cy.withValues(alpha: 0.05),
             border: const Border(left: BorderSide(color: _cy, width: 2)),
           ),
           child: _rich('**의미:** ${w.meaning}'),
@@ -894,7 +894,7 @@ class _OrderLifeTabState extends State<OrderLifeTab>
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-              color: (r.color ?? _pColor(r.partner)).withOpacity(0.06),
+              color: (r.color ?? _pColor(r.partner)).withValues(alpha: 0.06),
               child: Row(children: [
                 Expanded(child: Text(r.partner,
                   style: TextStyle(fontFamily: 'NotoSerifKR', fontSize: 16, fontWeight: FontWeight.w700,
@@ -999,7 +999,7 @@ class _OrderLifeTabState extends State<OrderLifeTab>
           margin: const EdgeInsets.only(bottom: 20),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           decoration: BoxDecoration(
-            color: _ac.withOpacity(0.08),
+            color: _ac.withValues(alpha: 0.08),
             border: const Border(left: BorderSide(color: _ac, width: 3)),
           ),
           child: Row(children: [
@@ -1035,7 +1035,7 @@ class _OrderLifeTabState extends State<OrderLifeTab>
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-            color: part.color.withOpacity(0.06),
+            color: part.color.withValues(alpha: 0.06),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('제${part.num}부: ${part.title}', style: TextStyle(
                 fontFamily: 'NotoSerifKR', fontSize: 17, fontWeight: FontWeight.w700, color: part.color)),

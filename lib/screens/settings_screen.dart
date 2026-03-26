@@ -124,7 +124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Container(
           width: 44, height: 44,
           decoration: BoxDecoration(
-            color: _accent.withOpacity(_dk ? 0.12 : 0.08),
+            color: _accent.withValues(alpha: _dk ? 0.12 : 0.08),
             borderRadius: BorderRadius.circular(14)),
           child: Icon(Icons.auto_awesome_rounded, size: 24, color: _accent),
         ),
@@ -149,7 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Container(
           width: 44, height: 44,
           decoration: BoxDecoration(
-            color: const Color(0xFF8B5CF6).withOpacity(_dk ? 0.12 : 0.08),
+            color: const Color(0xFF8B5CF6).withValues(alpha: _dk ? 0.12 : 0.08),
             borderRadius: BorderRadius.circular(14)),
           child: const Icon(Icons.pets_rounded, size: 24,
             color: Color(0xFF8B5CF6)),
@@ -185,7 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color: const Color(0xFFf59e0b).withOpacity(_dk ? 0.12 : 0.08),
+              color: const Color(0xFFf59e0b).withValues(alpha: _dk ? 0.12 : 0.08),
               borderRadius: BorderRadius.circular(14)),
             child: const Icon(Icons.wb_sunny_rounded, size: 24,
               color: Color(0xFFf59e0b)),
@@ -208,7 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: (isSensor ? const Color(0xFFf59e0b) : _textMuted).withOpacity(0.12),
+                color: (isSensor ? const Color(0xFFf59e0b) : _textMuted).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12)),
               child: Text(isSensor ? '센서' : '수동',
                 style: BotanicalTypo.label(size: 11, weight: FontWeight.w800,
@@ -308,7 +308,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Container(
           width: 44, height: 44,
           decoration: BoxDecoration(
-            color: const Color(0xFF6366f1).withOpacity(_dk ? 0.12 : 0.08),
+            color: const Color(0xFF6366f1).withValues(alpha: _dk ? 0.12 : 0.08),
             borderRadius: BorderRadius.circular(14)),
           child: const Icon(Icons.bedtime_rounded, size: 24,
             color: Color(0xFF6366f1)),
@@ -343,7 +343,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color: const Color(0xFF10b981).withOpacity(_dk ? 0.12 : 0.08),
+              color: const Color(0xFF10b981).withValues(alpha: _dk ? 0.12 : 0.08),
               borderRadius: BorderRadius.circular(14)),
             child: const Icon(Icons.notifications_active_rounded, size: 24,
               color: Color(0xFF10b981)),
@@ -361,7 +361,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             decoration: BoxDecoration(
               color: (_notifListenerEnabled
                 ? const Color(0xFF10b981)
-                : BotanicalColors.error).withOpacity(0.12),
+                : BotanicalColors.error).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10)),
             child: Text(_notifListenerEnabled ? 'ON' : 'OFF',
               style: BotanicalTypo.label(size: 11, weight: FontWeight.w800,
@@ -380,12 +380,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFF10b981).withOpacity(0.08),
+                color: const Color(0xFF10b981).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF10b981).withOpacity(0.2))),
+                border: Border.all(color: const Color(0xFF10b981).withValues(alpha: 0.2))),
               child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Icon(Icons.settings_rounded, size: 16,
-                  color: const Color(0xFF10b981).withOpacity(0.8)),
+                  color: const Color(0xFF10b981).withValues(alpha: 0.8)),
                 const SizedBox(width: 8),
                 Text('알림 접근 허용', style: BotanicalTypo.body(
                   size: 13, weight: FontWeight.w600,
@@ -446,9 +446,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: color.withOpacity(_dk ? 0.10 : 0.06),
+          color: color.withValues(alpha: _dk ? 0.10 : 0.06),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.15))),
+          border: Border.all(color: color.withValues(alpha: 0.15))),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text(emoji, style: const TextStyle(fontSize: 14)),
           const SizedBox(width: 6),
@@ -480,7 +480,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: (hasErrors ? BotanicalColors.error : const Color(0xFF10B981))
-                  .withOpacity(0.12),
+                  .withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8)),
             child: Text(hasErrors ? '${st['failed']} 실패' : '정상',
               style: BotanicalTypo.label(size: 10, weight: FontWeight.w700,
@@ -504,7 +504,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               '${e['docPath']?.toString().split('/').last ?? '?'} — '
               '${(e['fields'] as List?)?.join(', ') ?? '?'}',
               style: TextStyle(fontSize: 10, fontFamily: 'monospace',
-                color: BotanicalColors.error.withOpacity(0.7)),
+                color: BotanicalColors.error.withValues(alpha: 0.7)),
             ),
           )),
           const SizedBox(height: 8),
@@ -525,7 +525,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(_dk ? 0.08 : 0.05),
+        color: color.withValues(alpha: _dk ? 0.08 : 0.05),
         borderRadius: BorderRadius.circular(10)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Text(label, style: BotanicalTypo.label(size: 10, color: _textMuted)),
@@ -590,11 +590,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: BotanicalColors.error.withOpacity(_dk ? 0.06 : 0.03),
+          color: BotanicalColors.error.withValues(alpha: _dk ? 0.06 : 0.03),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: BotanicalColors.error.withOpacity(0.12))),
+          border: Border.all(color: BotanicalColors.error.withValues(alpha: 0.12))),
         child: Row(children: [
-          Icon(icon, size: 20, color: BotanicalColors.error.withOpacity(0.7)),
+          Icon(icon, size: 20, color: BotanicalColors.error.withValues(alpha: 0.7)),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(label, style: BotanicalTypo.body(

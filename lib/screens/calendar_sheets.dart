@@ -76,7 +76,7 @@ class _AddEventMemoSheetState extends State<_AddEventMemoSheet> {
                     margin: const EdgeInsets.only(right: 6),
                     decoration: BoxDecoration(
                       color: _emoji == e
-                        ? BotanicalColors.primary.withOpacity(0.12) : Colors.transparent,
+                        ? BotanicalColors.primary.withValues(alpha: 0.12) : Colors.transparent,
                       borderRadius: BorderRadius.circular(8)),
                     child: Text(e, style: const TextStyle(fontSize: 20))),
                 )).toList()),
@@ -90,7 +90,7 @@ class _AddEventMemoSheetState extends State<_AddEventMemoSheet> {
               hintText: _isMemo ? '메모 내용 입력...' : '일정 제목 입력...',
               hintStyle: TextStyle(color: Colors.grey.shade400),
               filled: true,
-              fillColor: _dk ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+              fillColor: _dk ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
@@ -119,11 +119,11 @@ class _AddEventMemoSheetState extends State<_AddEventMemoSheet> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: selected
-            ? BotanicalColors.primary.withOpacity(_dk ? 0.15 : 0.1)
+            ? BotanicalColors.primary.withValues(alpha: _dk ? 0.15 : 0.1)
             : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: selected
-            ? BotanicalColors.primary.withOpacity(0.3) : Colors.grey.shade300)),
+            ? BotanicalColors.primary.withValues(alpha: 0.3) : Colors.grey.shade300)),
         child: Text(label, style: TextStyle(
           fontSize: 13, fontWeight: FontWeight.w700,
           color: selected ? BotanicalColors.primary
@@ -194,7 +194,7 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
           padding: const EdgeInsets.only(top: 12, bottom: 6),
           child: Container(width: 40, height: 4,
             decoration: BoxDecoration(
-              color: _textMuted.withOpacity(0.3),
+              color: _textMuted.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2)))),
 
         // 헤더
@@ -216,12 +216,12 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: _dk ? Colors.white.withOpacity(0.04) : Colors.grey.shade100,
+            color: _dk ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(12)),
           child: TabBar(
             controller: _tabCtrl,
             indicator: BoxDecoration(
-              color: _accent.withOpacity(0.15),
+              color: _accent.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10)),
             indicatorSize: TabBarIndicatorSize.tab,
             dividerColor: Colors.transparent,
@@ -286,18 +286,18 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: dd.primary
-          ? dd.color.withOpacity(_dk ? 0.08 : 0.06)
-          : (_dk ? Colors.white.withOpacity(0.02) : Colors.grey.shade50),
+          ? dd.color.withValues(alpha: _dk ? 0.08 : 0.06)
+          : (_dk ? Colors.white.withValues(alpha: 0.02) : Colors.grey.shade50),
         borderRadius: BorderRadius.circular(12),
         border: dd.primary
-          ? Border.all(color: dd.color.withOpacity(0.2))
-          : Border.all(color: _border.withOpacity(0.1))),
+          ? Border.all(color: dd.color.withValues(alpha: 0.2))
+          : Border.all(color: _border.withValues(alpha: 0.1))),
       child: Row(children: [
         Container(
           width: 48, height: 28,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: dd.color.withOpacity(_dk ? 0.15 : 0.1),
+            color: dd.color.withValues(alpha: _dk ? 0.15 : 0.1),
             borderRadius: BorderRadius.circular(8)),
           child: Text(dd.dDayLabel, style: TextStyle(
             fontSize: 10, fontWeight: FontWeight.w800, color: dd.color))),
@@ -312,7 +312,7 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: dd.color.withOpacity(0.15),
+              color: dd.color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(6)),
             child: Text('핵심', style: TextStyle(
               fontSize: 8, fontWeight: FontWeight.w800, color: dd.color))),
@@ -330,18 +330,18 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isActive
-          ? color.withOpacity(_dk ? 0.06 : 0.04)
-          : (_dk ? Colors.white.withOpacity(0.02) : Colors.white),
+          ? color.withValues(alpha: _dk ? 0.06 : 0.04)
+          : (_dk ? Colors.white.withValues(alpha: 0.02) : Colors.white),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: isActive
-          ? color.withOpacity(0.25) : _border.withOpacity(0.12))),
+          ? color.withValues(alpha: 0.25) : _border.withValues(alpha: 0.12))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // 헤더
         Row(children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: color.withOpacity(_dk ? 0.15 : 0.1),
+              color: color.withValues(alpha: _dk ? 0.15 : 0.1),
               borderRadius: BorderRadius.circular(8)),
             child: Text('Period ${period.id}', style: TextStyle(
               fontSize: 10, fontWeight: FontWeight.w800, color: color))),
@@ -352,7 +352,7 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: const Color(0xFF22C55E).withOpacity(0.15),
+                color: const Color(0xFF22C55E).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6)),
               child: const Text('진행중', style: TextStyle(
                 fontSize: 8, fontWeight: FontWeight.w800, color: Color(0xFF22C55E)))),
@@ -372,7 +372,7 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 4,
-              backgroundColor: _dk ? Colors.white.withOpacity(0.06) : Colors.grey.shade200,
+              backgroundColor: _dk ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade200,
               valueColor: AlwaysStoppedAnimation(color))),
           const SizedBox(height: 2),
           Align(alignment: Alignment.centerRight,
@@ -396,11 +396,11 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: isActive
-          ? parentColor.withOpacity(_dk ? 0.04 : 0.03)
-          : (_dk ? Colors.white.withOpacity(0.01) : const Color(0xFFF8FAFC)),
+          ? parentColor.withValues(alpha: _dk ? 0.04 : 0.03)
+          : (_dk ? Colors.white.withValues(alpha: 0.01) : const Color(0xFFF8FAFC)),
         borderRadius: BorderRadius.circular(10),
         border: Border(left: BorderSide(
-          color: isActive ? parentColor : _border.withOpacity(0.2), width: 2))),
+          color: isActive ? parentColor : _border.withValues(alpha: 0.2), width: 2))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Text(sp.id, style: TextStyle(
@@ -412,7 +412,7 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(
-                color: parentColor.withOpacity(0.08),
+                color: parentColor.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(4)),
               child: Text(sp.instructor!, style: TextStyle(
                 fontSize: 8, fontWeight: FontWeight.w600, color: parentColor))),
@@ -448,7 +448,7 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: const Color(0xFFF59E0B).withOpacity(_dk ? 0.08 : 0.05),
+                color: const Color(0xFFF59E0B).withValues(alpha: _dk ? 0.08 : 0.05),
                 borderRadius: BorderRadius.circular(4)),
               child: Text('☑ $cp', style: TextStyle(
                 fontSize: 8, fontWeight: FontWeight.w500, color: _textMuted)),
@@ -482,14 +482,14 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
           margin: const EdgeInsets.only(bottom: 6),
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: _dk ? Colors.white.withOpacity(0.02) : const Color(0xFFF8FAFC),
+            color: _dk ? Colors.white.withValues(alpha: 0.02) : const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _border.withOpacity(0.1))),
+            border: Border.all(color: _border.withValues(alpha: 0.1))),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(
               width: 24, height: 24, alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: _accent.withOpacity(0.1),
+                color: _accent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6)),
               child: Text(e.key, style: TextStyle(
                 fontSize: 10, fontWeight: FontWeight.w800, color: _accent))),
@@ -518,7 +518,7 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: subj.color.withOpacity(_dk ? 0.06 : 0.04),
+        color: subj.color.withValues(alpha: _dk ? 0.06 : 0.04),
         borderRadius: BorderRadius.circular(14),
         border: Border(left: BorderSide(color: subj.color, width: 3))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -530,7 +530,7 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: subj.color.withOpacity(0.12),
+                color: subj.color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(6)),
               child: Text(subj.instructor!, style: TextStyle(
                 fontSize: 9, fontWeight: FontWeight.w700, color: subj.color))),
@@ -545,9 +545,9 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: _dk ? Colors.white.withOpacity(0.04) : Colors.white,
+                color: _dk ? Colors.white.withValues(alpha: 0.04) : Colors.white,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: subj.color.withOpacity(0.15))),
+                border: Border.all(color: subj.color.withValues(alpha: 0.15))),
               child: Text(c, style: TextStyle(
                 fontSize: 9, fontWeight: FontWeight.w500, color: _textSub)),
             )).toList()),
@@ -578,16 +578,16 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(_dk ? 0.05 : 0.03),
+        color: color.withValues(alpha: _dk ? 0.05 : 0.03),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.15))),
+        border: Border.all(color: color.withValues(alpha: 0.15))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // 헤더
         Row(children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: color.withOpacity(_dk ? 0.15 : 0.1),
+              color: color.withValues(alpha: _dk ? 0.15 : 0.1),
               borderRadius: BorderRadius.circular(8)),
             child: Text(sc.id, style: TextStyle(
               fontSize: 10, fontWeight: FontWeight.w800, color: color))),
@@ -601,9 +601,9 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: _dk ? Colors.white.withOpacity(0.03) : Colors.white,
+            color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.white,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _border.withOpacity(0.1))),
+            border: Border.all(color: _border.withValues(alpha: 0.1))),
           child: Row(children: [
             const Text('⚡', style: TextStyle(fontSize: 12)),
             const SizedBox(width: 6),
@@ -628,7 +628,7 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.08),
+            color: color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(6)),
           child: Text('다음 → ${sc.nextPeriod}', style: TextStyle(
             fontSize: 10, fontWeight: FontWeight.w700, color: color)),
@@ -653,12 +653,12 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: isPast
-                ? (_dk ? Colors.white.withOpacity(0.02) : Colors.grey.shade50)
-                : const Color(0xFFEF4444).withOpacity(_dk ? 0.05 : 0.03),
+                ? (_dk ? Colors.white.withValues(alpha: 0.02) : Colors.grey.shade50)
+                : const Color(0xFFEF4444).withValues(alpha: _dk ? 0.05 : 0.03),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: isPast
-                ? _border.withOpacity(0.1)
-                : const Color(0xFFEF4444).withOpacity(0.15))),
+                ? _border.withValues(alpha: 0.1)
+                : const Color(0xFFEF4444).withValues(alpha: 0.15))),
             child: Row(children: [
               Text(isPast ? '✅' : '📌', style: const TextStyle(fontSize: 13)),
               const SizedBox(width: 8),
@@ -684,11 +684,11 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: hasResult
-                ? const Color(0xFFF59E0B).withOpacity(_dk ? 0.05 : 0.03)
-                : (_dk ? Colors.white.withOpacity(0.02) : Colors.white),
+                ? const Color(0xFFF59E0B).withValues(alpha: _dk ? 0.05 : 0.03)
+                : (_dk ? Colors.white.withValues(alpha: 0.02) : Colors.white),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: hasResult
-                ? const Color(0xFFF59E0B).withOpacity(0.15) : _border.withOpacity(0.1))),
+                ? const Color(0xFFF59E0B).withValues(alpha: 0.15) : _border.withValues(alpha: 0.1))),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Text(isPast && hasResult ? '📊' : '📋', style: const TextStyle(fontSize: 14)),
@@ -702,7 +702,7 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444).withOpacity(_dk ? 0.08 : 0.05),
+                    color: const Color(0xFFEF4444).withValues(alpha: _dk ? 0.08 : 0.05),
                     borderRadius: BorderRadius.circular(6)),
                   child: Text('결과: ${ev.result}', style: TextStyle(
                     fontSize: 10, fontWeight: FontWeight.w600,
@@ -724,9 +724,9 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _dk ? Colors.white.withOpacity(0.03) : const Color(0xFFF0FDF4),
+                    color: _dk ? Colors.white.withValues(alpha: 0.03) : const Color(0xFFF0FDF4),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.1))),
+                    border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.1))),
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Text('💡 ', style: TextStyle(fontSize: 10)),
                     Expanded(child: Text('전략: ${ev.strategy}', style: TextStyle(

@@ -144,7 +144,7 @@ class _MemoScreenState extends State<MemoScreen> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: BotanicalColors.error.withOpacity(0.1),
+          color: BotanicalColors.error.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16)),
         child: Icon(Icons.delete_rounded, color: BotanicalColors.error),
       ),
@@ -156,17 +156,17 @@ class _MemoScreenState extends State<MemoScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: memo.completed
-              ? (_dk ? Colors.white.withOpacity(0.02) : Colors.grey.withOpacity(0.04))
+              ? (_dk ? Colors.white.withValues(alpha: 0.02) : Colors.grey.withValues(alpha: 0.04))
               : (_dk ? BotanicalColors.cardDark : BotanicalColors.cardLight),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: memo.pinned
-                ? BotanicalColors.gold.withOpacity(0.3)
+                ? BotanicalColors.gold.withValues(alpha: 0.3)
                 : (_dk ? BotanicalColors.borderDark : BotanicalColors.borderLight),
               width: memo.pinned ? 1.2 : 0.6),
             boxShadow: memo.completed ? null : [
               BoxShadow(
-                color: _dk ? Colors.black.withOpacity(0.15) : color.withOpacity(0.05),
+                color: _dk ? Colors.black.withValues(alpha: 0.15) : color.withValues(alpha: 0.05),
                 blurRadius: 12, offset: const Offset(0, 4)),
             ],
           ),
@@ -179,8 +179,8 @@ class _MemoScreenState extends State<MemoScreen> {
                 margin: const EdgeInsets.only(right: 12, top: 2),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: memo.completed ? color.withOpacity(0.15) : Colors.transparent,
-                  border: Border.all(color: color.withOpacity(0.4), width: 1.5)),
+                  color: memo.completed ? color.withValues(alpha: 0.15) : Colors.transparent,
+                  border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5)),
                 child: memo.completed
                   ? Icon(Icons.check_rounded, size: 14, color: color)
                   : null,
@@ -218,8 +218,8 @@ class _MemoScreenState extends State<MemoScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: isOverdue
-                          ? BotanicalColors.error.withOpacity(0.1)
-                          : BotanicalColors.info.withOpacity(0.08),
+                          ? BotanicalColors.error.withValues(alpha: 0.1)
+                          : BotanicalColors.info.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(6)),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         Icon(Icons.alarm_rounded, size: 10,
@@ -376,7 +376,7 @@ class _MemoScreenState extends State<MemoScreen> {
             // 핸들
             Container(width: 40, height: 4,
               decoration: BoxDecoration(
-                color: _textMuted.withOpacity(0.3),
+                color: _textMuted.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
 
@@ -394,7 +394,7 @@ class _MemoScreenState extends State<MemoScreen> {
                 hintText: '메모 내용...',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                 filled: true,
-                fillColor: _dk ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+                fillColor: _dk ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
               ),
             ),
             const SizedBox(height: 14),
@@ -412,13 +412,13 @@ class _MemoScreenState extends State<MemoScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: selectedCat == cat
-                          ? BotanicalColors.primary.withOpacity(0.1)
+                          ? BotanicalColors.primary.withValues(alpha: 0.1)
                           : Colors.transparent,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: selectedCat == cat
                             ? BotanicalColors.primary
-                            : _textMuted.withOpacity(0.2))),
+                            : _textMuted.withValues(alpha: 0.2))),
                       child: Text(
                         '${Memo.categoryEmoji(cat)} ${Memo.categoryLabel(cat)}',
                         style: BotanicalTypo.label(size: 10,
@@ -458,12 +458,12 @@ class _MemoScreenState extends State<MemoScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
                     color: reminderAt != null
-                      ? BotanicalColors.info.withOpacity(0.08)
-                      : (_dk ? Colors.white.withOpacity(0.04) : Colors.grey.shade50),
+                      ? BotanicalColors.info.withValues(alpha: 0.08)
+                      : (_dk ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade50),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: reminderAt != null
-                      ? BotanicalColors.info.withOpacity(0.3)
-                      : _textMuted.withOpacity(0.15))),
+                      ? BotanicalColors.info.withValues(alpha: 0.3)
+                      : _textMuted.withValues(alpha: 0.15))),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.alarm_rounded, size: 16,
                       color: reminderAt != null ? BotanicalColors.info : _textMuted),
@@ -490,12 +490,12 @@ class _MemoScreenState extends State<MemoScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
                     color: pinned
-                      ? BotanicalColors.gold.withOpacity(0.1)
-                      : (_dk ? Colors.white.withOpacity(0.04) : Colors.grey.shade50),
+                      ? BotanicalColors.gold.withValues(alpha: 0.1)
+                      : (_dk ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade50),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: pinned
-                      ? BotanicalColors.gold.withOpacity(0.3)
-                      : _textMuted.withOpacity(0.15))),
+                      ? BotanicalColors.gold.withValues(alpha: 0.3)
+                      : _textMuted.withValues(alpha: 0.15))),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
                       size: 16,

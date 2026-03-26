@@ -75,7 +75,7 @@ class _Mote extends PositionComponent with HasGameRef<_ExamBgGame> {
   @override
   void render(ui.Canvas canvas) {
     canvas.drawCircle(ui.Offset.zero, radius,
-        ui.Paint()..color = _purpleGlow.withOpacity(opacity));
+        ui.Paint()..color = _purpleGlow.withValues(alpha: opacity));
   }
 }
 
@@ -105,7 +105,7 @@ class _Ray extends PositionComponent with HasGameRef<_ExamBgGame> {
     canvas.drawLine(
       ui.Offset.zero, end,
       ui.Paint()
-        ..color = _purpleGlow.withOpacity(op)
+        ..color = _purpleGlow.withValues(alpha: op)
         ..strokeWidth = 1.5
         ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 4),
     );
@@ -192,7 +192,7 @@ class _ExamAnalysisScreenState extends State<ExamAnalysisScreen>
           decoration: BoxDecoration(gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_bg.withOpacity(0.4), Colors.transparent, _bg.withOpacity(0.7)],
+            colors: [_bg.withValues(alpha: 0.4), Colors.transparent, _bg.withValues(alpha: 0.7)],
             stops: const [0, 0.3, 1],
           )),
         ))),
@@ -297,7 +297,7 @@ class _ExamAnalysisScreenState extends State<ExamAnalysisScreen>
             label: const Text('전체 분석 보기 (V9)'),
             style: OutlinedButton.styleFrom(
               foregroundColor: _purple,
-              side: BorderSide(color: _purple.withOpacity(0.4)),
+              side: BorderSide(color: _purple.withValues(alpha: 0.4)),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
             onPressed: () => Navigator.push(context,
@@ -329,9 +329,9 @@ class _ExamAnalysisScreenState extends State<ExamAnalysisScreen>
     margin: const EdgeInsets.only(bottom: 12),
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: _surface.withOpacity(0.85),
+      color: _surface.withValues(alpha: 0.85),
       borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: _border.withOpacity(0.6)),
+      border: Border.all(color: _border.withValues(alpha: 0.6)),
     ),
     child: child,
   );
@@ -367,13 +367,13 @@ class _ExamAnalysisScreenState extends State<ExamAnalysisScreen>
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(colors: [
-                      barColor.withOpacity(0.7), barColor.withOpacity(0.4)]),
+                      barColor.withValues(alpha: 0.7), barColor.withValues(alpha: 0.4)]),
                   ),
                 )),
               Positioned(
                 left: (w * (s.cutoff / 100).clamp(0.0, 1.0) - 1),
                 top: 0, bottom: 0,
-                child: Container(width: 2, color: _tx.withOpacity(0.8))),
+                child: Container(width: 2, color: _tx.withValues(alpha: 0.8))),
             ]),
           );
         })),
@@ -410,15 +410,15 @@ class _ExamAnalysisScreenState extends State<ExamAnalysisScreen>
     margin: const EdgeInsets.only(bottom: 14),
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: _surface.withOpacity(0.85),
+      color: _surface.withValues(alpha: 0.85),
       borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: color.withOpacity(0.3)),
+      border: Border.all(color: color.withValues(alpha: 0.3)),
     ),
     child: Stack(children: [
       Positioned(top: -4, right: 0,
         child: Text(label, style: TextStyle(fontFamily: 'monospace',
           fontSize: 40, fontWeight: FontWeight.w900,
-          color: color.withOpacity(0.12)))),
+          color: color.withValues(alpha: 0.12)))),
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(path.title, style: TextStyle(
           fontSize: 15, fontWeight: FontWeight.w700, color: color)),
@@ -452,7 +452,7 @@ class _ExamAnalysisScreenState extends State<ExamAnalysisScreen>
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            border: Border.all(color: _purple.withOpacity(0.3)),
+            border: Border.all(color: _purple.withValues(alpha: 0.3)),
             borderRadius: BorderRadius.circular(6)),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Icon(Icons.help_outline_rounded, size: 16, color: _purple),
@@ -502,7 +502,7 @@ class _PasserChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
     decoration: BoxDecoration(
-      color: _border.withOpacity(0.5),
+      color: _border.withValues(alpha: 0.5),
       borderRadius: BorderRadius.circular(6)),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(name, style: const TextStyle(
@@ -633,7 +633,7 @@ class _V9CompareViewerState extends State<_V9CompareViewer> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: _border.withOpacity(0.3),
+              color: _border.withValues(alpha: 0.3),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(10))),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Flexible(child: Text(name, style: const TextStyle(

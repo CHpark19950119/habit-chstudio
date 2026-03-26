@@ -43,7 +43,7 @@ class OrderTodayTab extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: const LinearGradient(colors: [OC.accent, OC.accentLt]),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: OC.accent.withOpacity(.2), blurRadius: 8, offset: const Offset(0, 3))]),
+          boxShadow: [BoxShadow(color: OC.accent.withValues(alpha: .2), blurRadius: 8, offset: const Offset(0, 3))]),
         child: const Text('COMPASS', style: TextStyle(color: Colors.white,
           fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 2))),
       const SizedBox(width: 10),
@@ -68,8 +68,8 @@ class OrderTodayTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: OC.card, borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: OC.border.withOpacity(.5)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 16, offset: const Offset(0, 6))]),
+        border: Border.all(color: OC.border.withValues(alpha: .5)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .04), blurRadius: 16, offset: const Offset(0, 6))]),
       child: Row(children: [
         SizedBox(width: 80, height: 80, child: CustomPaint(
           painter: _RingPainter(ratio: ratio, color: OC.accent),
@@ -88,8 +88,8 @@ class OrderTodayTab extends StatelessWidget {
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(color: gc.withOpacity(.1), borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: gc.withOpacity(.25))),
+              decoration: BoxDecoration(color: gc.withValues(alpha: .1), borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: gc.withValues(alpha: .25))),
               child: Text(grade, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: gc))),
           ]),
           const SizedBox(height: 4),
@@ -99,7 +99,7 @@ class OrderTodayTab extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(color: OC.sprintBg, borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: OC.sprint.withOpacity(.2))),
+                border: Border.all(color: OC.sprint.withValues(alpha: .2))),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 const Text('⚡', style: TextStyle(fontSize: 11)), const SizedBox(width: 4),
                 Flexible(child: Text(ns.title, style: const TextStyle(fontSize: 11,
@@ -132,16 +132,16 @@ class OrderTodayTab extends StatelessWidget {
         const SizedBox(height: 14),
         if (focus.isNotEmpty) ...[
           _chip('🔥', '집중', OC.amber, OC.amberBg), const SizedBox(height: 8),
-          ...focus.map((h) => _hRow(h, context, bg: OC.amberBg, bc: OC.amber.withOpacity(.2))),
+          ...focus.map((h) => _hRow(h, context, bg: OC.amberBg, bc: OC.amber.withValues(alpha: .2))),
         ],
         if (queue.isNotEmpty) ...[
           SizedBox(height: focus.isNotEmpty ? 12 : 0),
-          _chip('⏳', '대기열 ${queue.length}', const Color(0xFF94A3B8), const Color(0xFF94A3B8).withOpacity(.08)),
+          _chip('⏳', '대기열 ${queue.length}', const Color(0xFF94A3B8), const Color(0xFF94A3B8).withValues(alpha: .08)),
           const SizedBox(height: 8), ...queue.map((h) => _hRow(h, context)),
         ],
         if (unranked.isNotEmpty) ...[
           if (focus.isNotEmpty || queue.isNotEmpty) Padding(padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Container(height: 1, color: OC.border.withOpacity(.3))),
+            child: Container(height: 1, color: OC.border.withValues(alpha: .3))),
           ...unranked.map((h) => _hRow(h, context)),
         ],
       ]);
@@ -150,7 +150,7 @@ class OrderTodayTab extends StatelessWidget {
   Widget _chip(String emoji, String label, Color c, Color bg) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: c.withOpacity(.2))),
+      border: Border.all(color: c.withValues(alpha: .2))),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       Text(emoji, style: const TextStyle(fontSize: 10)), const SizedBox(width: 4),
       Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: c, letterSpacing: .5)),
@@ -164,7 +164,7 @@ class OrderTodayTab extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(color: done ? OC.successBg : (bg ?? OC.cardHi),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: done ? OC.success.withOpacity(.25) : (bc ?? OC.border.withOpacity(.4)))),
+          border: Border.all(color: done ? OC.success.withValues(alpha: .25) : (bc ?? OC.border.withValues(alpha: .4)))),
         child: Row(children: [
           Text(h.emoji, style: const TextStyle(fontSize: 18)), const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -189,7 +189,7 @@ class OrderTodayTab extends StatelessWidget {
           AnimatedContainer(duration: const Duration(milliseconds: 200), width: 24, height: 24,
             decoration: BoxDecoration(color: done ? OC.success : Colors.transparent,
               borderRadius: BorderRadius.circular(7),
-              border: Border.all(color: done ? OC.success : OC.text4.withOpacity(.5), width: 2)),
+              border: Border.all(color: done ? OC.success : OC.text4.withValues(alpha: .5), width: 2)),
             child: done ? const Icon(Icons.check_rounded, size: 15, color: Colors.white) : null),
         ])),
     ));
@@ -226,7 +226,7 @@ class OrderTodayTab extends StatelessWidget {
     return Padding(padding: const EdgeInsets.only(bottom: 8), child: Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: urgent ? OC.error.withOpacity(.4) : c.withOpacity(.2))),
+        border: Border.all(color: urgent ? OC.error.withValues(alpha: .4) : c.withValues(alpha: .2))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Text(g.tierEmoji, style: const TextStyle(fontSize: 16)), const SizedBox(width: 8),
@@ -234,14 +234,14 @@ class OrderTodayTab extends StatelessWidget {
             fontWeight: FontWeight.w700, color: OC.text1), maxLines: 1, overflow: TextOverflow.ellipsis)),
           if (g.dDayLabel.isNotEmpty) Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(color: urgent ? OC.errorBg : c.withOpacity(.12), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: urgent ? OC.errorBg : c.withValues(alpha: .12), borderRadius: BorderRadius.circular(8)),
             child: Text(g.dDayLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: urgent ? OC.error : c)))
-          else orderChip(g.tierLabel, c, c.withOpacity(.12)),
+          else orderChip(g.tierLabel, c, c.withValues(alpha: .12)),
         ]),
         const SizedBox(height: 8),
         Row(children: [
           Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
-            value: g.progress / 100, minHeight: 5, backgroundColor: c.withOpacity(.15), valueColor: AlwaysStoppedAnimation(c)))),
+            value: g.progress / 100, minHeight: 5, backgroundColor: c.withValues(alpha: .15), valueColor: AlwaysStoppedAnimation(c)))),
           const SizedBox(width: 10),
           Text('${g.progress}%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: c)),
         ]),
@@ -268,8 +268,8 @@ class OrderTodayTab extends StatelessWidget {
     final rec = nfcActualTimes.length;
     return Container(
       decoration: BoxDecoration(color: OC.card, borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: OC.border.withOpacity(.5)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 16, offset: const Offset(0, 6))]),
+        border: Border.all(color: OC.border.withValues(alpha: .5)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .04), blurRadius: 16, offset: const Offset(0, 6))]),
       child: Theme(data: ThemeData(dividerColor: Colors.transparent), child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
         childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
@@ -288,8 +288,8 @@ class OrderTodayTab extends StatelessWidget {
           if (isRec) { off = _toMin(actual) - tMin; dc = off.abs() <= 10 ? OC.success : off.abs() <= 30 ? OC.amber : OC.error; lbl = actual; }
           return Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(children: [
             Container(width: 30, height: 30,
-              decoration: BoxDecoration(color: isRec ? r.$5.withOpacity(.12) : OC.bgSub,
-                borderRadius: BorderRadius.circular(9), border: Border.all(color: isRec ? r.$5.withOpacity(.3) : OC.border)),
+              decoration: BoxDecoration(color: isRec ? r.$5.withValues(alpha: .12) : OC.bgSub,
+                borderRadius: BorderRadius.circular(9), border: Border.all(color: isRec ? r.$5.withValues(alpha: .3) : OC.border)),
               child: Center(child: Text(r.$2, style: const TextStyle(fontSize: 14)))),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

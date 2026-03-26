@@ -9,7 +9,7 @@ class PaperGrainPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final rand = math.Random(42);
     final paint = Paint()
-      ..color = (dark ? Colors.white : Colors.black).withOpacity(0.012)
+      ..color = (dark ? Colors.white : Colors.black).withValues(alpha: 0.012)
       ..strokeWidth = 0.5;
     for (int i = 0; i < 800; i++) {
       canvas.drawCircle(
@@ -69,10 +69,10 @@ class WaterWavePainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          _surfWater.withOpacity(0.30),
-          _midWater.withOpacity(0.45),
-          _deepWater.withOpacity(0.55),
-          _deepWater.withOpacity(0.65),
+          _surfWater.withValues(alpha: 0.30),
+          _midWater.withValues(alpha: 0.45),
+          _deepWater.withValues(alpha: 0.55),
+          _deepWater.withValues(alpha: 0.65),
         ],
         stops: const [0.0, 0.3, 0.7, 1.0],
       ).createShader(bodyRect);
@@ -82,22 +82,22 @@ class WaterWavePainter extends CustomPainter {
     // 뒷 레이어: 느리고 넓은 파도 (깊은 색)
     _drawGradientWave(canvas, w, h, waterTop, t,
       amplitude: 3.5, frequency: 2.0, speed: 0.6,
-      colorTop: _midWater.withOpacity(0.25),
-      colorBot: _deepWater.withOpacity(0.40),
+      colorTop: _midWater.withValues(alpha: 0.25),
+      colorBot: _deepWater.withValues(alpha: 0.40),
       subWaveAmp: 0.8, subWaveFreq: 5.0);
 
     // 중간 레이어: 중간 속도 (중간 색)
     _drawGradientWave(canvas, w, h, waterTop, t,
       amplitude: 2.8, frequency: 3.0, speed: 1.0,
-      colorTop: _surfWater.withOpacity(0.22),
-      colorBot: _midWater.withOpacity(0.38),
+      colorTop: _surfWater.withValues(alpha: 0.22),
+      colorBot: _midWater.withValues(alpha: 0.38),
       subWaveAmp: 1.0, subWaveFreq: 7.0);
 
     // 앞 레이어: 빠르고 선명한 파도 (밝은 색)
     _drawGradientWave(canvas, w, h, waterTop, t,
       amplitude: 2.2, frequency: 3.5, speed: 1.6,
-      colorTop: _shallowWater.withOpacity(0.20),
-      colorBot: _surfWater.withOpacity(0.35),
+      colorTop: _shallowWater.withValues(alpha: 0.20),
+      colorBot: _surfWater.withValues(alpha: 0.35),
       subWaveAmp: 0.6, subWaveFreq: 9.0);
 
     // ── 3. 수면 코스틱 (빛 반사) ──
@@ -116,7 +116,7 @@ class WaterWavePainter extends CustomPainter {
       hlPath.lineTo(x, y);
     }
     canvas.drawPath(hlPath, Paint()
-      ..color = Colors.white.withOpacity(0.30)
+      ..color = Colors.white.withValues(alpha: 0.30)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.8));
@@ -129,7 +129,7 @@ class WaterWavePainter extends CustomPainter {
         end: Alignment.bottomCenter,
         colors: [
           Colors.transparent,
-          _deepWater.withOpacity(0.15),
+          _deepWater.withValues(alpha: 0.15),
         ],
       ).createShader(vignetteRect));
 
@@ -182,7 +182,7 @@ class WaterWavePainter extends CustomPainter {
       canvas.drawOval(
         Rect.fromCenter(center: Offset(cx, cy), width: r * 2, height: r),
         Paint()
-          ..color = Colors.white.withOpacity(opacity)
+          ..color = Colors.white.withValues(alpha: opacity)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
       );
     }
@@ -201,7 +201,7 @@ class WaterWavePainter extends CustomPainter {
       canvas.drawCircle(
         Offset(sx, sy), 1.2,
         Paint()
-          ..color = Colors.white.withOpacity(sparkleAlpha)
+          ..color = Colors.white.withValues(alpha: sparkleAlpha)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
       );
     }

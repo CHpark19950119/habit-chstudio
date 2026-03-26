@@ -31,11 +31,11 @@ extension _CalendarStudyWidgets on _CalendarScreenState {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [
-          const Color(0xFF6366F1).withOpacity(_dk ? 0.08 : 0.04),
-          const Color(0xFF8B5CF6).withOpacity(_dk ? 0.04 : 0.02),
+          const Color(0xFF6366F1).withValues(alpha: _dk ? 0.08 : 0.04),
+          const Color(0xFF8B5CF6).withValues(alpha: _dk ? 0.04 : 0.02),
         ]),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.1))),
+        border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.1))),
       child: Row(children: [
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('순공시간', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: _textMuted)),
@@ -58,9 +58,9 @@ extension _CalendarStudyWidgets on _CalendarScreenState {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: sc.withOpacity(_dk ? 0.12 : 0.06),
+            color: sc.withValues(alpha: _dk ? 0.12 : 0.06),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: sc.withOpacity(0.15))),
+            border: Border.all(color: sc.withValues(alpha: 0.15))),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 6, height: 6,
               decoration: BoxDecoration(shape: BoxShape.circle, color: sc)),
@@ -94,9 +94,9 @@ extension _CalendarStudyWidgets on _CalendarScreenState {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: _dk ? Colors.white.withOpacity(0.03) : const Color(0xFFF8FAFC),
+            color: _dk ? Colors.white.withValues(alpha: 0.03) : const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _border.withOpacity(0.15))),
+            border: Border.all(color: _border.withValues(alpha: 0.15))),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Text(f.emoji, style: const TextStyle(fontSize: 12)),
             const SizedBox(width: 4),
@@ -107,7 +107,7 @@ extension _CalendarStudyWidgets on _CalendarScreenState {
               fontSize: 11, fontWeight: FontWeight.w700, color: _textMain)),
             const SizedBox(width: 4),
             Icon(Icons.edit_rounded, size: 10,
-              color: _textMuted.withOpacity(0.4)),
+              color: _textMuted.withValues(alpha: 0.4)),
           ]),
         ),
       )).toList(),
@@ -178,9 +178,9 @@ extension _CalendarStudyWidgets on _CalendarScreenState {
         margin: const EdgeInsets.only(bottom: 5),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
-          color: const Color(0xFFFEF3C7).withOpacity(_dk ? 0.06 : 0.3),
+          color: const Color(0xFFFEF3C7).withValues(alpha: _dk ? 0.06 : 0.3),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.12))),
+          border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.12))),
         child: Row(children: [
           Text(isPinned ? '📌' : '💡', style: const TextStyle(fontSize: 13)),
           const SizedBox(width: 8),
@@ -207,7 +207,7 @@ extension _CalendarStudyWidgets on _CalendarScreenState {
         margin: const EdgeInsets.only(bottom: 5),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
-          color: const Color(0xFF10B981).withOpacity(_dk ? 0.06 : 0.04),
+          color: const Color(0xFF10B981).withValues(alpha: _dk ? 0.06 : 0.04),
           borderRadius: BorderRadius.circular(12),
           border: Border(left: BorderSide(
             color: isMeal ? const Color(0xFF10B981) : const Color(0xFF8B5CF6), width: 3))),
@@ -223,9 +223,9 @@ extension _CalendarStudyWidgets on _CalendarScreenState {
           ],
           const Spacer(),
           Text('웹앱에서 보기', style: TextStyle(
-            fontSize: 9, fontWeight: FontWeight.w600, color: _accent.withOpacity(0.6))),
+            fontSize: 9, fontWeight: FontWeight.w600, color: _accent.withValues(alpha: 0.6))),
           const SizedBox(width: 3),
-          Icon(Icons.open_in_new_rounded, size: 12, color: _accent.withOpacity(0.5)),
+          Icon(Icons.open_in_new_rounded, size: 12, color: _accent.withValues(alpha: 0.5)),
         ]),
       ),
     );

@@ -121,9 +121,9 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
           colors: [Color(0xFF0C1222), Color(0xFF1A2744)]),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: const Color(0xFF3B82F6).withOpacity(0.08),
+          BoxShadow(color: const Color(0xFF3B82F6).withValues(alpha: 0.08),
             blurRadius: 32, offset: const Offset(0, 12)),
-          BoxShadow(color: Colors.black.withOpacity(0.15),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 16, offset: const Offset(0, 4)),
         ],
       ),
@@ -133,11 +133,11 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [
-                const Color(0xFFD4AF37).withOpacity(0.2),
-                const Color(0xFFF5C842).withOpacity(0.1),
+                const Color(0xFFD4AF37).withValues(alpha: 0.2),
+                const Color(0xFFF5C842).withValues(alpha: 0.1),
               ]),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.3))),
+              border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3))),
             child: const Row(mainAxisSize: MainAxisSize.min, children: [
               Text('📒', style: TextStyle(fontSize: 11)),
               SizedBox(width: 5),
@@ -150,11 +150,11 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
+              color: Colors.white.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(8)),
             child: Text('$count건', style: TextStyle(
               fontSize: 11, fontWeight: FontWeight.w600,
-              color: Colors.white.withOpacity(0.4))),
+              color: Colors.white.withValues(alpha: 0.4))),
           ),
         ]),
         const SizedBox(height: 22),
@@ -162,7 +162,7 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
         Row(children: [
           Text('📚  ${periodLabel}수험', style: TextStyle(
             fontSize: 11, fontWeight: FontWeight.w500,
-            color: Colors.white.withOpacity(0.4))),
+            color: Colors.white.withValues(alpha: 0.4))),
           const Spacer(),
           Text(_fmtFull(examDisplay), style: const TextStyle(
             fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white)),
@@ -172,19 +172,19 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
         Row(children: [
           Text('🤖  ${periodLabel}AI', style: TextStyle(
             fontSize: 11, fontWeight: FontWeight.w500,
-            color: const Color(0xFFa78bfa).withOpacity(0.7))),
+            color: const Color(0xFFa78bfa).withValues(alpha: 0.7))),
           const Spacer(),
           Text(_fmtFull(aiDisplay), style: const TextStyle(
             fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFFa78bfa))),
         ]),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Container(height: 0.5, color: Colors.white.withOpacity(0.08))),
+          child: Container(height: 0.5, color: Colors.white.withValues(alpha: 0.08))),
         // 합계
         Row(children: [
           Text('합계', style: TextStyle(
             fontSize: 11, fontWeight: FontWeight.w600,
-            color: Colors.white.withOpacity(0.5))),
+            color: Colors.white.withValues(alpha: 0.5))),
           const Spacer(),
           Text(_fmtFull(totalDisplay), style: const TextStyle(
             fontSize: 28, fontWeight: FontWeight.w900,
@@ -200,7 +200,7 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
             const SizedBox(width: 6),
             Text('누적 수험 ${_fmtFull(allExam)} · AI ${_fmtFull(allAi)}',
               style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500,
-                color: Colors.white.withOpacity(0.3))),
+                color: Colors.white.withValues(alpha: 0.3))),
           ]),
         ],
       ]),
@@ -240,7 +240,7 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
           color: sel ? OC.accent : OC.card,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: sel ? OC.accent : OC.border),
-          boxShadow: sel ? [BoxShadow(color: OC.accent.withOpacity(0.2),
+          boxShadow: sel ? [BoxShadow(color: OC.accent.withValues(alpha: 0.2),
             blurRadius: 8, offset: const Offset(0, 2))] : null),
         child: Text(label, style: TextStyle(
           fontSize: 12, fontWeight: FontWeight.w700,
@@ -270,18 +270,18 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: OC.card, borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: OC.border.withOpacity(0.5)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03),
+        border: Border.all(color: OC.border.withValues(alpha: 0.5)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03),
           blurRadius: 12, offset: const Offset(0, 4))]),
       child: Row(children: [
         Expanded(child: _statCell(
           '거래일', '${dates.length}일',
           Icons.calendar_today_rounded, const Color(0xFF6366F1))),
-        Container(width: 1, height: 40, color: OC.border.withOpacity(0.4)),
+        Container(width: 1, height: 40, color: OC.border.withValues(alpha: 0.4)),
         Expanded(child: _statCell(
           '일 평균', _fmtShort(avgPerDay),
           Icons.trending_up_rounded, const Color(0xFF0EA5E9))),
-        Container(width: 1, height: 40, color: OC.border.withOpacity(0.4)),
+        Container(width: 1, height: 40, color: OC.border.withValues(alpha: 0.4)),
         Expanded(child: _statCell(
           '최대', maxItem != null ? _fmtShort(maxItem.amount) : '-',
           Icons.arrow_upward_rounded, const Color(0xFFF59E0B))),
@@ -291,7 +291,7 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
 
   Widget _statCell(String label, String value, IconData icon, Color color) {
     return Column(children: [
-      Icon(icon, size: 16, color: color.withOpacity(0.7)),
+      Icon(icon, size: 16, color: color.withValues(alpha: 0.7)),
       const SizedBox(height: 6),
       Text(value, style: const TextStyle(
         fontSize: 14, fontWeight: FontWeight.w800, color: OC.text1)),
@@ -315,8 +315,8 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: OC.card, borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: OC.border.withOpacity(0.5)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03),
+        border: Border.all(color: OC.border.withValues(alpha: 0.5)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03),
           blurRadius: 12, offset: const Offset(0, 4))]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Row(children: [
@@ -390,7 +390,7 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
           gradient: const LinearGradient(
             colors: [Color(0xFF5B5FE6), Color(0xFF7C7FF2)]),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: OC.accent.withOpacity(0.25),
+          boxShadow: [BoxShadow(color: OC.accent.withValues(alpha: 0.25),
             blurRadius: 16, offset: const Offset(0, 4))]),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -439,8 +439,8 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: OC.card, borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: OC.border.withOpacity(0.5)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03),
+        border: Border.all(color: OC.border.withValues(alpha: 0.5)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03),
           blurRadius: 12, offset: const Offset(0, 4))]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // 헤더
@@ -464,7 +464,7 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           decoration: BoxDecoration(
             border: Border(bottom: BorderSide(
-              color: OC.border.withOpacity(0.4)))),
+              color: OC.border.withValues(alpha: 0.4)))),
           child: const Row(children: [
             SizedBox(width: 44),
             Expanded(child: Text('항목', style: TextStyle(
@@ -490,14 +490,14 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withOpacity(0.06),
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(6)),
                 child: Text(_fmtDate(g.key), style: const TextStyle(
                   fontSize: 10, fontWeight: FontWeight.w800, color: OC.text2)),
               ),
               const SizedBox(width: 8),
               Expanded(child: Container(height: 0.5,
-                color: OC.border.withOpacity(0.3))),
+                color: OC.border.withValues(alpha: 0.3))),
               const SizedBox(width: 8),
               Text(_fmtShort(dayTotal), style: const TextStyle(
                 fontSize: 10, fontWeight: FontWeight.w700, color: OC.text3)),
@@ -525,7 +525,7 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
         padding: const EdgeInsets.only(right: 20),
         margin: const EdgeInsets.only(top: 2),
         decoration: BoxDecoration(
-          color: OC.error.withOpacity(0.08),
+          color: OC.error.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10)),
         child: const Icon(Icons.delete_outline_rounded,
           color: OC.error, size: 18)),
@@ -533,13 +533,13 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(
-            color: OC.border.withOpacity(0.15)))),
+            color: OC.border.withValues(alpha: 0.15)))),
         child: Row(children: [
           // 카테고리 아이콘
           Container(
             width: 32, height: 32,
             decoration: BoxDecoration(
-              color: _catColor(e.category).withOpacity(0.08),
+              color: _catColor(e.category).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8)),
             child: Center(child: Text(_catEmoji(e.category),
               style: const TextStyle(fontSize: 15))),
@@ -612,7 +612,7 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: OC.accent.withOpacity(0.1),
+                    color: OC.accent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10)),
                   child: const Icon(Icons.edit_note_rounded,
                     size: 18, color: OC.accent)),

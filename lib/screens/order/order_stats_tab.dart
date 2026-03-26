@@ -48,12 +48,12 @@ class OrderStatsTab extends StatelessWidget {
   Widget _stat(String v, String u, String l, Color c, Color bg) => Container(
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: c.withOpacity(.2))),
+      border: Border.all(color: c.withValues(alpha: .2))),
     child: Column(children: [
       Row(mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end, children: [
         Text(v, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: c)),
-        if (u.isNotEmpty) Text(u, style: TextStyle(fontSize: 13, color: c.withOpacity(.6))),
+        if (u.isNotEmpty) Text(u, style: TextStyle(fontSize: 13, color: c.withValues(alpha: .6))),
       ]),
       const SizedBox(height: 3),
       Text(l, style: const TextStyle(fontSize: 10, color: OC.text3, fontWeight: FontWeight.w600),
@@ -196,7 +196,7 @@ class OrderStatsTab extends StatelessWidget {
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(width: 34, height: 34,
               decoration: BoxDecoration(color: tb, borderRadius: BorderRadius.circular(9),
-                border: Border.all(color: tc.withOpacity(.3))),
+                border: Border.all(color: tc.withValues(alpha: .3))),
               child: Center(child: Text(gl.tierEmoji, style: const TextStyle(fontSize: 15)))),
             const SizedBox(width: 8),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
