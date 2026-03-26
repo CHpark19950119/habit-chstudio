@@ -199,46 +199,6 @@ extension _HomeOrderSection on _HomeScreenState {
     _safeSetState(() {});
   }
 
-  /// 비집중 활성 습관 미니 행 (최대 3개)
-  List<Widget> _buildMiniHabitRows() {
-    final habits = _orderData?.habits ?? [];
-    final active = habits.where((h) =>
-      h.rank != 1 && h.settledAt == null && h.rank > 0
-    ).take(3).toList();
-    if (active.isEmpty) return [];
-
-    final todayStr = StudyDateUtils.todayKey();
-
-    return active.map((h) {
-      final done = h.isDoneOn(todayStr);
-      return Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: GestureDetector(
-          onTap: () => _toggleHabit(h),
-          child: Row(children: [
-            Icon(
-              done ? Icons.check_circle : Icons.radio_button_unchecked,
-              size: 18,
-              color: done
-                  ? const Color(0xFF22C55E).withValues(alpha: 0.7)
-                  : _textMuted.withValues(alpha: 0.3)),
-            const SizedBox(width: 10),
-            Expanded(child: Text(
-              '${h.emoji} ${h.title}',
-              style: TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w600,
-                color: done ? _textMuted : _textSub,
-                decoration: done ? TextDecoration.lineThrough : null),
-              maxLines: 1, overflow: TextOverflow.ellipsis)),
-            Text('🔥${h.currentStreak}', style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w700,
-              color: _textMuted)),
-          ]),
-        ),
-      );
-    }).toList();
-  }
-
   /// ORDER 데이터 Firebase 저장 (★ Phase B: order 문서에 write)
   Future<void> _saveOrderData() async {
     if (_orderData == null) return;
@@ -346,42 +306,6 @@ extension _HomeOrderSection on _HomeScreenState {
     );
   }
 
-  // ══════════════════════════════════════════
-  //  도구 바로가기 (하단 배치)
-  // ══════════════════════════════════════════
-  Widget _quickToolsRow() {
-    return Row(children: [
-      _quickTool('🚌', '버스', () async {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('버스 도착정보 조회 중...'), duration: Duration(seconds: 1)));
-        await BusService().fetchNow();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('텔레그램으로 전송 완료'), duration: Duration(seconds: 2)));
-        }
-      }),
-    ]);
-  }
-
-  Widget _quickTool(String emoji, String label, VoidCallback onTap) {
-    return Expanded(child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.7),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _border.withValues(alpha: 0.15))),
-        child: Column(children: [
-          Text(emoji, style: const TextStyle(fontSize: 20)),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w700, color: _textMuted)),
-        ]),
-      ),
-    ));
-  }
-
   Future<void> _showAddMemoDialog() async {
     final controller = TextEditingController();
     final result = await showDialog<String>(
@@ -419,9 +343,3 @@ class _DaySegment {
     this.startEvent});
 }
 
-/// 시간축 마커
-class _TimeMarker {
-  final int min;
-  final String label;
-  const _TimeMarker({required this.min, required this.label});
-}

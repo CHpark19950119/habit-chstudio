@@ -109,44 +109,6 @@ extension _HomeRoutineCard on _HomeScreenState {
     );
   }
 
-  // ── 외출/귀가 토글 ──
-  Future<void> _toggleOuting() async {
-    final d = _studyDate();
-    final now = DateTime.now();
-    final timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    final fb = FirebaseService();
-    final records = await fb.getTimeRecords();
-    final existing = records[d];
-
-    if (_outing == null || (_outing != null && _returnHome != null)) {
-      await fb.updateTimeRecord(d, TimeRecord(
-        date: d, wake: existing?.wake,
-        study: existing?.study, studyEnd: existing?.studyEnd,
-        outing: timeStr, returnHome: null,
-        arrival: existing?.arrival, bedTime: existing?.bedTime,
-        mealStart: existing?.mealStart, mealEnd: existing?.mealEnd,
-        meals: existing?.meals,
-      ));
-      _nfc.forceOutState(true);
-      _safeSetState(() { _outing = timeStr; _returnHome = null; _outingMinutes = null; });
-    } else if (_outing != null && _returnHome == null) {
-      await fb.updateTimeRecord(d, TimeRecord(
-        date: d, wake: existing?.wake,
-        study: existing?.study, studyEnd: existing?.studyEnd,
-        outing: existing?.outing, returnHome: timeStr,
-        arrival: existing?.arrival, bedTime: existing?.bedTime,
-        mealStart: existing?.mealStart, mealEnd: existing?.mealEnd,
-        meals: existing?.meals,
-      ));
-      _nfc.forceOutState(false);
-      final outMin = TimeRecord(date: d, outing: _outing, returnHome: timeStr).outingMinutes;
-      _safeSetState(() { _returnHome = timeStr; _outingMinutes = outMin; });
-      await Future.delayed(const Duration(milliseconds: 300));
-      if (mounted) await _load();
-      if (now.hour >= 22 && mounted) _showDayEndDialog(d);
-    }
-  }
-
   Future<void> _showDayEndDialog(String dateStr) async {
     await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
@@ -202,16 +164,6 @@ extension _HomeRoutineCard on _HomeScreenState {
       }
       _load();
     }
-  }
-
-  int _calcOutingElapsed() {
-    if (_outing == null) return 0;
-    try {
-      final p = _outing!.split(':');
-      final now = DateTime.now();
-      final start = DateTime(now.year, now.month, now.day, int.parse(p[0]), int.parse(p[1]));
-      return now.difference(start).inMinutes.clamp(0, 1440);
-    } catch (_) { return 0; }
   }
 
   Future<void> _editTimeField(String field, String label, String? current) async {
@@ -278,15 +230,6 @@ extension _HomeRoutineCard on _HomeScreenState {
     } catch (_) { return hhmm; }
   }
 
-  Widget _pulseDot(Color c) => Container(width: 8, height: 8,
-    decoration: BoxDecoration(color: c, shape: BoxShape.circle,
-      boxShadow: [BoxShadow(color: c.withValues(alpha: 0.5), blurRadius: 6, spreadRadius: 1)]));
-
-  Future<void> _quickWake() async {
-    await WakeService().recordWake();
-    await _load();
-  }
-
   /// 공부 시작/종료 토글
   Future<void> _quickStudy() async {
     final d = _studyDate();
@@ -318,12 +261,6 @@ extension _HomeRoutineCard on _HomeScreenState {
     }
   }
 
-  /// 식사 토글 (NFC 서비스 위임 — 다회 식사 로직)
-  Future<void> _quickMeal() async {
-    await _nfc.manualTestRole(ActionType.meal);
-    await _load();
-  }
-
   /// 취침 기록
   Future<void> _quickSleep() async {
     final d = _studyDate();
@@ -349,100 +286,6 @@ extension _HomeRoutineCard on _HomeScreenState {
     });
   }
 
-  // ═══════════════════════════════════════════════════
-  // IoT Presence 카드 — mmWave 센서 실시간 상태
-  // ═══════════════════════════════════════════════════
-
-  Widget _presenceCard() {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.doc(kIotDoc).snapshots(),
-      builder: (ctx, snap) {
-        String emoji = '📡', label = '센서 연결 대기';
-        Color color = _textMuted;
-        int? dist;
-        String? timerStr;
-
-        if (snap.hasData && snap.data!.exists) {
-          final data = snap.data!.data() as Map<String, dynamic>? ?? {};
-          final presence = data['presence'] as Map<String, dynamic>?;
-          final config = data['config'] as Map<String, dynamic>?;
-          // ★ configurable 임계값 (Firestore iot.config.bedThresholdCm, 기본 220)
-          final bedThreshold = (config?['bedThresholdCm'] as num?)?.toInt() ?? 220;
-          if (presence != null) {
-            final state = presence['state'] as String? ?? 'unknown';
-            // ★ 필터된 거리 우선, fallback raw distance
-            final filtRaw = presence['filteredDistance'];
-            final rawDist = presence['distance'];
-            final filtDist = filtRaw is num ? filtRaw.toInt() : null;
-            dist = rawDist is int ? rawDist : (rawDist is num ? rawDist.toInt() : null);
-            final zoneDist = filtDist ?? dist;
-            final since = presence['stationarySince'];
-
-            switch (state) {
-              case 'peaceful':
-                final isBed = zoneDist != null && zoneDist <= bedThreshold;
-                emoji = isBed ? '🛏️' : '🪑';
-                label = isBed ? '침대' : '책상';
-                color = isBed ? const Color(0xFF6B5DAF) : BotanicalColors.primary;
-                break;
-              case 'presence':
-                emoji = '🚶';
-                label = '움직임';
-                color = const Color(0xFFE8A735);
-                break;
-              case 'none':
-                emoji = '🚫';
-                label = '비어있음';
-                color = _textMuted;
-                break;
-              default:
-                emoji = '📡';
-                label = state;
-                color = _textMuted;
-            }
-
-            if (since != null && since is Timestamp && state == 'peaceful'
-                && zoneDist != null && zoneDist <= bedThreshold) {
-              final elapsed = DateTime.now().difference(since.toDate());
-              final min = elapsed.inMinutes;
-              timerStr = min < 60 ? '${min}분째' : '${min ~/ 60}h ${min % 60}m째';
-            }
-          }
-        }
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: _dk ? BotanicalColors.cardDark : BotanicalColors.cardLight,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _border.withValues(alpha: _dk ? 0.15 : 0.6))),
-          child: Row(children: [
-            Text(emoji, style: const TextStyle(fontSize: 16)),
-            const SizedBox(width: 8),
-            Text(label, style: TextStyle(
-              fontSize: 13, fontWeight: FontWeight.w600, color: color)),
-            if (dist != null) ...[
-              const SizedBox(width: 6),
-              Text('${dist}cm', style: TextStyle(
-                fontSize: 10, color: _textMuted)),
-            ],
-            if (timerStr != null) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(4)),
-                child: Text(timerStr, style: TextStyle(
-                  fontSize: 9, fontWeight: FontWeight.w700, color: color))),
-            ],
-            const Spacer(),
-            Icon(Icons.sensors_rounded, size: 14, color: _textMuted.withValues(alpha: 0.2)),
-          ]),
-        );
-      },
-    );
-  }
 }
 
 /// 루틴 아이템 데이터

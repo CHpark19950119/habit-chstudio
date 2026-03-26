@@ -433,12 +433,6 @@ class _OrderScreenState extends State<OrderScreen> {
     ));
   }
 
-  String _formatWon(int v) {
-    if (v >= 10000) return '${(v / 10000).toStringAsFixed(1)}만';
-    if (v >= 1000) return '${(v / 1000).toStringAsFixed(0)}천';
-    return '${v}원';
-  }
-
   String _numberFormat(int v) {
     final s = v.toString();
     final buf = StringBuffer();

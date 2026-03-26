@@ -42,7 +42,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   Map<String, int> _subjectMinutes = {};
   List<_SleepPoint> _sleepPattern = [];
   int _totalWeekMin = 0;
-  int _totalMonthMin = 0;
   int _todayMin = 0;
   int _streak = 0;
 
@@ -67,7 +66,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
   // ★ 데일리 로그 강화 — 시간 사용 분석
   Map<String, int> _timeUsage7d = {};  // 카테고리별 7일 합산 (분)
-  int _totalTracked7d = 0;             // 7일간 추적된 총시간
   List<int> _wakeTrend = [];           // 7일 기상시각 (분)
   List<int> _bedTrend = [];            // 7일 취침시각 (분)
   int? _todayPrepMin;    // 오늘 준비시간
@@ -313,7 +311,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
     // ── 7. 공부통계 강화 (쉬는날 제외) ──
     final studyDays7 = weekData.where((d) => d.minutes > 0 && !d.isRestDay).length;
-    final activeDays7 = weekData.where((d) => !d.isRestDay).length; // 쉬는날 빼고 실제 공부일
     final weekTotal = weekData.where((d) => !d.isRestDay).fold<int>(0, (s, d) => s + d.minutes);
     final weekAvg = studyDays7 > 0 ? weekTotal ~/ studyDays7 : 0;
     final monthStudyDays = monthData.where((d) => d.minutes > 0 && !d.isRestDay).length;
@@ -400,7 +397,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         ? List.generate(7, (i) => _SleepPoint(label: _dayLabel(now.subtract(Duration(days: 6 - i)))))
         : sleepPts;
       _totalWeekMin = weekTotal;
-      _totalMonthMin = monthTotal;
       _todayMin = weekData.isNotEmpty ? weekData.last.minutes : 0;
       _streak = streak; _loading = false;
       // 루틴 통계
@@ -415,7 +411,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       _bestDayMin = bestMin; _bestDayLabel = bestLabel;
       _studyDays7 = studyDays7;
       // 데일리 로그 강화
-      _timeUsage7d = timeUsage; _totalTracked7d = totalTracked;
+      _timeUsage7d = timeUsage;
       _wakeTrend = wakes; _bedTrend = beds;
       _todayPrepMin = tdPrep; _todayCommuteMin = tdCommute;
       _todayStudyMin = tdStudy; _todayFreeMin = tdFree;
@@ -693,53 +689,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           size: 14, weight: FontWeight.w700, color: _textMain)),
       ]),
     ]);
-  }
-
-  // ═══ ② Bar Chart ═══
-  Widget _barChartCard() {
-    final data = _isWeekly ? _weeklyData : _monthlyData;
-    final maxMin = data.isEmpty ? 480 : data.map((d) => d.minutes).reduce(max).clamp(60, 720);
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: _dk ? [const Color(0xFF1A2E26), const Color(0xFF142420)]
-                      : [const Color(0xFFE8F5E9), const Color(0xFFF1F8E9)]),
-        border: Border.all(color: BotanicalColors.primary.withValues(alpha: 0.08))),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(children: [
-        // 보태니컬 잎사귀 장식
-        Positioned(top: -15, right: -15,
-          child: Container(width: 60, height: 60,
-            decoration: BoxDecoration(
-              color: BotanicalColors.primary.withValues(alpha: _dk ? 0.06 : 0.05),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(30), topRight: Radius.circular(30),
-                bottomLeft: Radius.circular(30), bottomRight: Radius.circular(0))))),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Row(children: [
-              Container(padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: BotanicalColors.primary.withValues(alpha: _dk ? 0.12 : 0.08),
-                  borderRadius: BorderRadius.circular(7)),
-                child: const Text('🌲', style: TextStyle(fontSize: 12))),
-              const SizedBox(width: 8),
-              Text('순공시간', style: BotanicalTypo.body(size: 15, weight: FontWeight.w700, color: _textMain)),
-            ]),
-            _periodToggle(),
-          ]),
-          const SizedBox(height: 20),
-          AnimatedBuilder(animation: _chartAnim,
-            builder: (_, __) => SizedBox(height: 160,
-              child: CustomPaint(size: const Size(double.infinity, 160),
-                painter: _BarChartPainter(data: data, maxMin: maxMin, progress: _chartAnim.value,
-                  isWeekly: _isWeekly, dark: _dk, accent: _accent, primary: BotanicalColors.primary,
-                  gold: BotanicalColors.gold, border: _border, txtMain: _textMain, txtMuted: _textMuted)))),
-        ]),
-      ]),
-    );
   }
 
   Widget _periodToggle() => Container(
@@ -1238,88 +1187,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         }),
       ]),
     );
-  }
-
-  // ═══ ⑥ Place Card ═══
-  // ═══ 공부통계 요약 카드 ═══
-  Widget _studySummaryCard() {
-    final todayH = _todayMin ~/ 60; final todayM = _todayMin % 60;
-    final avgH = _weekAvgMin ~/ 60; final avgM = _weekAvgMin % 60;
-    final diff = _todayMin - _weekAvgMin;
-    final diffSign = diff >= 0 ? '+' : '';
-    final diffStr = '${diffSign}${diff ~/ 60}h ${(diff.abs() % 60)}m';
-
-    final progress = (_todayMin / 480 * 100).toInt();
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BotanicalDeco.card(_dk),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: BotanicalColors.info.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.analytics_rounded, size: 16, color: BotanicalColors.info)),
-          const SizedBox(width: 10),
-          Text('학습 분석', style: BotanicalTypo.body(size: 14, weight: FontWeight.w700, color: _textMain)),
-          const Spacer(),
-          // ★ 목표 달성률 뱃지
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: BotanicalColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10)),
-            child: Text('목표 $progress%',
-              style: BotanicalTypo.label(size: 11, weight: FontWeight.w800, color: BotanicalColors.primary))),
-        ]),
-        const SizedBox(height: 16),
-        // 지표 그리드
-        Row(children: [
-          _miniStat('오늘', '${todayH}h ${todayM}m',
-            color: _todayMin >= _weekAvgMin ? BotanicalColors.primary : const Color(0xFFEF4444)),
-          _miniStat('주간 평균', '${avgH}h ${avgM}m', color: BotanicalColors.info),
-          _miniStat('월간 평균', '${_monthAvgMin ~/ 60}h ${_monthAvgMin % 60}m', color: BotanicalColors.gold),
-        ]),
-        const SizedBox(height: 12),
-        Row(children: [
-          _miniStat('이번주 최고', '${_bestDayMin ~/ 60}h $_bestDayLabel',
-            color: const Color(0xFF8B5CF6)),
-          _miniStat('공부일수', '$_studyDays7/7일', color: BotanicalColors.primary),
-          _miniStat('평균 대비', diffStr,
-            color: diff >= 0 ? BotanicalColors.primary : const Color(0xFFEF4444)),
-        ]),
-        // ★ 코멘트
-        const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(10)),
-          child: Row(children: [
-            Text(_getStudyComment(), style: BotanicalTypo.label(
-              size: 11, weight: FontWeight.w600, color: _textMuted)),
-          ])),
-      ]),
-    );
-  }
-
-  String _getStudyComment() {
-    if (_todayMin == 0) return '💭 오늘 아직 공부 기록이 없습니다';
-    if (_todayMin >= _weekAvgMin * 1.2) return '🔥 평균보다 20% 이상 — 훌륭한 하루!';
-    if (_todayMin >= _weekAvgMin) return '✅ 평균 이상 달성 — 꾸준함이 힘!';
-    if (_todayMin >= _weekAvgMin * 0.8) return '📈 평균에 근접 — 조금만 더 힘내세요!';
-    return '💪 아직 시간이 있습니다 — 집중해봅시다!';
-  }
-
-  Widget _miniStat(String label, String value, {required Color color}) {
-    return Expanded(child: Column(children: [
-      Text(value, style: BotanicalTypo.body(
-        size: 13, weight: FontWeight.w800, color: color)),
-      const SizedBox(height: 2),
-      Text(label, style: BotanicalTypo.label(
-        size: 10, color: _textMuted)),
-    ]));
   }
 
   // ═══ 시간 사용 분석 카드 (데일리 로그) ═══

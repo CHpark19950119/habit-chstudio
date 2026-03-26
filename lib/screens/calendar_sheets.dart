@@ -280,7 +280,6 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
   }
 
   Widget _ddayRow(PlanDDay dd, String today) {
-    final isCurrent = dd.containsToday;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

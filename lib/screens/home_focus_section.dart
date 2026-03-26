@@ -16,10 +16,8 @@ extension _HomeFocusSection on _HomeScreenState {
   Future<void> _loadFocusRecords() async {
     _safeSetState(() => _focusRecordsLoading = true);
     try {
-      final w = await _ft.getWeeklyStudyMinutes();
       await _ft.refreshTodaySessions();
       _safeSetState(() {
-        _focusWeekly = w;
         _focusSessions = _ft.todaySessions;
         _focusRecordsLoading = false;
       });
@@ -486,56 +484,6 @@ extension _HomeFocusSection on _HomeScreenState {
           ),
         ],
       ]),
-    );
-  }
-
-  Widget _fStartButton(Color sc) {
-    return GestureDetector(
-      onTap: () async {
-        await _ft.startSession(subject: _focusSubj, mode: _focusMode);
-        if (mounted) {
-          Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const FocusScreen()))
-            .then((_) { _load(); _loadFocusRecords(); });
-        }
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  sc.withValues(alpha: _dk ? 0.18 : 0.12),
-                  sc.withValues(alpha: _dk ? 0.08 : 0.04),
-                ],
-                begin: Alignment.topLeft, end: Alignment.bottomRight),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: sc.withValues(alpha: 0.25)),
-              boxShadow: [
-                BoxShadow(color: sc.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8)),
-              ],
-            ),
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Container(
-                width: 34, height: 34,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: sc.withValues(alpha: 0.22),
-                  boxShadow: [BoxShadow(color: sc.withValues(alpha: 0.15), blurRadius: 12)]),
-                child: Icon(Icons.play_arrow_rounded, size: 22, color: sc),
-              ),
-              const SizedBox(width: 10),
-              Text('시작', style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w800,
-                color: sc, letterSpacing: 0.5)),
-            ]),
-          ),
-        ),
-      ),
     );
   }
 

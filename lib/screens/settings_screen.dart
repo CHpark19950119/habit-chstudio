@@ -299,40 +299,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ═══ 수면 자동 감지 카드 ═══
-  Widget _sleepDetectCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BotanicalDeco.card(_dk),
-      child: Row(children: [
-        Container(
-          width: 44, height: 44,
-          decoration: BoxDecoration(
-            color: const Color(0xFF6366f1).withValues(alpha: _dk ? 0.12 : 0.08),
-            borderRadius: BorderRadius.circular(14)),
-          child: const Icon(Icons.bedtime_rounded, size: 24,
-            color: Color(0xFF6366f1)),
-        ),
-        const SizedBox(width: 16),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('수면 자동 감지', style: BotanicalTypo.body(
-            size: 15, weight: FontWeight.w700, color: _textMain)),
-          const SizedBox(height: 2),
-          Text('야간 화면 30분 꺼짐 → 취침 확인 알림', style: BotanicalTypo.label(
-            size: 11, color: _textMuted)),
-        ])),
-        Switch.adaptive(
-          value: _sleepDetectEnabled,
-          activeColor: const Color(0xFF6366f1),
-          onChanged: (v) async {
-            await _sleepDetect.setEnabled(v);
-            _safeSetState(() => _sleepDetectEnabled = v);
-          },
-        ),
-      ]),
-    );
-  }
-
   // ═══ 빅스비 연동 카드 ═══
   Widget _bixbyCard() {
     return Container(

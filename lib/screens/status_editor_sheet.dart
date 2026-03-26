@@ -104,8 +104,6 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
     final textMuted = dk ? Colors.white54 : Colors.grey;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bottomPad = MediaQuery.of(context).padding.bottom;
-    final isMealSection = widget.highlightField == 'meal';
-
     return Container(
       margin: const EdgeInsets.only(top: 60),
       decoration: BoxDecoration(
@@ -249,7 +247,6 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
 
   Widget _mealCard(int index, bool dk, Color textMain, Color textMuted, Color mealColor) {
     final meal = _meals[index];
-    final typeInfo = _mealTypeInfo(meal.type);
     final duration = _calcDuration(meal.start, meal.end);
 
     return Container(

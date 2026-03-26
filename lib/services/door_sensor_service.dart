@@ -6,7 +6,6 @@ import '../models/iot_models.dart';
 import 'location_service.dart';
 import '../constants.dart';
 import 'day_service.dart';
-import 'telegram_service.dart';
 
 /// ═══════════════════════════════════════════════════════════
 ///  DoorSensorService — IoT 도어 센서 연동
@@ -207,10 +206,6 @@ class DoorSensorService extends ChangeNotifier {
     // 방문 센서: 텔레그램 알림 비활성 (기상 감지는 SensorWakeDetector가 처리)
     final dayState = DayService().state;
     _log('문 ${event.type.name} — 알림 생략 (state=${dayState.name})');
-  }
-
-  void _sendTelegram(String msg) {
-    TelegramService().sendToMe(msg);
   }
 
   /// 문 열림 시 GPS 위치를 Firestore data/iot lastLocation에 저장

@@ -561,12 +561,9 @@ class _CalendarScreenState extends State<CalendarScreen>
     final isSelected = dateStr == selectedStr;
     final isPast = date.isBefore(DateTime(today.year, today.month, today.day));
     final isFuture = date.isAfter(DateTime(today.year, today.month, today.day));
-    final hasMemo = _monthMemos.containsKey(dateStr);
     final isRestDay = _restDays.contains(dateStr);
     final isHomeDay = _monthHomeDays.contains(dateStr);
     final isSunday = dow == 0;
-    final hasJournal = _journalsForDate(dateStr).isNotEmpty;
-
     // ★ Plan 마일스톤 체크
     final planDDays = StudyPlanData.ddaysForDate(dateStr);
     final planMilestones = StudyPlanData.milestonesForDate(dateStr);

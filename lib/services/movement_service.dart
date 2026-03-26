@@ -32,7 +32,6 @@ class MovementService extends ChangeNotifier {
   // ═══ Activity Recognition ═══
   String? _currentActivity;
   List<Map<String, String>> _activityTransitions = [];
-  String? _activityDate;
 
   // ═══ Movement listener ═══
   String? _lastMovementType;
@@ -133,7 +132,7 @@ class MovementService extends ChangeNotifier {
       if (_activityTransitions.isNotEmpty) {
         _activityTransitions = [];
         _currentActivity = null;
-        _activityDate = null;
+
         notifyListeners();
       }
       return;
@@ -142,7 +141,7 @@ class MovementService extends ChangeNotifier {
     final newCurrent = activity['current'] as String?;
     if (newCurrent != _currentActivity) {
       _currentActivity = newCurrent;
-      _activityDate = actDate;
+
       changed = true;
     }
     final transitions = activity['transitions'] as List?;
@@ -313,7 +312,6 @@ class MovementService extends ChangeNotifier {
     _returnTime = null;
     _activityTransitions = [];
     _currentActivity = null;
-    _activityDate = null;
     notifyListeners();
   }
 

@@ -20,7 +20,6 @@ part 'firebase_data_part.dart';
 const String _studyDoc = kStudyDoc;
 const String _liveFocusDoc = kLiveFocusDoc;
 const String _todayDoc2 = kTodayDoc;
-const String _alarmSettingsDoc = 'users/$kUid/settings/alarm';
 const String _locationHistoryCol = 'users/$kUid/locationHistory';
 const String _behaviorTimelineCol = 'users/$kUid/behaviorTimeline';
 const String _nfcTagsDoc = 'users/$kUid/settings/nfcTags';
@@ -35,8 +34,6 @@ const String _focusCyclesField = 'focusCycles';
 const String _progressGoalsField = 'progressGoals';
 const String _restDaysField = 'restDays';
 const String _customTasksField = 'customStudyTasks';
-const String _dayDiariesField = 'dayDiaries';
-
 const _cacheTtl = Duration(minutes: 5);
 const _archiveFields = ['timeRecords', 'studyTimeRecords', 'focusCycles', 'todos'];
 

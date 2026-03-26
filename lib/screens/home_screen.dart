@@ -21,13 +21,11 @@ import 'progress_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/scheduler.dart';
 import 'status_editor_sheet.dart';
-import 'insight_screen.dart';
 import 'order/order_screen.dart';
 import '../models/order_models.dart';
 import '../models/plan_models.dart';
 import '../services/todo_service.dart';
 import '../services/local_cache_service.dart';
-import '../services/creature_service.dart';
 import '../services/cradle_service.dart';
 import '../services/wake_service.dart';
 import '../services/bus_service.dart';
@@ -58,7 +56,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String? _bedTime;
   String? _prevBedTime; // 어제 취침 (수면시간 계산용)
   String? _mealStart, _mealEnd;
-  int? _outingMinutes;
   int _effMin = 0;
   WeatherData? _weatherData;
   bool _noOuting = false; // ★ v10: 외출 안하는 날 (수동)
@@ -113,20 +110,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
   int _tab = 0;
   int _pendingTab = 0;
-  double _tabFadeValue = 1.0;
   List<MealEntry> _todayMeals = []; // ★ v9: 다회 식사
   List<String> _dailyMemos = [];   // ★ 데일리 메모
-
-  // ★ Creature
-  int _creatureLevel = 1;
-  int _creatureStage = 0;
 
   // ★ Focus setup (home tab)
   final _cradle = CradleService();
   String _focusSubj = '자료해석';
   String _focusMode = 'study';
   List<FocusCycle> _focusSessions = [];
-  Map<String, int> _focusWeekly = {};
   bool _focusRecordsLoading = false;
   bool _focusScreenOpen = false;
 
@@ -438,13 +429,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final w = await _weather.getCurrentWeather();
       if (w != null) _safeSetState(() => _weatherData = w);
     });
-    _tryRefresh('creature', () async {
-      final c = await CreatureService().getCreature();
-      _safeSetState(() {
-        _creatureLevel = (c['level'] as num?)?.toInt() ?? 1;
-        _creatureStage = (c['stage'] as num?)?.toInt() ?? 0;
-      });
-    });
   }
 
   /// study 데이터 파싱 → UI 상태에 반영 (로컬/Firebase 공용)
@@ -517,7 +501,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _mealStart = tr['mealStart'] as String?;
           _mealEnd = tr['mealEnd'] as String?;
           _noOuting = tr['noOuting'] == true;
-          _outingMinutes = (tr['outingMinutes'] as num?)?.toInt();
           if (tr['meals'] is List) {
             _todayMeals = (tr['meals'] as List)
                 .map((m) => MealEntry.fromMap(Map<String, dynamic>.from(m as Map)))
@@ -530,7 +513,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _outing = rec.outing; _returnHome = rec.returnHome; _bedTime = rec.bedTime;
           _mealStart = rec.mealStart; _mealEnd = rec.mealEnd;
           _todayMeals = rec.meals; _noOuting = rec.noOuting;
-          _outingMinutes = rec.outingMinutes;
         }
       }
     } catch (e) { debugPrint('[Home] today timeRecords: $e'); }
@@ -622,12 +604,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!mounted) return;
       _safeSetState(() {
         _tab = _pendingTab;
-        _tabFadeValue = 0.0;
       });
-      _tabFadeCtrl.reverse().then((_) {
-        if (!mounted) return;
-        _safeSetState(() => _tabFadeValue = 1.0);
-      });
+      _tabFadeCtrl.reverse();
     });
   }
 
@@ -821,47 +799,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Text(title, style: TextStyle(
         fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.5,
         color: _textMuted)),
-    );
-  }
-
-  // ══════════════════════════════════════════
-  //  TAB 2: 도구 (자동화 + 시스템)
-  // ══════════════════════════════════════════
-
-  Widget _toolsPage() {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      children: [
-        Text('도구', style: BotanicalTypo.heading(
-          size: 26, weight: FontWeight.w800, color: _textMain)),
-        const SizedBox(height: 4),
-        Text('자동화와 시스템 관리', style: BotanicalTypo.label(
-          size: 13, color: _textMuted)),
-        const SizedBox(height: 24),
-
-        _sectionHeader('⚙️', '시스템'),
-        const SizedBox(height: 10),
-        // ★ #5: 데일리 인사이트
-        _toolCard(
-          icon: '💡', label: '데일리 인사이트',
-          subtitle: '학습 회고 & 인사이트 기록',
-          color: const Color(0xFFF59E0B),
-          onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const InsightScreen())),
-        ),
-        const SizedBox(height: 20),
-
-        _sectionHeader('🔧', '앱 설정'),
-        const SizedBox(height: 10),
-        _toolCard(
-          icon: '⚙️', label: '설정',
-          subtitle: '앱 설정 및 데이터 관리',
-          color: _textSub,
-          onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const SettingsScreen())),
-        ),
-        const SizedBox(height: 40),
-      ],
     );
   }
 
@@ -1277,88 +1214,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ══════════════════════════════════════════
-  //  ★ Stage4: 날씨 + 성적 2컬럼 컴팩트 카드
-  // ══════════════════════════════════════════
-
-  Widget _weatherGradeRow() {
-    final w = _weatherData;
-    final h = _effMin ~/ 60;
-    final m = _effMin % 60;
-    final pc = _dk ? BotanicalColors.primaryLight : BotanicalColors.primary;
-
-    return IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      // ── 날씨 디테일 카드 (LEFT) — 체감온도 + 옷차림 팁 ──
-      Expanded(child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: _dk ? const Color(0xFF1A2535) : const Color(0xFFF0F4FA),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _dk
-            ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04))),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('체감온도', style: BotanicalTypo.label(
-            size: 10, weight: FontWeight.w600, letterSpacing: 1, color: _textMuted)),
-          const SizedBox(height: 6),
-          Row(crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic, children: [
-            Text(w != null ? '${w.feelsLike.round()}°' : '--°',
-              style: BotanicalTypo.number(size: 28, weight: FontWeight.w700,
-                color: _dk ? Colors.white : _textMain)),
-            const SizedBox(width: 6),
-            if (w != null)
-              Text('습도 ${w.humidity}%', style: BotanicalTypo.label(
-                size: 10, color: _textMuted)),
-          ]),
-          const SizedBox(height: 6),
-          Text(w != null ? _weather.getClothingAdvice(w) : '날씨 로딩 중',
-            style: BotanicalTypo.label(size: 10, color: _textSub),
-            maxLines: 2),
-        ]),
-      )),
-      const SizedBox(width: 10),
-      // ── 순공시간 카드 (RIGHT) ──
-      Expanded(child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-            colors: _dk
-              ? [const Color(0xFF1E3A2F), const Color(0xFF1A2E26)]
-              : [const Color(0xFFE8F5E9), const Color(0xFFF1F8E9)]),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: pc.withValues(alpha: _dk ? 0.3 : 0.15)),
-          boxShadow: [BoxShadow(
-            color: pc.withValues(alpha: _dk ? 0.12 : 0.06),
-            blurRadius: 16, offset: const Offset(0, 4))]),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Row(children: [
-            Icon(Icons.timer_outlined, size: 14, color: pc),
-            const SizedBox(width: 6),
-            Text('순공시간', style: BotanicalTypo.label(
-              size: 10, weight: FontWeight.w700, letterSpacing: 1, color: pc)),
-          ]),
-          const SizedBox(height: 6),
-          Row(crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic, children: [
-            Text('${h}h ${m}m', style: BotanicalTypo.heading(size: 22, weight: FontWeight.w900, color: pc)),
-          ]),
-          const SizedBox(height: 6),
-          ClipRRect(borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: (_effMin / 480).clamp(0.0, 1.0),
-              backgroundColor: _dk ? Colors.white.withValues(alpha: 0.08) : pc.withValues(alpha: 0.1),
-              valueColor: AlwaysStoppedAnimation(pc),
-              minHeight: 3)),
-        ]),
-      )),
-    ]));
-  }
-
-  // ── (gradeCard 제거됨 — _studyTimeCard 사용) ──
-
   // ── 순공시간 카드 (full width) ──
 
   Widget _studyTimeCard() {
@@ -1406,417 +1261,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ]),
     );
   }
-
-  // ══════════════════════════════════════════
-  //  ★ 집 홈데이 배너
-  // ══════════════════════════════════════════
-
-  Widget _homeDayBanner() {
-    // 기상 후 경과시간
-    int homeMinutes = 0;
-    if (_wake != null) {
-      try {
-        final now = DateTime.now();
-        final p = _wake!.split(':');
-        var wakeTime = DateTime(now.year, now.month, now.day,
-            int.parse(p[0]), int.parse(p[1]));
-        if (wakeTime.isAfter(now)) {
-          wakeTime = wakeTime.subtract(const Duration(days: 1));
-        }
-        homeMinutes = now.difference(wakeTime).inMinutes.clamp(0, 1440);
-      } catch (_) {}
-    }
-    final homeH = homeMinutes ~/ 60;
-    final homeM = homeMinutes % 60;
-
-    // 시간대별 메시지
-    final hour = DateTime.now().hour;
-    final String mood;
-    final String sub;
-    if (hour < 12) {
-      mood = '조용한 오전';
-      sub = '집에서 차분하게 시작하는 하루';
-    } else if (hour < 17) {
-      mood = '느긋한 오후';
-      sub = '바깥 없이도 충분한 하루';
-    } else {
-      mood = '고요한 저녁';
-      sub = '오늘 하루 집에서 보냈어요';
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: _dk
-            ? [const Color(0xFF1B2338), const Color(0xFF1A2030)]
-            : [const Color(0xFFF0F0FA), const Color(0xFFEBF0F9)]),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFF5B7ABF).withValues(alpha: _dk ? 0.25 : 0.15))),
-      child: Row(children: [
-        // 집 아이콘
-        Container(
-          width: 42, height: 42,
-          decoration: BoxDecoration(
-            color: const Color(0xFF5B7ABF).withValues(alpha: _dk ? 0.15 : 0.1),
-            borderRadius: BorderRadius.circular(12)),
-          child: const Center(child: Text('🏡', style: TextStyle(fontSize: 20)))),
-        const SizedBox(width: 12),
-        Expanded(child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(mood, style: BotanicalTypo.label(
-            size: 13, weight: FontWeight.w800,
-            color: _dk ? const Color(0xFFA8BFEF) : const Color(0xFF3D5A99))),
-          const SizedBox(height: 2),
-          Text(sub, style: BotanicalTypo.label(
-            size: 10, color: _textMuted)),
-        ])),
-        // 홈데이 시간
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFF5B7ABF).withValues(alpha: _dk ? 0.12 : 0.08),
-            borderRadius: BorderRadius.circular(10)),
-          child: Column(children: [
-            Text('${homeH}h ${homeM}m', style: BotanicalTypo.number(
-              size: 13, weight: FontWeight.w700,
-              color: _dk ? const Color(0xFFA8BFEF) : const Color(0xFF3D5A99))),
-            Text('홈데이', style: BotanicalTypo.label(
-              size: 9, color: _textMuted)),
-          ]),
-        ),
-        const SizedBox(width: 8),
-        // 홈데이 해제 버튼
-        GestureDetector(
-          onTap: _toggleHomeDay,
-          child: Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(
-              color: _textMuted.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8)),
-            child: Icon(Icons.close_rounded, size: 16, color: _textMuted),
-          ),
-        ),
-      ]),
-    );
-  }
-
-  // ══════════════════════════════════════════
-  //  ★ 집 홈데이 전용 대시보드
-  // ══════════════════════════════════════════
-
-  Widget _homeDayPage() {
-    // 홈데이 경과 시간
-    int homeMin = 0;
-    if (_wake != null) {
-      try {
-        final now = DateTime.now();
-        final p = _wake!.split(':');
-        final wt = DateTime(now.year, now.month, now.day, int.parse(p[0]), int.parse(p[1]));
-        homeMin = now.difference(wt).inMinutes.clamp(0, 1440);
-      } catch (_) {}
-    }
-    final homeH = homeMin ~/ 60;
-    final homeM = homeMin % 60;
-
-    // 시간대별 인사
-    final hour = DateTime.now().hour;
-    final String greeting, greetSub;
-    if (hour < 12) {
-      greeting = '고요한 아침';
-      greetSub = '집에서 차분하게 시작하는 하루';
-    } else if (hour < 17) {
-      greeting = '느긋한 오후';
-      greetSub = '나만의 공간에서 집중하는 시간';
-    } else if (hour < 21) {
-      greeting = '편안한 저녁';
-      greetSub = '오늘 하루도 집에서 잘 보냈어요';
-    } else {
-      greeting = '깊은 밤';
-      greetSub = '하루를 마무리할 시간이에요';
-    }
-
-    // 색상 팔레트 (코지 인디고)
-    const hc = Color(0xFF5B7ABF);
-    final hcLight = _dk ? const Color(0xFFA8BFEF) : const Color(0xFF3D5A99);
-    final heroBg = _dk
-      ? const [Color(0xFF151B2E), Color(0xFF1A2038)]
-      : const [Color(0xFFEDF1FA), Color(0xFFE4EAF6)];
-    final cardBg = _dk ? Colors.white.withValues(alpha: 0.04) : Colors.white;
-    final cardBorder = hc.withValues(alpha: _dk ? 0.15 : 0.1);
-
-    final now = DateTime.now();
-    final wd = ['월','화','수','목','금','토','일'][now.weekday - 1];
-    final w = _weatherData;
-
-    return RefreshIndicator(
-      color: hc,
-      onRefresh: () => _load(forceServer: true),
-      child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        children: [
-          // ═══ HEADER ═══
-          _staggered(0, Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                const Text('🏡', style: TextStyle(fontSize: 18)),
-                const SizedBox(width: 6),
-                Text('HOME DAY', style: BotanicalTypo.label(
-                  size: 11, weight: FontWeight.w800, letterSpacing: 2,
-                  color: hcLight)),
-              ]),
-              const SizedBox(height: 4),
-              Text('${now.month}월 ${now.day}일 ($wd)',
-                style: BotanicalTypo.heading(size: 22, weight: FontWeight.w800, color: _textMain)),
-            ])),
-            if (w != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: hc.withValues(alpha: _dk ? 0.1 : 0.06),
-                  borderRadius: BorderRadius.circular(10)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(w.emoji, style: const TextStyle(fontSize: 14)),
-                  const SizedBox(width: 4),
-                  Text('${w.temp.round()}°', style: BotanicalTypo.number(
-                    size: 13, weight: FontWeight.w700, color: hcLight)),
-                ]),
-              ),
-            const SizedBox(width: 6),
-            _headerIconBtn(Icons.settings_outlined, () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen())), size: 18),
-          ])),
-          const SizedBox(height: 18),
-
-          // ═══ 히어로 카드 ═══
-          _staggered(1, Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft, end: Alignment.bottomRight,
-                colors: heroBg),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: hc.withValues(alpha: _dk ? 0.25 : 0.15))),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              // 인사
-              Text(greeting, style: BotanicalTypo.heading(
-                size: 24, weight: FontWeight.w800, color: hcLight)),
-              const SizedBox(height: 4),
-              Text(greetSub, style: BotanicalTypo.label(
-                size: 12, color: _textMuted)),
-              const SizedBox(height: 20),
-              // 홈데이시간 + 순공시간
-              Row(children: [
-                _homeDayStatPill('🏡', '${homeH}h ${homeM}m', '홈데이', hc),
-                const SizedBox(width: 10),
-                _homeDayStatPill('📖', '${_effMin ~/ 60}h ${(_effMin % 60).toString().padLeft(2, '0')}m', '순공', BotanicalColors.primary),
-                const SizedBox(width: 10),
-                _homeDayStatPill('🍽️', '${_todayMeals.length}회', '식사', const Color(0xFFFF8A65)),
-              ]),
-            ]),
-          )),
-          const SizedBox(height: 14),
-
-          // ═══ 퀵 액션 ═══
-          _staggered(2, Row(children: [
-            _homeDayAction('📖', '공부', _quickStudy,
-              active: _studyStart != null && _studyEnd == null),
-            const SizedBox(width: 8),
-            _homeDayAction('🌙', '취침', _quickSleep,
-              active: _bedTime != null),
-            const SizedBox(width: 8),
-            Expanded(child: GestureDetector(
-              onTap: () {
-                HapticFeedback.mediumImpact();
-                Navigator.push(context, PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => const OrderScreen(),
-                  transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
-                  transitionDuration: const Duration(milliseconds: 200),
-                )).then((_) => _load());
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: cardBg, borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: cardBorder)),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Text('🧭', style: TextStyle(fontSize: 20)),
-                  const SizedBox(height: 4),
-                  Text('ORDER', style: BotanicalTypo.label(
-                    size: 9, weight: FontWeight.w700, color: _textMuted)),
-                ]),
-              ),
-            )),
-          ])),
-          const SizedBox(height: 14),
-
-          // ═══ 포커스 배너 (진행 중일 때) ═══
-          if (_ft.isRunning) ...[
-            _staggered(2, _activeFocusBanner()),
-            const SizedBox(height: 14),
-          ],
-
-          // ═══ COMPASS (컴팩트) ═══
-          _staggered(3, _orderPortalChip()),
-          const SizedBox(height: 14),
-
-          // ═══ LOG ═══
-          _staggered(4, _dashboardMemoWidget()),
-          const SizedBox(height: 10),
-          _staggered(4, _locationSummaryCard()),
-          const SizedBox(height: 24),
-        ],
-      ),
-    );
-  }
-
-  Widget _homeDayStatPill(String emoji, String value, String label, Color c) {
-    return Expanded(child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: c.withValues(alpha: _dk ? 0.1 : 0.06),
-        borderRadius: BorderRadius.circular(14)),
-      child: Column(children: [
-        Text(emoji, style: const TextStyle(fontSize: 16)),
-        const SizedBox(height: 4),
-        Text(value, style: BotanicalTypo.number(
-          size: 14, weight: FontWeight.w700,
-          color: _dk ? Colors.white.withValues(alpha: 0.85) : c)),
-        Text(label, style: BotanicalTypo.label(
-          size: 9, color: _textMuted)),
-      ]),
-    ));
-  }
-
-  Widget _homeDayAction(String emoji, String label, VoidCallback onTap,
-      {bool active = false}) {
-    final c = active
-      ? (_dk ? const Color(0xFF5B7ABF) : const Color(0xFF3D5A99))
-      : _textMuted;
-    return Expanded(child: GestureDetector(
-      onTap: () { HapticFeedback.selectionClick(); onTap(); },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: active
-            ? const Color(0xFF5B7ABF).withValues(alpha: _dk ? 0.15 : 0.08)
-            : (_dk ? Colors.white.withValues(alpha: 0.04) : Colors.white),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: active
-              ? const Color(0xFF5B7ABF).withValues(alpha: 0.3)
-              : (_dk ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFE8E4DF)))),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(emoji, style: const TextStyle(fontSize: 20)),
-          const SizedBox(height: 4),
-          Text(label, style: BotanicalTypo.label(
-            size: 9, weight: active ? FontWeight.w800 : FontWeight.w600, color: c)),
-        ]),
-      ),
-    ));
-  }
-
-  // ══════════════════════════════════════════
-  //  ② 히어로 카드 (레거시 — 직접 호출 안 함)
-  // ══════════════════════════════════════════
-
-  Widget _heroStatsRow() {
-    final h = _effMin ~/ 60;
-    final m = _effMin % 60;
-    final pc = _dk ? BotanicalColors.primaryLight : BotanicalColors.primary;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: _dk
-            ? [const Color(0xFF1E3A2F), const Color(0xFF1A2E26)]
-            : [const Color(0xFFE8F5E9), const Color(0xFFF1F8E9)]),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: BotanicalColors.primary.withValues(alpha: _dk ? 0.3 : 0.15)),
-        boxShadow: [BoxShadow(
-          color: BotanicalColors.primary.withValues(alpha: _dk ? 0.15 : 0.08),
-          blurRadius: 20, offset: const Offset(0, 6))]),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            padding: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              color: BotanicalColors.primary.withValues(alpha: _dk ? 0.2 : 0.1),
-              borderRadius: BorderRadius.circular(8)),
-            child: Icon(Icons.timer_outlined, size: 14, color: pc)),
-          const SizedBox(width: 8),
-          Text('순공시간', style: BotanicalTypo.label(
-            size: 11, weight: FontWeight.w700, color: pc)),
-        ]),
-        const SizedBox(height: 10),
-        Row(crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic, children: [
-          Text('$h', style: BotanicalTypo.number(size: 38, weight: FontWeight.w300,
-            color: _dk ? Colors.white : BotanicalColors.textMain)),
-          Text('h ', style: BotanicalTypo.label(size: 15, weight: FontWeight.w300,
-            color: _dk ? Colors.white54 : BotanicalColors.textSub)),
-          Text('${m.toString().padLeft(2, '0')}', style: BotanicalTypo.number(
-            size: 26, weight: FontWeight.w300,
-            color: _dk ? Colors.white70 : BotanicalColors.textSub)),
-          Text('m', style: BotanicalTypo.label(size: 13, weight: FontWeight.w300,
-            color: _dk ? Colors.white38 : BotanicalColors.textMuted)),
-        ]),
-        const SizedBox(height: 8),
-        ClipRRect(borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: (_effMin / 480).clamp(0.0, 1.0),
-            backgroundColor: _dk
-              ? Colors.white.withValues(alpha: 0.08)
-              : BotanicalColors.primary.withValues(alpha: 0.1),
-            valueColor: AlwaysStoppedAnimation(pc),
-            minHeight: 4)),
-        const SizedBox(height: 3),
-        Text('목표 8h · ${(_effMin / 480 * 100).toInt()}%',
-          style: BotanicalTypo.label(size: 10,
-            color: _dk ? Colors.white38 : BotanicalColors.textMuted)),
-      ]),
-    );
-  }
-
-  // ══════════════════════════════════════════
-  //  ③ 스코어 브레이크다운
-  // ══════════════════════════════════════════
-
-  Widget _scoreBreakdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-      decoration: BotanicalDeco.card(_dk),
-      child: Row(children: [
-        _infoCell('기상', _fmt12h(_wake),
-          BotanicalColors.gold, Icons.wb_sunny_outlined),
-        _infoDivider(),
-        _infoCell('공부시작', _fmt12h(_studyStart),
-          BotanicalColors.subjectData, Icons.menu_book_outlined),
-        _infoDivider(),
-        _infoCell('순공', '${_effMin ~/ 60}h${_effMin % 60}m',
-          BotanicalColors.primary, Icons.schedule_outlined),
-      ]),
-    );
-  }
-
-  Widget _infoCell(String label, String value,
-      Color color, IconData icon) {
-    return Expanded(child: Column(children: [
-      Icon(icon, size: 16, color: color.withValues(alpha: 0.7)),
-      const SizedBox(height: 6),
-      Text(value, style: BotanicalTypo.label(
-        size: 13, weight: FontWeight.w700, color: _textMain)),
-      const SizedBox(height: 2),
-      Text(label, style: BotanicalTypo.label(size: 10, color: _textMuted)),
-    ]));
-  }
-
-  Widget _infoDivider() => Container(
-    width: 1, height: 45, color: _border.withValues(alpha: 0.4));
 
   // ══════════════════════════════════════════
   //  포커스 활성 배너

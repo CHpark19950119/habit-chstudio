@@ -54,21 +54,7 @@ extension _HomeDailyLog on _HomeScreenState {
 
     // 2) ★ #8 FIX: 이벤트 순서대로 세그먼트 생성 (시간 수정 시 올바른 위치에 배치)
     // 모든 이벤트를 시작/종료 페어로 변환하여 시간순 분포
-    
-    String _labelBetween(String fromType, String toType) {
-      // 두 이벤트 사이의 활동 유형 결정
-      // wake 이후 noOuting이면 "재택"으로 표시
-      if (fromType == 'wake') return _isHomeDay ? '재택' : '준비';
-      if (fromType == 'outing') return '이동';
-      if (fromType == 'studyStart' || fromType.startsWith('meal_') && fromType.endsWith('_end')) return '공부';
-      if (fromType.startsWith('meal_') && fromType.endsWith('_start')) return '식사';
-      if (fromType == 'mealStart') return '식사';
-      if (fromType == 'mealEnd') return '공부';
-      if (fromType == 'studyEnd') return '이동';
-      if (fromType == 'returnHome') return '자유';
-      return _isHomeDay ? '재택' : '준비';
-    }
-    
+
     Color _colorFor(String label) {
       switch (label) {
         case '준비': return const Color(0xFFF59E0B);
@@ -300,8 +286,6 @@ extension _HomeDailyLog on _HomeScreenState {
     // ★ B2 FIX: 자정 넘김을 고려한 duration 계산
     final startMin = safeMin(segments.first.start);
     final endMin = safeMin(_fmt24Now());
-    final totalRange = (endMin - startMin).clamp(1, 1440);
-
     // 각 세그먼트 duration 계산 (자정 넘김 보정)
     final durations = segments.map((seg) {
       final s = safeMin(seg.start);
@@ -524,7 +508,6 @@ extension _HomeDailyLog on _HomeScreenState {
               if (display.isEmpty) return <Widget>[];
               return display.asMap().entries.map((entry) {
                 final e = entry.value;
-                final isLast = entry.key == display.length - 1;
                 final emoji = e.key == '공부' ? '📖' : e.key == '휴식' ? '☕' : e.key == '이동' ? '🚶' : e.key == '체류' ? '📍' : e.key == '자유' ? '🏠' : e.key == '준비' ? '🌅' : e.key == '재택' ? '🏠' : e.key == '식사' ? '🍽️' : '📍';
                 final h = e.value ~/ 60; final m = e.value % 60;
                 final timeStr = h > 0 ? '${h}h${m > 0 ? " ${m}m" : ""}' : '${m}m';

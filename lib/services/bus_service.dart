@@ -14,7 +14,6 @@ class BusService {
   static const _hardcodedKey =
       '437f2a7403f7b513b880e5d996044d5e1144695e65c4a9d1c11e26c13ea5384c';
   static const _prefsKeyStops = 'bus_stops';
-  static const _pollInterval = Duration(minutes: 15);
 
   /// 기본 정류장 (하드코딩)
   static final List<BusStop> _defaultStops = [

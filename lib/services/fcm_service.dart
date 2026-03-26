@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -6,7 +5,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../firebase_options.dart';
 import 'day_service.dart';
@@ -14,11 +12,6 @@ import 'day_service.dart';
 // ═══════════════════════════════════════════════════════════
 //  FCM Background Handler + Geofence Foreground Service
 // ═══════════════════════════════════════════════════════════
-
-const String _myBot = '8514127849:AAF8_F7SBfm51SGHtp9X5lva7yexdnFyapo';
-const String _myChat = '8724548311';
-const String _gfBot = '8613977898:AAEuuoTVARS-a9nrDp85NWHHOYM0lRvmZmc';
-const String _gfChat = '8624466505';
 
 /// Top-level FCM background handler — 앱이 꺼져있어도 실행됨
 @pragma('vm:entry-point')
@@ -88,23 +81,6 @@ String _todayKey([DateTime? dt]) {
 String _timeStr([DateTime? dt]) {
   final now = dt ?? DateTime.now();
   return '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-}
-
-Future<void> _sendBoth(String msg) async {
-  try {
-    await Future.wait([
-      http.post(
-        Uri.parse('https://api.telegram.org/bot$_myBot/sendMessage'),
-        headers: {'Content-Type': 'application/json; charset=utf-8'},
-        body: jsonEncode({'chat_id': _myChat, 'text': msg}),
-      ),
-      http.post(
-        Uri.parse('https://api.telegram.org/bot$_gfBot/sendMessage'),
-        headers: {'Content-Type': 'application/json; charset=utf-8'},
-        body: jsonEncode({'chat_id': _gfChat, 'text': msg}),
-      ),
-    ]);
-  } catch (_) {}
 }
 
 // ═══════════════════════════════════════════════════════════

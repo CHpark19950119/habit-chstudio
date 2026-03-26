@@ -374,71 +374,6 @@ class _ProgressScreenState extends State<ProgressScreen>
     );
   }
 
-  Widget _buildNextLectureBanner(bool isDark) {
-    final goal = _nextLectureGoal!;
-    final cfg = _cfgFor(goal.subject);
-    final color = Color(cfg.color);
-    final unitLabel = goal.unitName.isNotEmpty ? goal.unitName : '강';
-    final next = goal.currentUnit + 1;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: _glass(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-                color: color.withValues(alpha: isDark ? 0.2 : 0.12),
-                borderRadius: BorderRadius.circular(10)),
-            child: const Text('🎧', style: TextStyle(fontSize: 18)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text('다음 강의',
-                    style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                        letterSpacing: 0.5)),
-                const SizedBox(height: 2),
-                Text(goal.title,
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color:
-                            isDark ? Colors.white : const Color(0xFF1E293B)),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                Text(
-                    '${next}$unitLabel부터 · ${goal.currentUnit}/${goal.totalUnits}$unitLabel 완료',
-                    style:
-                        TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-              ])),
-          // 미니 진행률
-          SizedBox(
-              width: 36,
-              height: 36,
-              child: Stack(alignment: Alignment.center, children: [
-                CircularProgressIndicator(
-                    value: goal.progressPercent / 100,
-                    strokeWidth: 2.5,
-                    backgroundColor: color.withValues(alpha: 0.15),
-                    valueColor: AlwaysStoppedAnimation(color)),
-                Text('${goal.progressPercent.round()}%',
-                    style: TextStyle(
-                        fontSize: 8,
-                        fontWeight: FontWeight.w800,
-                        color: color)),
-              ])),
-        ]),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -642,20 +577,6 @@ class _ProgressScreenState extends State<ProgressScreen>
         ],
       ),
     );
-  }
-
-  Widget _summaryItem(String label, String value, Color color) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Column(children: [
-      Text(value,
-          style: TextStyle(
-              fontSize: 16, fontWeight: FontWeight.w800, color: color)),
-      const SizedBox(height: 2),
-      Text(label,
-          style: TextStyle(
-              fontSize: 10,
-              color: isDark ? Colors.white54 : Colors.grey.shade500)),
-    ]);
   }
 
   // ═══════════════════════════════════════════════════════════
