@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'services/firebase_service.dart';
 import 'services/focus_service.dart';
 import 'services/local_cache_service.dart';
@@ -36,6 +37,17 @@ class AppInit {
     } catch (e) {
       debugPrint('[AppInit] rollover error: $e');
     }
+
+    // ── Phase 1.6: stuck rollover 플래그 정리 ──
+    try {
+      final td = await FirebaseService().getTodayDoc();
+      if (td != null && td['_rolloverInProgress'] == true) {
+        debugPrint('[AppInit] stuck rollover flag — removing');
+        await FirebaseService().updateTodayField(
+          '_rolloverInProgress', FieldValue.delete(),
+        );
+      }
+    } catch (_) {}
 
     // ── Phase 2: 서비스 초기화 (병렬, 개별 try-catch) ──
     await Future.wait([

@@ -32,18 +32,15 @@ import '../services/todo_service.dart';
 import '../services/local_cache_service.dart';
 import '../services/creature_service.dart';
 import '../services/cradle_service.dart';
-import '../services/library_service.dart';
 import '../services/wake_service.dart';
 import '../services/bus_service.dart';
 import '../utils/study_date_utils.dart';
-import 'library_seat_map_screen.dart';
 
 part 'home_focus_section.dart';
 part 'home_daily_log.dart';
 part 'home_routine_card.dart';
 part 'home_order_section.dart';
 part 'home_todo_section.dart';
-part 'home_library_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -135,9 +132,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Map<String, int> _focusWeekly = {};
   bool _focusRecordsLoading = false;
   bool _focusScreenOpen = false;
-
-  // ★ Library
-  LibraryRoom? _libraryRoom;
 
   // ★ R2: COMPASS 대시보드 데이터
   OrderData? _orderData;
@@ -329,11 +323,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceServer = false}) async {
     // NFC 리스너는 initState에서 등록됨 (ChangeNotifier 방식)
     if (_isLoading) return;
     _isLoading = true;
     try {
+      if (forceServer) FirebaseService().invalidateAllCaches();
       await _doLoad(); // ★ 전체 타임아웃 제거 — 각 문서별 개별 타임아웃으로 처리
     } catch (e) {
       debugPrint('[Home] _load error: $e');
@@ -343,13 +338,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   /// Todo 전용 경량 리로드 (todos 문서만 읽기)
-  Future<void> _loadTodosOnly() async {
+  Future<void> _loadTodosOnly({bool forceServer = false}) async {
     // ★ write 보호 중이면 리로드 스킵 (방금 입력한 데이터 보호)
     if (LocalCacheService().isWriteProtected()) {
       debugPrint('[Home] _loadTodosOnly skip: write-protected');
       return;
     }
     try {
+      if (forceServer) FirebaseService().invalidateStudyCache();
       final data = await FirebaseService().getTodosData();
       if (data == null || !mounted) return;
       // ★ 리로드 도중 write가 발생했으면 결과 무시
@@ -658,7 +654,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _startFirebaseListener();
     _load();
     _loadFocusRecords();
-    _loadLibrary();
     // ★ 자동 아카이브 (7일 이전 데이터 → 월별 아카이브, UI 블로킹 없음)
     fb.autoArchive().catchError((e) {
       debugPrint('[Home] autoArchive error: $e');
@@ -790,7 +785,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _dashboardPage() {
     return RefreshIndicator(
       color: BotanicalColors.primary,
-      onRefresh: () => _load(),
+      onRefresh: () => _load(forceServer: true),
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
@@ -803,7 +798,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           const SizedBox(height: 8),
           _staggered(1, _studyTimeCard()),
           const SizedBox(height: 8),
-          _staggered(2, _libraryCard()),
           if (_ft.isRunning) ...[
             const SizedBox(height: 8),
             _staggered(2, _activeFocusBanner()),
@@ -1562,7 +1556,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     return RefreshIndicator(
       color: hc,
-      onRefresh: () => _load(),
+      onRefresh: () => _load(forceServer: true),
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         children: [

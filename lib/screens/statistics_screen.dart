@@ -132,6 +132,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   Future<void> _load() async {
     if (!mounted) return;
     _safeSetState(() => _loading = true);
+    // ★ pull-to-refresh 시 캐시 무효화 — 서버 최신 데이터 보장
+    FirebaseService().invalidateStudyCache();
     final now = DateTime.now();
 
     // ── 0. Locale 안전 보장 ──

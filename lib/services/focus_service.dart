@@ -1,15 +1,18 @@
-import 'package:cloud_firestore/cloud_firestore.dart' show FieldValue;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:hive/hive.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'dart:async';
 import 'dart:convert';
 import '../models/models.dart';
 import 'firebase_service.dart';
+import 'write_queue_service.dart';
 import 'creature_service.dart';
 import 'cradle_service.dart';
 import '../utils/study_date_utils.dart';
+import '../constants.dart';
 import 'widget_render_service.dart';
 
 // ══════════════════════════════════════════
@@ -129,27 +132,135 @@ class FocusService extends ChangeNotifier {
 
   Future<Box> _openBox() async => Hive.openBox(_boxName);
 
-  Future<void> _loadTodaySessions() async {
+  /// 캘린더용: Hive에서 해당 월의 모든 포커스 세션 조회
+  Future<Map<String, List<FocusCycle>>> getHiveSessionsForMonth(String monthPrefix) async {
+    final result = <String, List<FocusCycle>>{};
     try {
       final box = await _openBox();
-      final dateStr = StudyDateUtils.todayKey();
+      for (final key in box.keys) {
+        if (key is! String || !key.startsWith('sessions_$monthPrefix')) continue;
+        final dateStr = key.replaceFirst('sessions_', '');
+        final raw = box.get(key);
+        if (raw == null) continue;
+        final list = List<dynamic>.from(raw is String ? jsonDecode(raw) : raw);
+        final sessions = <FocusCycle>[];
+        for (final e in list) {
+          try {
+            if (e is Map) sessions.add(FocusCycle.fromMap(Map<String, dynamic>.from(e)));
+          } catch (_) {}
+        }
+        if (sessions.isNotEmpty) result[dateStr] = sessions;
+      }
+    } catch (e) {
+      debugPrint('[FocusService] getHiveSessionsForMonth error: $e');
+    }
+    return result;
+  }
+
+  Future<void> _loadTodaySessions() async {
+    final dateStr = StudyDateUtils.todayKey();
+    Box? box;
+
+    // 1. Hive에서 로컬 세션 로드
+    try {
+      box = await _openBox();
       final raw = box.get('sessions_$dateStr');
       if (raw != null) {
         final list = List<dynamic>.from(raw is String ? jsonDecode(raw) : raw);
-        _todaySessions = list.map((e) {
-          final m = Map<String, dynamic>.from(e as Map);
-          return FocusCycle.fromMap(m);
-        }).toList();
-        _todayStudyMinutes = _todaySessions.fold(0, (s, c) => s + c.effectiveMin);
+        _todaySessions = [];
+        for (final e in list) {
+          try {
+            if (e is Map) {
+              _todaySessions.add(FocusCycle.fromMap(Map<String, dynamic>.from(e)));
+            }
+          } catch (_) {}
+        }
       } else {
         _todaySessions = [];
-        _todayStudyMinutes = 0;
       }
-      debugPrint('[FocusService] loaded ${_todaySessions.length} sessions for $dateStr (${_todayStudyMinutes}min)');
     } catch (e) {
-      debugPrint('[FocusService] loadTodaySessions error: $e');
+      debugPrint('[FocusService] Hive load error: $e');
       _todaySessions = [];
-      _todayStudyMinutes = 0;
+    }
+
+    // 2. Firestore pendingSessions 머지 (Hive 로드 실패해도 실행)
+    try {
+      box ??= await _openBox();
+      debugPrint('[FocusService] starting merge for $dateStr');
+      await _mergeFirestoreSessions(dateStr, box);
+      debugPrint('[FocusService] merge done');
+    } catch (e) {
+      debugPrint('[FocusService] merge outer error: $e');
+    }
+
+    _todayStudyMinutes = _todaySessions.fold(0, (s, c) => s + c.effectiveMin);
+    debugPrint('[FocusService] loaded ${_todaySessions.length} sessions for $dateStr (${_todayStudyMinutes}min)');
+  }
+
+  /// Firestore 'pendingSessions' 필드에서 백도어로 추가된 세션을 머지
+  Future<void> _mergeFirestoreSessions(String dateStr, Box box) async {
+    try {
+      // Firestore에서 읽기 (캐시+서버 자동)
+      debugPrint('[FocusService] merge: fetching study doc...');
+      final studyData2 = await FirebaseService().getStudyData();
+      if (studyData2 == null) {
+        debugPrint('[FocusService] merge: studyData is null');
+        return;
+      }
+      debugPrint('[FocusService] merge: studyData keys=${studyData2.keys.take(5)}');
+      final rawPending = studyData2['pendingSessions'];
+      debugPrint('[FocusService] merge: rawPending type=${rawPending?.runtimeType}');
+      if (rawPending == null || rawPending is! Map) return;
+      final pending = Map<String, dynamic>.from(rawPending);
+      if (pending[dateStr] == null) return;
+      final rawDay = pending[dateStr];
+      final List<dynamic> remoteList;
+      if (rawDay is List) {
+        remoteList = rawDay;
+      } else if (rawDay is Map) {
+        // Firestore가 배열을 {0: ..., 1: ...} Map으로 변환한 경우
+        remoteList = (Map<String, dynamic>.from(rawDay)).values.toList();
+      } else {
+        return;
+      }
+      if (remoteList.isEmpty) return;
+      final localIds = _todaySessions.map((s) => s.id).toSet();
+      int merged = 0;
+      for (final item in remoteList) {
+        if (item is! Map) continue;
+        final m = Map<String, dynamic>.from(item);
+        final id = m['id'] as String? ?? '';
+        if (id.isNotEmpty && !localIds.contains(id)) {
+          final cycle = FocusCycle(
+            id: id,
+            date: dateStr,
+            startTime: m['startTime'] as String? ?? '',
+            endTime: m['endTime'] as String? ?? '',
+            subject: m['subject'] as String? ?? '',
+            segments: [],
+            studyMin: m['studyMinutes'] as int? ?? 0,
+            lectureMin: m['lectureMinutes'] as int? ?? 0,
+            effectiveMin: m['studyMinutes'] as int? ?? 0,
+            restMin: m['restMinutes'] as int? ?? 0,
+          );
+          _todaySessions.add(cycle);
+          merged++;
+        }
+      }
+      if (merged > 0) {
+        final encoded = _todaySessions.map((c) => c.toMap()).toList();
+        await box.put('sessions_$dateStr', encoded);
+        debugPrint('[FocusService] merged $merged pending sessions');
+      }
+      // 머지 완료 후 pendingSessions 삭제
+      try {
+        FirestoreWriteQueue().enqueue(
+          kStudyDoc,
+          {'pendingSessions.$dateStr': FieldValue.delete()},
+        );
+      } catch (_) {}
+    } catch (e) {
+      debugPrint('[FocusService] mergePending error: $e');
     }
   }
 
@@ -641,9 +752,9 @@ class FocusService extends ChangeNotifier {
       );
       await fb.updateStudyTimeRecord(cycle.date, record);
 
+      // today doc studyTime.subjects 갱신 (total은 updateStudyTimeRecord에서 처리됨)
       if (addedMin > 0) {
         try {
-          await fb.updateTodayField('studyTime.total', FieldValue.increment(addedMin));
           final subjectMin = <String, int>{};
           for (final seg in cycle.segments) {
             if (seg.mode == 'study' || seg.mode == 'lecture') {
@@ -683,6 +794,40 @@ class FocusService extends ChangeNotifier {
     } catch (e) {
       debugPrint('[FocusService] sync FAIL: $e');
     }
+
+    // ★ HTTP 백업: Firestore SDK 타임아웃 대비 CF 엔드포인트로 직접 쓰기
+    try {
+      await _httpBackupSync(cycle);
+    } catch (e) {
+      debugPrint('[FocusService] http backup fail: $e');
+    }
+  }
+
+  static const _cfBase = 'https://us-central1-cheonhong-studio.cloudfunctions.net/checkDoorManual';
+
+  Future<void> _httpBackupSync(FocusCycle cycle) async {
+    final addedMin = cycle.studyMin + cycle.lectureMin;
+    if (addedMin <= 0) return;
+
+    // 1. studyTimeRecords — Hive 기준으로 정확한 합계 계산
+    int totalStudy = 0, totalLecture = 0, totalEffective = 0;
+    for (final s in _todaySessions) {
+      totalStudy += s.studyMin;
+      totalLecture += s.lectureMin;
+      totalEffective += s.effectiveMin;
+    }
+    final strJson = Uri.encodeComponent(jsonEncode({
+      '_finalized': false,
+      'totalMinutes': totalStudy + totalLecture,
+      'studyMinutes': totalStudy,
+      'lectureMinutes': totalLecture,
+      'effectiveMinutes': totalEffective,
+    }));
+    await http.get(Uri.parse(
+      '$_cfBase?q=write&doc=study&field=studyTimeRecords.${cycle.date}&value=$strJson',
+    )).timeout(const Duration(seconds: 10));
+
+    debugPrint('[FocusService] http backup: studyTimeRecords OK');
   }
 
   // ── 실시간 동기화 (30초마다) ──

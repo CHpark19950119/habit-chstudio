@@ -4,6 +4,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../services/firebase_service.dart';
+import '../services/focus_service.dart';
 import '../models/models.dart';
 import '../models/order_models.dart';
 import '../theme/botanical_theme.dart';
@@ -98,6 +99,7 @@ class _CalendarScreenState extends State<CalendarScreen>
     if (_loadLock) return; // 중복 호출 방지 (_loading과 분리)
     _loadLock = true;
     _safeSetState(() => _loading = true);
+    FirebaseService().invalidateStudyCache();
     const t = Duration(seconds: 8);
 
     try {
@@ -207,6 +209,31 @@ class _CalendarScreenState extends State<CalendarScreen>
           }
         }
       } catch (_) { _monthFocusCycles = {}; }
+
+      // ★ Hive 로컬 fallback: Firestore sync 실패해도 로컬 데이터 표시
+      try {
+        final hiveSessions = await FocusService().getHiveSessionsForMonth(monthKey);
+        for (final entry in hiveSessions.entries) {
+          // studyTimeRecords에 없거나 0이면 Hive 데이터로 채움
+          final existing = _monthStudyRecords[entry.key];
+          if (existing == null || existing.effectiveMinutes == 0) {
+            final sessions = entry.value;
+            _monthStudyRecords[entry.key] = StudyTimeRecord(
+              date: entry.key,
+              totalMinutes: sessions.fold(0, (s, c) => s + c.studyMin + c.lectureMin),
+              effectiveMinutes: sessions.fold(0, (s, c) => s + c.effectiveMin),
+              studyMinutes: sessions.fold(0, (s, c) => s + c.studyMin),
+              lectureMinutes: sessions.fold(0, (s, c) => s + c.lectureMin),
+            );
+          }
+          // focusCycles에 없으면 Hive 데이터로 채움
+          if (_monthFocusCycles[entry.key]?.isEmpty ?? true) {
+            _monthFocusCycles[entry.key] = entry.value;
+          }
+        }
+      } catch (e) {
+        debugPrint('[Calendar] Hive fallback error: $e');
+      }
 
       try {
         final raw = studyData?['restDays'] as List<dynamic>?;

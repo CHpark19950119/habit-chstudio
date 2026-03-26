@@ -47,6 +47,7 @@ class _OrderScreenState extends State<OrderScreen> {
 
   Future<void> _load() async {
     try {
+      FirebaseService().invalidateStudyCache();
       final raw = await _fb.getStudyData();
       if (raw != null) {
         final od = raw['orderData'];

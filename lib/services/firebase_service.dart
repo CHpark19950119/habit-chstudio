@@ -60,10 +60,24 @@ class FirebaseService {
   DateTime? _studyCacheTime;
   bool _refreshingStudy = false;
 
-  /// 캐시 무효화 (외부 서비스용)
+  /// 캐시 무효화 (외부 서비스용) — 인메모리 + 로컬 캐시 전부 삭제
   void invalidateStudyCache() {
     _studyCache = null;
     _studyCacheTime = null;
+    LocalCacheService().clearStudyCache();
+  }
+
+  /// today doc 캐시 무효화
+  void invalidateTodayCache() {
+    _todayCache2 = null;
+    _todayCacheTime2 = null;
+    LocalCacheService().clearGeneric('today');
+  }
+
+  /// 전체 캐시 무효화 (강제 서버 리프레시)
+  void invalidateAllCaches() {
+    invalidateStudyCache();
+    invalidateTodayCache();
   }
 
   // ═══ Today doc cache ═══

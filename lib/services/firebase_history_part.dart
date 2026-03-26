@@ -426,9 +426,22 @@ extension FirebaseHistoryOps on FirebaseService {
       };
       await _setTodayDoc(newToday);
 
+      // ★ rolloverInProgress 플래그 확실히 제거
+      try {
+        await _db.doc(_todayDoc2).update({
+          '_rolloverInProgress': FieldValue.delete(),
+        }).timeout(const Duration(seconds: 5));
+      } catch (_) {}
+
       debugPrint('[Rollover] archiving done');
     } catch (e) {
       debugPrint('[Rollover] error: $e');
+      // ★ 롤오버 실패해도 플래그 제거 (stuck 방지)
+      try {
+        await _db.doc(_todayDoc2).update({
+          '_rolloverInProgress': FieldValue.delete(),
+        }).timeout(const Duration(seconds: 5));
+      } catch (_) {}
     }
     _rollingOver = false;
   }

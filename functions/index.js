@@ -353,13 +353,13 @@ async function pollDoorLogic() {
 
       // ═══ zone 판별: 필터된 거리 + configurable 임계값 ═══
       const zoneDist = filteredDist !== null ? filteredDist : targetDist;
-      const inBed = presenceState === "peaceful" && zoneDist !== null && zoneDist <= bedThreshold;
+      const inBed = presenceState === "peaceful" && zoneDist !== null && zoneDist >= bedThreshold;
 
-      // stationarySince 추적 — peaceful + 침대 zone
+      // stationarySince 추적 — peaceful + 침대 zone (220cm+)
       if (inBed) {
         const prevInBed = prevPresence.state === "peaceful"
           && (prevPresence.filteredDistance || prevPresence.distance) !== undefined
-          && (prevPresence.filteredDistance || prevPresence.distance) <= bedThreshold;
+          && (prevPresence.filteredDistance || prevPresence.distance) >= bedThreshold;
         if (!prevPresence.stationarySince || !prevInBed) {
           presenceUpdate.stationarySince = admin.firestore.FieldValue.serverTimestamp();
         }
@@ -436,15 +436,28 @@ async function checkWakeAndNotify(iotDoc, firstOpenTime) {
   // wake 기반: 가장 최근 bedTime이 있는 날 이후에 문이 열려야 진짜 기상
   const studyDoc2 = await db.doc("users/" + UID + "/data/study").get();
   const allTr2 = (studyDoc2.exists ? studyDoc2.data() : {}).timeRecords || {};
+  // ★ wake 기반: 가장 최근 bedTime 찾고, 그 이후에 wake가 없어야 진짜 기상
   let lastBedDate = null;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     const d = kstStudyDate(new Date(kstNow.getTime() - i * 24 * 60 * 60 * 1000));
     if (allTr2[d]?.bedTime) { lastBedDate = d; break; }
   }
-  // bedTime 없으면 (아직 안 잠) → wake 스킵
   if (!lastBedDate) {
-    console.log("Wake skip — no recent bedTime found (still awake from yesterday?)");
-    return null;
+    // fallback: bedTime 없어도 오늘 wake 없고 문 열렸으면 기상 허용
+    // (bedTime 연속 실패 시 wake까지 죽는 cascade 방지)
+    if (allTr2[dateStr]?.wake) {
+      return null; // 이미 오늘 wake 있음
+    }
+    console.log("Wake fallback — no bedTime but allowing wake for " + dateStr);
+  } else {
+    // bedTime 이후에 이미 wake가 있는 날짜가 있으면 → 이미 일어남
+    for (let i = 0; i < 4; i++) {
+      const d = kstStudyDate(new Date(kstNow.getTime() - i * 24 * 60 * 60 * 1000));
+      if (d > lastBedDate && allTr2[d]?.wake) {
+        console.log("Wake skip — already woke on " + d + " after bedTime on " + lastBedDate);
+        return null;
+      }
+    }
   }
 
   // ★ 기상 시각: 첫 문 열림 시간 사용 (7시 이전이면 현재 시간)
@@ -461,9 +474,10 @@ async function checkWakeAndNotify(iotDoc, firstOpenTime) {
   // 오늘 wake 이미 기록되었는지 확인
   const todayDoc = await db.doc("users/" + UID + "/data/today").get();
   const todayData = todayDoc.exists ? todayDoc.data() : {};
-  // ★ FIX: today doc은 flat 구조 — timeRecords.wake 직접 확인
+  // ★ FIX: today doc flat 구조 — date가 오늘인 경우만 유효 (어제 잔존 방지)
   const todayTr = todayData.timeRecords || {};
-  if (todayTr.wake || todayTr[dateStr]?.wake) return null; // 이미 기상 기록됨
+  const isTodayDoc = todayData.date === dateStr;
+  if ((isTodayDoc && todayTr.wake) || todayTr[dateStr]?.wake) return null; // 이미 기상 기록됨
 
   // ★ FIX: today=flat, study=nested 분리 쓰기
   const studyUpdate = {timeRecords: {}};
@@ -517,14 +531,23 @@ async function checkMovementPending(iotDoc) {
 
   if (!movement.pending) return null;
 
+  console.log("Movement pending: type=" + movement.type + " leftAtLocal=" + movement.leftAtLocal);
+
   const leftAt = movement.leftAt; // Firestore Timestamp
-  if (!leftAt || !leftAt.toDate) return null;
+  if (!leftAt || !leftAt.toDate) {
+    console.log("Movement: leftAt missing or invalid");
+    return null;
+  }
 
   const leftTime = leftAt.toDate();
   const now = new Date();
   const diffMin = (now - leftTime) / (1000 * 60);
 
-  if (diffMin < 20) return null; // 20분 미경과
+  if (diffMin < 20) {
+    console.log("Movement: " + Math.round(diffMin) + "min elapsed (need 20)");
+    return null;
+  }
+  console.log("Movement: confirming outing after " + Math.round(diffMin) + "min");
 
   // KST 날짜/시간 (4AM 경계 적용)
   const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
@@ -623,25 +646,70 @@ async function checkSleepByPresence(iotDoc, presenceState, prevPresence, zoneDis
   // 시간 조건: 23~07시
   if (kstHour >= 7 && kstHour < 23) return null;
 
-  // presence 조건 (필터된 거리 + configurable 임계값)
-  if (presenceState !== "peaceful" || zoneDist === null || zoneDist > thresh) return null;
+  // presence 조건: thresh(220cm) 이상 = 침대, 미만 = 책상
+  // softMargin(80%): 176cm~220cm = soft zone (45분), 220cm+ = 침대 (30분), 176cm 미만 = 차단
+  const softMargin = Math.round(thresh * 0.8);
+  if (presenceState !== "peaceful" || zoneDist === null || zoneDist < softMargin) {
+    if (kstMin % 10 === 0) {
+      console.log("Sleep gate2: state=" + presenceState + " dist=" + zoneDist + " thresh=" + thresh + " softMargin=" + softMargin);
+    }
+    return null;
+  }
+  const requiredMin = zoneDist >= thresh ? 30 : 45; // 침대=30분, soft zone=45분
 
-  // ★ wake 기반 날짜 귀속: wake 있고 bedTime 없는 가장 최근 날짜 찾기
+  // ★ wake 기반 날짜 귀속: study doc (nested) → today doc (flat) fallback → 직전 날짜
   const studyDoc = await db.doc("users/" + UID + "/data/study").get();
   const studyData = studyDoc.exists ? studyDoc.data() : {};
   const allTr = studyData.timeRecords || {};
 
-  // 오늘 + 최근 3일 검색 (충분한 범위)
+  // today doc fallback (flat 구조)
+  const todayDoc2 = await db.doc("users/" + UID + "/data/today").get();
+  const todayData2 = todayDoc2.exists ? todayDoc2.data() : {};
+  const todayTr2 = todayData2.timeRecords || {};
+
+  const sleepDateStr = kstStudyDate(kstNow);
   let targetDate = null;
-  for (let i = 0; i < 4; i++) {
-    const d = kstStudyDate(new Date(kstNow.getTime() - i * 24 * 60 * 60 * 1000));
-    const rec = allTr[d];
-    if (rec && rec.wake && !rec.bedTime) {
-      targetDate = d;
-      break;
+
+  // 1) study doc 날짜별 구조
+  const rec = allTr[sleepDateStr];
+  if (rec && rec.wake && !rec.bedTime) {
+    targetDate = sleepDateStr;
+  }
+
+  // 2) study doc flat 구조 fallback (레거시 호환)
+  if (!targetDate && allTr.wake && !allTr.bedTime && todayData2.date === sleepDateStr) {
+    targetDate = sleepDateStr;
+  }
+
+  // 3) today doc flat 구조 fallback
+  if (!targetDate && todayTr2.wake && !todayTr2.bedTime && todayData2.date === sleepDateStr) {
+    targetDate = sleepDateStr;
+  }
+
+  // 4) 4AM 경계 넘긴 경우: 직전 study date 1개만 확인 (cascade 방지)
+  if (!targetDate) {
+    const parts = sleepDateStr.split("-");
+    const prevDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    prevDate.setDate(prevDate.getDate() - 1);
+    const prevStr = prevDate.getFullYear() + "-" +
+      String(prevDate.getMonth() + 1).padStart(2, "0") + "-" +
+      String(prevDate.getDate()).padStart(2, "0");
+    const prevRec = allTr[prevStr];
+    if (prevRec && prevRec.wake && !prevRec.bedTime) {
+      targetDate = prevStr;
+    }
+    // prev도 flat fallback
+    if (!targetDate && allTr.wake && !allTr.bedTime && todayData2.date === prevStr) {
+      targetDate = prevStr;
     }
   }
-  if (!targetDate) return null; // wake 없거나 이미 bedTime 있음 → 스킵
+
+  if (!targetDate) {
+    if (kstMin % 10 === 0) {
+      console.log("Sleep gate3: " + sleepDateStr + " wake=" + (rec?.wake || allTr.wake || "none") + " bed=" + (rec?.bedTime || allTr.bedTime || "none"));
+    }
+    return null;
+  }
 
   // ★ 화면 상태 체크: lastScreenOn이 30분 이내면 스킵 (폰 사용 중)
   const iotSnap = iotDoc.exists ? iotDoc.data() : {};
@@ -649,17 +717,25 @@ async function checkSleepByPresence(iotDoc, presenceState, prevPresence, zoneDis
   if (phone.lastScreenOn && phone.lastScreenOn.toDate) {
     const screenMin = (Date.now() - phone.lastScreenOn.toDate().getTime()) / (1000 * 60);
     if (screenMin < 30) {
-      console.log("Sleep skip — screen active " + Math.round(screenMin) + "min ago");
+      console.log("Sleep gate4: screen active " + Math.round(screenMin) + "min ago");
       return null;
     }
   }
 
   // stationarySince 30분 경과 확인
   const since = prevPresence.stationarySince;
-  if (!since || !since.toDate) return null;
+  if (!since || !since.toDate) {
+    console.log("Sleep gate5: no stationarySince");
+    return null;
+  }
   const sinceTime = since.toDate();
   const elapsedMin = (Date.now() - sinceTime.getTime()) / (1000 * 60);
-  if (elapsedMin < 30) return null;
+  if (elapsedMin < requiredMin) {
+    if (kstMin % 10 === 0) {
+      console.log("Sleep gate5: stationary " + Math.round(elapsedMin) + "min (need " + requiredMin + ")");
+    }
+    return null;
+  }
 
   // ═══ 취침 확정 ═══
   const dateStr = targetDate;
@@ -671,11 +747,18 @@ async function checkSleepByPresence(iotDoc, presenceState, prevPresence, zoneDis
   // 2. bedTime 듀얼라이트 — targetDate에 기록
   const studySleepUpdate = {timeRecords: {}};
   studySleepUpdate.timeRecords[dateStr] = {bedTime: timeStr};
+  const studyRef = db.doc("users/" + UID + "/data/study");
   const todayRef = db.doc("users/" + UID + "/data/today");
+  // ★ study doc flat 키 정리 (레거시 호환)
+  const flatCleanup = {};
+  for (const k of ["wake", "outing", "returnHome", "bedTime", "study", "studyEnd", "meal"]) {
+    flatCleanup["timeRecords." + k] = admin.firestore.FieldValue.delete();
+  }
   await Promise.all([
     todayRef.update({"timeRecords.bedTime": timeStr, "date": dateStr})
       .catch(() => todayRef.set({timeRecords: {bedTime: timeStr}, date: dateStr}, {merge: true})),
-    db.doc("users/" + UID + "/data/study").set(studySleepUpdate, {merge: true}),
+    studyRef.set(studySleepUpdate, {merge: true}),
+    studyRef.update(flatCleanup).catch(() => {}),
   ]);
 
   // 3. stationarySince 리셋 (재감지 방지)
@@ -724,10 +807,40 @@ exports.pollDoorSensor = functions.pubsub
 // Manual test endpoint
 exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
   try {
+    // ?q=config&key=bedThresholdCm&value=400 → iot config 설정
+    if (req.query.q === "config") {
+      const key = req.query.key;
+      const value = req.query.value;
+      if (!key) { res.status(400).json({error: "key required"}); return; }
+      const numVal = Number(value);
+      await db.doc("users/" + UID + "/data/iot").set(
+        {config: {[key]: isNaN(numVal) ? value : numVal}}, {merge: true});
+      res.status(200).json({ok: true, key, value: isNaN(numVal) ? value : numVal});
+      return;
+    }
     // ?q=light&on=true/false&device=16a/20a → 플러그 제어
     if (req.query.q === "light") {
-      const on = req.query.on !== "false";
       const device = req.query.device || "16a";
+      // on 파라미터 없으면 → 상태 조회만 (제어 안 함)
+      if (req.query.on === undefined) {
+        if (device === "20a") {
+          const {accessId, accessSecret} = getConfig();
+          const deskPlugId = "ebeaff0f5a69754067yfdv";
+          const token = await getTuyaToken(accessId, accessSecret);
+          const statusArr = await getDeviceStatus(accessId, accessSecret, token, deskPlugId);
+          const sw = statusArr.find((s) => s.code === "switch_1");
+          res.status(200).json({ok: true, device: "20a", light: sw && sw.value ? "ON" : "OFF"});
+        } else {
+          const {accessId, accessSecret} = getConfig();
+          const plugId = process.env.TUYA_PLUG_16A_DEVICE_ID;
+          const token = await getTuyaToken(accessId, accessSecret);
+          const statusArr = await getDeviceStatus(accessId, accessSecret, token, plugId);
+          const sw = statusArr.find((s) => s.code === "switch_1");
+          res.status(200).json({ok: true, device: "16a", light: sw && sw.value ? "ON" : "OFF"});
+        }
+        return;
+      }
+      const on = req.query.on !== "false";
       if (device === "20a") {
         // 20A: 단순 on/off (스탠드/충전기)
         const {accessId, accessSecret} = getConfig();
@@ -753,7 +866,7 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       if (req.query.doc === "iot") {
         const iotDoc = await db.doc("users/" + UID + "/data/iot").get();
         const d = iotDoc.exists ? iotDoc.data() : {};
-        res.status(200).json({presence: d.presence, door: d.door, phone: d.phone});
+        res.status(200).json({presence: d.presence, door: d.door, phone: d.phone, movement: d.movement, config: d.config});
         return;
       }
       const qDate = req.query.date || kstStudyDate();
@@ -779,6 +892,233 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       res.status(200).json({ok: true, date: qDate, field, value: isDel ? "DELETED" : value});
       return;
     }
+
+    // ═══ 범용 Firestore 읽기 ═══
+    // ?q=read&doc=today|study|iot&field=studyTime.total
+    if (req.query.q === "read") {
+      const docName = req.query.doc || "today";
+      const field = req.query.field;
+      const allowed = {today: "data/today", study: "data/study", iot: "data/iot"};
+      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot"}); return; }
+      const snap = await db.doc("users/" + UID + "/" + allowed[docName]).get();
+      if (!snap.exists) { res.status(200).json({}); return; }
+      if (!field) { res.status(200).json(snap.data()); return; }
+      // dot-notation 필드 탐색
+      const parts = field.split(".");
+      let val = snap.data();
+      for (const p of parts) {
+        if (val == null || typeof val !== "object") { val = null; break; }
+        val = val[p];
+      }
+      res.status(200).json({field, value: val !== undefined ? val : null});
+      return;
+    }
+
+    // ═══ 범용 Firestore 쓰기 ═══
+    // ?q=write&doc=today|study&field=studyTime.total&value=120
+    // value: 숫자면 parseInt/parseFloat, JSON이면 parse, 아니면 string
+    if (req.query.q === "write") {
+      const docName = req.query.doc || "today";
+      const field = req.query.field;
+      const rawValue = req.query.value;
+      if (!field) { res.status(400).json({error: "field required"}); return; }
+      const allowed = {today: "data/today", study: "data/study", iot: "data/iot"};
+      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot"}); return; }
+
+      // 타입 자동 변환
+      let parsed;
+      if (rawValue === "true") parsed = true;
+      else if (rawValue === "false") parsed = false;
+      else if (rawValue === "null") parsed = null;
+      else if (!isNaN(rawValue) && rawValue !== "") {
+        parsed = rawValue.includes(".") ? parseFloat(rawValue) : parseInt(rawValue, 10);
+      } else {
+        try { parsed = JSON.parse(rawValue); } catch (_) { parsed = rawValue; }
+      }
+
+      const docRef = db.doc("users/" + UID + "/" + allowed[docName]);
+      // dot-notation → Firestore update (중첩 필드 지원)
+      await docRef.update({[field]: parsed});
+
+      // ★ dual-write: today↔study 자동 동기화
+      if (docName === "today" || docName === "study") {
+        const mirrorName = docName === "today" ? "study" : "today";
+        const mirrorRef = db.doc("users/" + UID + "/" + allowed[mirrorName]);
+        try { await mirrorRef.update({[field]: parsed}); } catch (_) { /* mirror doc 없으면 무시 */ }
+      }
+
+      res.status(200).json({ok: true, doc: docName, field, value: parsed});
+      return;
+    }
+
+    // ═══ 범용 Firestore 필드 삭제 ═══
+    // ?q=delete&doc=today|study&field=studyTime.subjects.test
+    if (req.query.q === "delete") {
+      const docName = req.query.doc || "today";
+      const field = req.query.field;
+      if (!field) { res.status(400).json({error: "field required"}); return; }
+      const allowed = {today: "data/today", study: "data/study", iot: "data/iot"};
+      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot"}); return; }
+      const docRef = db.doc("users/" + UID + "/" + allowed[docName]);
+      await docRef.update({[field]: admin.firestore.FieldValue.delete()});
+      res.status(200).json({ok: true, doc: docName, field, deleted: true});
+      return;
+    }
+
+    // ═══ 포커스 세션 추가 ═══
+    // ?q=focus&action=add&subject=경제학&start=10:00&end=11:30&studyMin=80&lectureMin=0&restMin=10&date=2026-03-24
+    if (req.query.q === "focus") {
+      const action = req.query.action;
+      if (action !== "add") { res.status(400).json({error: "action must be 'add'"}); return; }
+      const subject = req.query.subject;
+      const startTime = req.query.start;
+      const endTime = req.query.end || "";
+      const studyMin = parseInt(req.query.studyMin || "0", 10);
+      const lectureMin = parseInt(req.query.lectureMin || "0", 10);
+      const restMin = parseInt(req.query.restMin || "0", 10);
+      const date = req.query.date || kstStudyDate();
+      if (!subject || !startTime) { res.status(400).json({error: "subject, start required"}); return; }
+
+      const sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const session = {
+        id: sessionId,
+        subject: subject,
+        startTime: startTime,
+        endTime: endTime,
+        studyMinutes: studyMin,
+        lectureMinutes: lectureMin,
+        restMinutes: restMin,
+        date: date,
+      };
+
+      // study doc: studyTimeRecords.{date} 배열에 추가
+      const studyRef = db.doc("users/" + UID + "/data/study");
+      const studySnap = await studyRef.get();
+      const studyData = studySnap.exists ? studySnap.data() : {};
+      const str = studyData.studyTimeRecords || {};
+      const raw = str[date];
+      const dayRecords = Array.isArray(raw) ? [...raw] : [];
+      dayRecords.push(session);
+
+      // studyTime 총합 계산
+      const st = studyData.studyTime || {};
+      const subjects = st.subjects || {};
+      const newTotal = (st.total || 0) + studyMin;
+      const newSubject = (subjects[subject] || 0) + studyMin;
+
+      // pendingSessions에 세션 추가 (앱이 Hive로 머지할 수 있도록)
+      const pending = studyData.pendingSessions || {};
+      const pendingDay = Array.isArray(pending[date]) ? [...pending[date]] : [];
+      pendingDay.push(session);
+
+      await studyRef.set({
+        ["pendingSessions." + date]: pendingDay,
+        "studyTime.total": newTotal,
+        ["studyTime.subjects." + subject]: newSubject,
+      }, {merge: true});
+
+      // today doc 동기화
+      const todayRef = db.doc("users/" + UID + "/data/today");
+      await todayRef.set({
+        "studyTime.total": newTotal,
+        ["studyTime.subjects." + subject]: newSubject,
+      }, {merge: true});
+
+      res.status(200).json({ok: true, session, studyTime: {total: newTotal, subjects: {...subjects, [subject]: newSubject}}});
+      return;
+    }
+
+    // ═══ 투두 추가 ═══
+    // ?q=todo&action=add&title=미시경제+1장&subject=경제학&priority=1&date=2026-03-24
+    if (req.query.q === "todo") {
+      const action = req.query.action;
+      if (action !== "add") { res.status(400).json({error: "action must be 'add'"}); return; }
+      const title = req.query.title;
+      const subject = req.query.subject || "";
+      const priority = parseInt(req.query.priority || "0", 10);
+      const date = req.query.date || kstStudyDate();
+      if (!title) { res.status(400).json({error: "title required"}); return; }
+
+      const todoId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const todo = {
+        id: todoId,
+        title: title,
+        completed: false,
+        subject: subject,
+        priority: priority,
+        type: "daily",
+      };
+
+      // study doc: todos.{date} 배열에 추가
+      const studyRef = db.doc("users/" + UID + "/data/study");
+      const studySnap = await studyRef.get();
+      const studyData = studySnap.exists ? studySnap.data() : {};
+      const todos = (studyData.todos || {})[date] || [];
+      todos.push(todo);
+
+      await studyRef.set({["todos." + date]: todos}, {merge: true});
+
+      // today doc 동기화
+      const todayRef = db.doc("users/" + UID + "/data/today");
+      const todaySnap = await todayRef.get();
+      const todayData = todaySnap.exists ? todaySnap.data() : {};
+      const todayTodos = todayData.todos || [];
+      todayTodos.push(todo);
+      await todayRef.set({todos: todayTodos}, {merge: true});
+
+      res.status(200).json({ok: true, todo, date});
+      return;
+    }
+
+    // ═══ 습관 체크 ═══
+    // ?q=habit&action=check&habitId=abc123&date=2026-03-24
+    if (req.query.q === "habit") {
+      const action = req.query.action;
+      if (action !== "check") { res.status(400).json({error: "action must be 'check'"}); return; }
+      const habitId = req.query.habitId;
+      const date = req.query.date || kstStudyDate();
+      if (!habitId) { res.status(400).json({error: "habitId required"}); return; }
+
+      // today doc의 orderData.habits 배열에서 해당 습관 찾아 completedDates에 추가
+      const todayRef = db.doc("users/" + UID + "/data/today");
+      const todaySnap = await todayRef.get();
+      const todayData = todaySnap.exists ? todaySnap.data() : {};
+      const orderData = todayData.orderData || {};
+      const habits = orderData.habits || [];
+      let found = false;
+      for (const h of habits) {
+        if (h.id === habitId) {
+          if (!h.completedDates) h.completedDates = [];
+          if (!h.completedDates.includes(date)) {
+            h.completedDates.push(date);
+          }
+          found = true;
+          break;
+        }
+      }
+      if (!found) { res.status(404).json({error: "habit not found: " + habitId}); return; }
+      await todayRef.set({orderData: {...orderData, habits}}, {merge: true});
+      res.status(200).json({ok: true, habitId, date, checked: true});
+      return;
+    }
+
+    // ═══ 시간 기록 (timeRecords) ═══
+    // ?q=timerecord&field=wakeTime&value=07:30&date=2026-03-24
+    if (req.query.q === "timerecord") {
+      const field = req.query.field;
+      const value = req.query.value;
+      const date = req.query.date || kstStudyDate();
+      if (!field) { res.status(400).json({error: "field required"}); return; }
+      const isDel = value === "__DELETE__";
+      const fv = isDel ? admin.firestore.FieldValue.delete() : value;
+      await Promise.all([
+        db.doc("users/" + UID + "/data/study").update({["timeRecords." + date + "." + field]: fv}),
+        db.doc("users/" + UID + "/data/today").update({["timeRecords." + field]: isDel ? admin.firestore.FieldValue.delete() : fv}).catch(() => {}),
+      ]);
+      res.status(200).json({ok: true, date, field, value: isDel ? "DELETED" : value});
+      return;
+    }
+
     const result = await pollDoorLogic();
     res.status(200).json(result);
   } catch (err) {
@@ -1181,19 +1521,32 @@ async function pollGosiLogic() {
   const meta = metaDoc.exists ? metaDoc.data() : {};
   const lastNttId = meta.gosiLastNttId || 0;
 
-  // 2. 공지사항 페이지 크롤링
-  const {data: html} = await axios.get(GOSI_BBS_URL, {
-    timeout: 15000,
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
-      "Accept-Encoding": "gzip, deflate, br",
-      "Connection": "keep-alive",
-      "Referer": "https://www.gosi.kr/",
-    },
-    maxRedirects: 5,
-  });
+  // 2. 공지사항 페이지 크롤링 (GCP IP 차단 → Google Cache 우회)
+  let html;
+  const targets = [
+    // 1차: Google 웹 캐시
+    `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(GOSI_BBS_URL)}`,
+    // 2차: 직접 접속
+    GOSI_BBS_URL,
+  ];
+  for (let i = 0; i < targets.length; i++) {
+    try {
+      const resp = await axios.get(targets[i], {
+        timeout: 20000,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "ko-KR,ko;q=0.9",
+        },
+        maxRedirects: 5,
+      });
+      html = resp.data;
+      if (html && html.includes("fn_egov_inqire_notice")) break;
+    } catch (e) {
+      console.log(`Gosi fetch target ${i} failed: ${e.message}`);
+      if (i === targets.length - 1) throw e;
+    }
+  }
 
   // 3. 게시글 파싱 — fn_egov_inqire_notice('nttId','bbsId') 패턴
   const regex = /fn_egov_inqire_notice\('(\d+)'/g;
@@ -1840,5 +2193,207 @@ exports.myBotWebhook = functions.https.onRequest(async (req, res) => {
       text: "⚠️ AI 비서 에러: " + err.message,
     }).catch(() => {});
     res.status(200).send("OK");
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  📊 매일 아침 센서 로그 분석 → 텔레그램 보고
+//  KST 08:00 실행 (어젯밤 ~ 오늘 새벽 분석)
+// ═══════════════════════════════════════════════════════════
+
+exports.dailySensorReport = functions.pubsub
+  .schedule("0 23 * * *")  // UTC 23:00 = KST 08:00
+  .timeZone("Asia/Seoul")
+  .onRun(async () => {
+    try {
+      const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      const yesterday = kstStudyDate(new Date(kstNow.getTime() - 24 * 60 * 60 * 1000));
+      const today = kstStudyDate(kstNow);
+
+      // 데이터 수집
+      const [studyDoc, iotDoc, todayDoc] = await Promise.all([
+        db.doc("users/" + UID + "/data/study").get(),
+        db.doc("users/" + UID + "/data/iot").get(),
+        db.doc("users/" + UID + "/data/today").get(),
+      ]);
+
+      const studyData = studyDoc.exists ? studyDoc.data() : {};
+      const iotData = iotDoc.exists ? iotDoc.data() : {};
+      const todayData = todayDoc.exists ? todayDoc.data() : {};
+
+      const yTr = (studyData.timeRecords || {})[yesterday] || {};
+      const tTr = todayData.timeRecords || {};
+      const presence = iotData.presence || {};
+      const door = iotData.door || {};
+      const phone = iotData.phone || {};
+      const config = iotData.config || {};
+
+      // ═══ 보고서 작성 ═══
+      const lines = [];
+      lines.push("📊 일일 센서 보고 (" + today + " 08:00)");
+      lines.push("━━━━━━━━━━━━━━━━━━");
+
+      // 1. 어제 타임라인
+      lines.push("");
+      lines.push("📅 어제 (" + yesterday + "):");
+      lines.push("  기상: " + (yTr.wake || "❌ 미기록"));
+      if (yTr.outing) lines.push("  외출: " + yTr.outing);
+      if (yTr.returnHome) lines.push("  귀가: " + yTr.returnHome);
+      if (yTr.noOuting) lines.push("  외출: 🏠 홈데이");
+      lines.push("  취침: " + (yTr.bedTime || "❌ 미기록"));
+
+      if (!yTr.bedTime) {
+        lines.push("  ⚠️ 취침 자동감지 실패!");
+      }
+
+      // 2. 오늘 현재
+      lines.push("");
+      lines.push("📌 오늘 (" + today + "):");
+      lines.push("  기상: " + (tTr.wake || "아직 미기록"));
+
+      // 3. 센서 상태
+      lines.push("");
+      lines.push("🔧 센서 상태:");
+      lines.push("  mmWave: " + (presence.state || "unknown"));
+      lines.push("  거리: " + (presence.filteredDistance || presence.distance || 0) + "cm");
+      lines.push("  문: " + (door.state || "unknown"));
+
+      // 4. 설정값
+      lines.push("");
+      lines.push("⚙️ 설정:");
+      lines.push("  bedThreshold: " + (config.bedThresholdCm || DEFAULT_BED_THRESHOLD) + "cm");
+
+      // 5. 이상 감지
+      const anomalies = [];
+      if (!yTr.wake) anomalies.push("어제 기상 미기록");
+      if (!yTr.bedTime) anomalies.push("어제 취침 미기록");
+      if (presence.state === "none" && !door.isOpen) {
+        if (presence.noneSince && presence.noneSince.toDate) {
+          const noneHours = (Date.now() - presence.noneSince.toDate().getTime()) / 3600000;
+          if (noneHours > 12) anomalies.push("mmWave none " + Math.round(noneHours) + "시간 (센서 점검)");
+        }
+      }
+      if (phone.lastScreenOn && phone.lastScreenOn.toDate) {
+        const screenHours = (Date.now() - phone.lastScreenOn.toDate().getTime()) / 3600000;
+        if (screenHours > 24) anomalies.push("폰 화면 " + Math.round(screenHours) + "시간 전 (BixbyListener 점검)");
+      }
+
+      if (anomalies.length > 0) {
+        lines.push("");
+        lines.push("🚨 이상 감지:");
+        for (const a of anomalies) lines.push("  • " + a);
+      } else {
+        lines.push("");
+        lines.push("✅ 이상 없음");
+      }
+
+      const msg = lines.join("\n");
+      await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
+        {chat_id: MY_CHAT_ID, text: msg}).catch(() => {});
+
+      console.log("Daily sensor report sent");
+    } catch (err) {
+      console.error("dailySensorReport error:", err.message);
+      await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
+        {chat_id: MY_CHAT_ID, text: "⚠️ 센서 보고 에러: " + err.message}).catch(() => {});
+    }
+    return null;
+  });
+
+// ═══════════════════════════════════════════════════════════
+//  🔋 배터리 안전장치 — heartbeat 15분 끊기면 충전 ON
+//  매 5분 실행, PC 크래시/셧다운 대비
+// ═══════════════════════════════════════════════════════════
+
+exports.batteryWatchdog = functions.pubsub
+  .schedule("every 5 minutes")
+  .timeZone("Asia/Seoul")
+  .onRun(async () => {
+    try {
+      const doc = await db.doc("users/" + UID + "/data/iot").get();
+      const config = (doc.exists ? doc.data() : {}).config || {};
+      const lastBeat = Number(config.batteryHeartbeat || 0);
+      const pct = Number(config.batteryPercent || 50);
+      const plugOn = config.batteryPlugOn;
+
+      if (!lastBeat) return null; // heartbeat 없으면 무시 (매니저 미실행)
+
+      const elapsed = (Date.now() / 1000) - lastBeat;
+      const deadMin = Math.round(elapsed / 60);
+
+      // 15분 이상 heartbeat 없고, 플러그가 OFF 상태면 → 안전 충전 ON
+      if (elapsed > 15 * 60 && plugOn === "false") {
+        console.log("Battery watchdog: no heartbeat " + deadMin + "min, pct=" + pct + "% → forcing charge ON");
+
+        // 20A 플러그 ON
+        const {accessId, accessSecret} = getConfig();
+        const deskPlugId = "ebeaff0f5a69754067yfdv";
+        const token = await getTuyaToken(accessId, accessSecret);
+        await sendTuyaCommand(accessId, accessSecret, token, deskPlugId,
+          [{code: "switch_1", value: true}]);
+
+        // 상태 기록
+        await db.doc("users/" + UID + "/data/iot").set(
+          {config: {batteryPlugOn: "true"}}, {merge: true});
+
+        const msg = "🔋 안전장치 발동 — PC heartbeat " + deadMin + "분 끊김, 충전 강제 ON (" + pct + "%)";
+        await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
+          {chat_id: MY_CHAT_ID, text: msg}).catch(() => {});
+
+        console.log("Battery watchdog: charge forced ON");
+      }
+    } catch (err) {
+      console.error("batteryWatchdog error:", err.message);
+    }
+    return null;
+  });
+
+// ═══ 부곡도서관 좌석 프록시 ═══
+exports.librarySeats = functions.https.onRequest(async (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "GET");
+  if (req.method === "OPTIONS") { res.status(204).send(""); return; }
+
+  const url = "http://210.90.190.249:8081/RoomStatus.aspx";
+  try {
+    const r1 = await axios.get(url, {timeout: 5000, responseType: "arraybuffer"});
+    const body1 = Buffer.from(r1.data).toString("utf-8");
+    const vs = (body1.match(/id="__VIEWSTATE"\s+value="([^"]*)"/)||[])[1]||"";
+    const vg = (body1.match(/id="__VIEWSTATEGENERATOR"\s+value="([^"]*)"/)||[])[1]||"";
+    const ev = (body1.match(/id="__EVENTVALIDATION"\s+value="([^"]*)"/)||[])[1]||"";
+
+    const params = new URLSearchParams();
+    params.append("__VIEWSTATE", vs);
+    params.append("__VIEWSTATEGENERATOR", vg);
+    params.append("__VIEWSTATEENCRYPTED", "");
+    params.append("__EVENTVALIDATION", ev);
+    params.append("Roon_no", "2");
+    const r2 = await axios.post(url, params.toString(), {
+      headers: {"Content-Type": "application/x-www-form-urlencoded"},
+      timeout: 5000, responseType: "arraybuffer",
+    });
+    const body2 = Buffer.from(r2.data).toString("utf-8");
+
+    const trM = body2.match(/data-room_no=["']2["'][^>]*>(.*?)<\/tr>/s);
+    let summary = {name:"일반열람실",total:0,used:0,available:0,rate:"0%",waiting:0};
+    if (trM) {
+      const tds = [...trM[1].matchAll(/<td[^>]*>(.*?)<\/td>/gs)].map(m=>m[1].replace(/<[^>]*>/g,"").replace(/&nbsp;/g," ").trim());
+      if (tds.length >= 6) {
+        summary = {name:tds[0]||"일반열람실",total:+tds[1]||0,used:+tds[2]||0,available:+tds[3]||0,rate:tds[4],waiting:+tds[5]||0};
+      }
+    }
+
+    const seats = {};
+    const ri = body2.indexOf("room_content");
+    const sh = ri>=0?body2.substring(ri):body2;
+    const sr = /class='Style(\d+)\s+normal_seat'[^>]*>\s*(\d+)/gs;
+    let m;
+    while((m=sr.exec(sh))!==null){
+      seats[m[2]] = +m[1];
+    }
+
+    res.json({ok:true, summary, seats, fetchedAt: new Date().toISOString()});
+  } catch(e) {
+    res.status(500).json({ok:false, error: e.message});
   }
 });

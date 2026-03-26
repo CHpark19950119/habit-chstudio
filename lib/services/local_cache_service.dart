@@ -93,6 +93,16 @@ class LocalCacheService {
     await _box?.delete('cache_$key');
   }
 
+  /// study 캐시 삭제
+  void clearStudyCache() {
+    _box?.delete('cache_study');
+  }
+
+  /// generic 캐시 삭제
+  void clearGeneric(String key) {
+    _box?.delete('cache_$key');
+  }
+
   // === 읽기 ===
   Map<String, dynamic>? getStudyData() => _getMap('cache_study');
   Map<String, dynamic>? getGeneric(String key) => _getMap('cache_$key');

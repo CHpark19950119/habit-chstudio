@@ -97,7 +97,7 @@ extension _HomeTodoSection on _HomeScreenState {
 
     return RefreshIndicator(
       color: BotanicalColors.primary,
-      onRefresh: () => _loadTodosOnly(),
+      onRefresh: () => _loadTodosOnly(forceServer: true),
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         children: [
