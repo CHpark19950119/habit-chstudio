@@ -1,5 +1,5 @@
 """
-배터리 매니저 — 20~80% 유지
+배터리 매니저 — 20~80% 유지 (tinytuya 로컬 제어)
 뚜껑 닫힘 OR mmWave none → 배터리 관리 모드
 뚜껑 열림 + 재실 → 항상 충전 ON
 게임 실행 중 → 항상 충전 ON
@@ -8,6 +8,7 @@ import time
 import ctypes
 import psutil
 import requests
+import tinytuya
 
 CF_URL = "https://us-central1-cheonhong-studio.cloudfunctions.net/checkDoorManual"
 TG_BOT = "8514127849:AAF8_F7SBfm51SGHtp9X5lva7yexdnFyapo"
@@ -22,9 +23,21 @@ SYNC_INTERVAL = 600  # 10분마다 실제 플러그 상태 동기화
 
 # 게임 프로세스 목록 (소문자)
 GAME_PROCESSES = {
-    # 게임 감지 비활성화 — 수동 제어
     "tft.exe",
 }
+
+# ═══ Tuya 로컬 제어 설정 ═══
+TUYA_DEVICES = {
+    "20a": {"id": "ebee3d9bf2c862c41fpw0j", "ip": "192.168.219.101", "key": "['NP3>F'CP(/7H':", "ver": 3.5},
+    "16a": {"id": "ebeaff0f5a69754067yfdv", "ip": "192.168.219.104", "key": ">|(blpf;WLCPsLq&", "ver": 3.5},
+    "mmwave": {"id": "eb21426cfb9a18c166v56z", "ip": "192.168.219.113", "key": "uX9-fLcHTxYD=DMt", "ver": 3.5},
+}
+
+def _tuya_device(name):
+    d = TUYA_DEVICES[name]
+    dev = tinytuya.OutletDevice(d["id"], d["ip"], d["key"], version=d["ver"])
+    dev.set_socketTimeout(5)
+    return dev
 
 def tg(msg: str):
     try:
@@ -34,11 +47,13 @@ def tg(msg: str):
         pass
 
 def get_actual_plug_state():
-    """Firestore에서 실제 20a 플러그 상태 조회"""
+    """tinytuya로 실제 20a 플러그 상태 조회 (로컬)"""
     try:
-        r = requests.get(f"{CF_URL}?q=light&device=20a", timeout=15)
-        data = r.json()
-        return data.get("light", "").upper() == "ON"
+        dev = _tuya_device("20a")
+        status = dev.status()
+        if "dps" in status:
+            return status["dps"].get("1", False)
+        return None
     except:
         return None
 
@@ -59,7 +74,11 @@ def set_plug(on: bool, reason: str = ""):
     if plug_on == on:
         return
     try:
-        r = requests.get(f"{CF_URL}?q=light&on={'true' if on else 'false'}&device=20a", timeout=15)
+        dev = _tuya_device("20a")
+        if on:
+            dev.turn_on()
+        else:
+            dev.turn_off()
         plug_on = on
         msg = f"🔋 충전 {'ON' if on else 'OFF'}"
         if reason:
@@ -77,12 +96,21 @@ def is_lid_open():
         return True
 
 def is_home():
-    """mmWave 센서로 재실 확인"""
+    """mmWave 센서로 재실 확인 (로컬)"""
     try:
-        r = requests.get(f"{CF_URL}?q=date&doc=iot", timeout=15)
-        data = r.json()
-        state = data.get("presence", {}).get("state", "none")
-        return state != "none"
+        dev = tinytuya.Device(
+            TUYA_DEVICES["mmwave"]["id"],
+            TUYA_DEVICES["mmwave"]["ip"],
+            TUYA_DEVICES["mmwave"]["key"],
+            version=TUYA_DEVICES["mmwave"]["ver"]
+        )
+        dev.set_socketTimeout(5)
+        status = dev.status()
+        if "dps" in status:
+            # dps.1 = presence state ('peaceful'/'motion'/'none' 등)
+            state = status["dps"].get("1", "none")
+            return state != "none"
+        return True
     except:
         return True
 
