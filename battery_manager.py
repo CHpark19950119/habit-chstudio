@@ -116,20 +116,41 @@ def should_manage():
     """배터리 관리 모드: 항상 20~80% 유지"""
     return True, ""
 
-def heartbeat(pct, plugged, gaming):
-    """Firestore에 heartbeat 전송 — CF 안전장치용"""
+def heartbeat(pct, plugged):
+    """Firestore에 heartbeat 전송"""
     try:
-        requests.get(
-            f"{CF_URL}?q=config&key=batteryHeartbeat&value={int(time.time())}",
-            timeout=10)
-        requests.get(
-            f"{CF_URL}?q=config&key=batteryPercent&value={pct}",
-            timeout=10)
-        requests.get(
-            f"{CF_URL}?q=config&key=batteryPlugOn&value={'true' if plugged else 'false'}",
-            timeout=10)
+        requests.get(f"{CF_URL}?q=config&key=batteryHeartbeat&value={int(time.time())}", timeout=10)
+        requests.get(f"{CF_URL}?q=config&key=batteryPercent&value={pct}", timeout=10)
+        requests.get(f"{CF_URL}?q=config&key=batteryPlugOn&value={'true' if plugged else 'false'}", timeout=10)
     except:
         pass
+
+def poll_sensors():
+    """mmWave 센서 로컬 폴링 → Firestore에 기록"""
+    try:
+        dev = tinytuya.Device(
+            TUYA_DEVICES["mmwave"]["id"],
+            TUYA_DEVICES["mmwave"]["ip"],
+            TUYA_DEVICES["mmwave"]["key"],
+            version=TUYA_DEVICES["mmwave"]["ver"]
+        )
+        dev.set_socketTimeout(5)
+        status = dev.status()
+        if "dps" in status:
+            presence = status["dps"].get("1", "none")
+            distance = status["dps"].get("9", 0)
+            # Firestore에 기록 (CF 엔드포인트 사용)
+            requests.get(
+                f"{CF_URL}?q=config&key=mmwave_presence&value={presence}",
+                timeout=10)
+            requests.get(
+                f"{CF_URL}?q=config&key=mmwave_distance&value={distance}",
+                timeout=10)
+            print(f"[Sensor] mmWave: {presence}, {distance}cm")
+            return presence
+    except Exception as e:
+        print(f"[Sensor] error: {e}")
+    return None
 
 def check():
     b = psutil.sensors_battery()
@@ -137,22 +158,17 @@ def check():
         return
 
     pct = b.percent
-    manage, reason = should_manage()
-    gaming = is_gaming()
 
     # 주기적으로 실제 플러그 상태와 동기화
     sync_plug_state()
 
+    # 센서 폴링
+    poll_sensors()
+
     # heartbeat 전송
-    heartbeat(pct, plug_on, gaming)
+    heartbeat(pct, plug_on)
 
-    if not manage:
-        # 게임 중 → 항상 충전
-        if not plug_on:
-            set_plug(True, f"게임 중 ({pct}%)")
-        return
-
-    # 관리 모드
+    # 배터리 관리
     if pct >= HIGH:
         set_plug(False, f"{pct}% >= {HIGH}%")
     elif pct <= LOW:
