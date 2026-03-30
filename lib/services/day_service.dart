@@ -10,9 +10,7 @@ import '../utils/study_date_utils.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants.dart';
 import 'firebase_service.dart';
-import 'geofence_service.dart';
 import 'telegram_service.dart';
-import 'bus_service.dart';
 import 'location_service.dart';
 import 'report_service.dart';
 import 'backup_service.dart';
@@ -163,9 +161,6 @@ class DayService extends ChangeNotifier {
     // Movement 서비스 초기화
     await _movement.initialize();
 
-    // 외출 중이면 Activity Recognition 재시작
-    await _routine.restartActivityRecognitionIfNeeded();
-
     _initialized = true;
     _log('초기화 완료 (state=${_routine.state.name}, mealing=${_meal.isMealing})');
     notifyListeners();
@@ -187,7 +182,6 @@ class DayService extends ChangeNotifier {
         _routine.setState(DayState.awake);
         await _routine.saveState();
         _routine.startWakeReminder();
-        BusService().startPolling();
         _log('Firestore 기상 복원: ${tr['wake']} → awake');
       }
     } catch (e) {

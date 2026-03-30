@@ -306,27 +306,6 @@ extension _HomeOrderSection on _HomeScreenState {
     );
   }
 
-  Future<void> _showAddMemoDialog() async {
-    final controller = TextEditingController();
-    final result = await showDialog<String>(
-      context: context,
-      builder: (c) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('메모 추가', style: BotanicalTypo.heading(size: 18)),
-        content: TextField(controller: controller, autofocus: true,
-          decoration: const InputDecoration(hintText: '오늘의 메모...')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c),
-            child: Text('취소', style: TextStyle(color: _textMuted))),
-          TextButton(onPressed: () => Navigator.pop(c, controller.text),
-            child: const Text('저장')),
-        ],
-      ),
-    );
-    if (result != null && result.trim().isNotEmpty) {
-      _load();
-    }
-  }
 }
 
 /// 하루 타임라인 세그먼트 모델

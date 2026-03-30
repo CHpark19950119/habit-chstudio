@@ -85,6 +85,8 @@ class _FocusScreenState extends State<FocusScreen>
       if (on) HapticFeedback.mediumImpact();
       if (!on && _fs.isRunning) HapticFeedback.heavyImpact();
       _fs.onCradleChanged(on);
+    }, onError: (e) {
+      debugPrint('[FocusScreen] cradle stream error: $e');
     });
 
     _todaySessions = _fs.todaySessions;

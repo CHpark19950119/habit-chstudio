@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../utils/study_date_utils.dart';
-import 'bus_service.dart';
 import 'telegram_service.dart';
 import 'day_service.dart' show DayState;
 
@@ -22,9 +20,6 @@ class RoutineService extends ChangeNotifier with WidgetsBindingObserver {
   // ═══ Reminders ═══
   Timer? _wakeReminder;
   Timer? _mealReminder;
-
-  // ═══ MethodChannel (Activity Recognition 제어용) ═══
-  MethodChannel? _nfcChannel;
 
   // ═══ Getters ═══
   DayState get state => _state;
@@ -46,7 +41,6 @@ class RoutineService extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> initialize(MethodChannel nfcChannel) async {
     if (_initialized) return;
-    _nfcChannel = nfcChannel;
     await _restoreState();
     WidgetsBinding.instance.addObserver(this);
     _initialized = true;
@@ -83,20 +77,12 @@ class RoutineService extends ChangeNotifier with WidgetsBindingObserver {
   void forceState(DayState newState) {
     if (_state == newState) return;
     _log('forceState: ${_state.name} → ${newState.name}');
-    final prevState = _state;
     _state = newState;
     _saveState();
     if (newState == DayState.awake) {
       startWakeReminder();
-      BusService().startPolling();
     } else if (newState == DayState.outing) {
       cancelReminders();
-      BusService().stopPolling();
-      try { _nfcChannel?.invokeMethod('startActivityRecognition'); } catch (_) {}
-    }
-    // 외출 → 귀가/기타 전환 시 Activity Recognition 끄기
-    if (prevState == DayState.outing && newState != DayState.outing) {
-      try { _nfcChannel?.invokeMethod('stopActivityRecognition'); } catch (_) {}
     }
     notifyListeners();
   }
@@ -162,17 +148,6 @@ class RoutineService extends ChangeNotifier with WidgetsBindingObserver {
   void cancelReminders() {
     _wakeReminder?.cancel();
     _mealReminder?.cancel();
-  }
-
-  // ═══════════════════════════════════════════
-  //  Activity Recognition 재시작 (앱 업데이트 대응)
-  // ═══════════════════════════════════════════
-
-  Future<void> restartActivityRecognitionIfNeeded() async {
-    if (_state == DayState.outing) {
-      _log('외출 중 → Activity Recognition 재시작');
-      try { await _nfcChannel?.invokeMethod('startActivityRecognition'); } catch (_) {}
-    }
   }
 
   @override

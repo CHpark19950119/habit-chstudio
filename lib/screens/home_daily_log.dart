@@ -283,9 +283,6 @@ extension _HomeDailyLog on _HomeScreenState {
 
     if (segments.isEmpty) return const SizedBox.shrink();
 
-    // ★ B2 FIX: 자정 넘김을 고려한 duration 계산
-    final startMin = safeMin(segments.first.start);
-    final endMin = safeMin(_fmt24Now());
     // 각 세그먼트 duration 계산 (자정 넘김 보정)
     final durations = segments.map((seg) {
       final s = safeMin(seg.start);
@@ -343,7 +340,15 @@ extension _HomeDailyLog on _HomeScreenState {
               style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
                 color: _accent, fontFeatures: const [FontFeature.tabularFigures()]))),
         ]),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
+
+        // ── ★ E: 무드 셀렉터 ──
+        _moodSelector(),
+        const SizedBox(height: 14),
+
+        // ── ★ E: 순공 미니 링 + 통계 ──
+        _compactStatsRow(),
+        const SizedBox(height: 14),
 
         // ── 블록 프로그레스 바 (비율 기반) ──
         TweenAnimationBuilder<double>(
@@ -523,57 +528,236 @@ extension _HomeDailyLog on _HomeScreenState {
           ]),
         ),
 
-        // ── ★ 데일리 메모 섹션 ──
-        if (_dailyMemos.isNotEmpty) ...[
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _dk ? Colors.white.withValues(alpha: 0.03) : const Color(0xFFFFFBF5),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFB07D3A).withValues(alpha: 0.1))),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                const Text('📝', style: TextStyle(fontSize: 12)),
-                const SizedBox(width: 6),
-                Text('오늘의 메모', style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w700, color: _textMain)),
-                const Spacer(),
-                Text('${_dailyMemos.length}개', style: TextStyle(
-                  fontSize: 10, fontWeight: FontWeight.w600, color: _textMuted)),
-              ]),
-              const SizedBox(height: 8),
-              ..._dailyMemos.map((memo) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5),
-                    child: Container(
-                      width: 4, height: 4,
-                      decoration: BoxDecoration(
-                        color: memo.startsWith('📌')
-                          ? const Color(0xFFB07D3A)
-                          : _textMuted.withValues(alpha: 0.4),
-                        shape: BoxShape.circle)),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(memo, style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w500,
-                    color: _textSub, height: 1.4))),
-                  GestureDetector(
-                    onTap: () async {
-                      _load();
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(Icons.close_rounded, size: 12,
-                        color: _textMuted.withValues(alpha: 0.4)))),
-                ]),
-              )),
-            ]),
-          ),
-        ],
+        // ── ★ E: 메모 섹션 (항상 표시 — 입력 포함) ──
+        const SizedBox(height: 14),
+        _memoSection(),
+
+        // ── ★ E: 한 줄 요약 ──
+        const SizedBox(height: 12),
+        _oneLinerSummary(),
       ]),
+    );
+  }
+
+  // ══════════════════════════════════════════
+  //  ★ E: 무드 셀렉터
+  // ══════════════════════════════════════════
+  Widget _moodSelector() {
+    const moods = ['😊', '😐', '😔', '🔥', '😴'];
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: moods.map((emoji) {
+        final selected = _mood == emoji;
+        return GestureDetector(
+          onTap: () async {
+            final newMood = _mood == emoji ? null : emoji;
+            _safeSetState(() => _mood = newMood);
+            final fb = FirebaseService();
+            await fb.updateTodayField('mood', newMood ?? '');
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: selected
+                ? _accent.withValues(alpha: _dk ? 0.2 : 0.12)
+                : _dk ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected ? _accent.withValues(alpha: 0.5) : Colors.transparent,
+                width: 1.5),
+            ),
+            child: Center(child: Text(emoji,
+              style: TextStyle(fontSize: selected ? 22 : 18))),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // ══════════════════════════════════════════
+  //  ★ E: 순공 미니 링 + 통계
+  // ══════════════════════════════════════════
+  Widget _compactStatsRow() {
+    final goalMin = 8 * 60; // 8시간 목표
+    final pct = (_effMin / goalMin).clamp(0.0, 1.0);
+    final effH = _effMin ~/ 60;
+    final effM = _effMin % 60;
+    final effStr = effH > 0
+      ? '${effH}h${effM > 0 ? " ${effM}m" : ""}'
+      : '${effM}m';
+    final pctStr = '${(pct * 100).round()}%';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(14)),
+      child: Row(children: [
+        // 미니 순공 링
+        SizedBox(
+          width: 56, height: 56,
+          child: Stack(alignment: Alignment.center, children: [
+            SizedBox(
+              width: 50, height: 50,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: pct),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeOutCubic,
+                builder: (_, val, __) => CircularProgressIndicator(
+                  value: val,
+                  strokeWidth: 4.5,
+                  strokeCap: StrokeCap.round,
+                  backgroundColor: _dk
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.grey.shade200,
+                  valueColor: AlwaysStoppedAnimation<Color>(_accent),
+                ),
+              ),
+            ),
+            Text(pctStr, style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w800,
+              color: _accent,
+              fontFeatures: const [FontFeature.tabularFigures()])),
+          ]),
+        ),
+        const SizedBox(width: 14),
+        // 통계 그리드
+        Expanded(child: Column(children: [
+          Row(children: [
+            _miniStat('기상', _wake ?? '--:--'),
+            _miniStat('순공', effStr),
+          ]),
+          const SizedBox(height: 6),
+          Row(children: [
+            _miniStat('달성', pctStr),
+            _miniStat('취침', _bedTime ?? '--:--'),
+          ]),
+        ])),
+      ]),
+    );
+  }
+
+  Widget _miniStat(String label, String value) {
+    return Expanded(child: Row(children: [
+      Text('$label ', style: TextStyle(
+        fontSize: 10, fontWeight: FontWeight.w600,
+        color: _textMuted)),
+      Text(value, style: TextStyle(
+        fontSize: 12, fontWeight: FontWeight.w800,
+        color: _textMain,
+        fontFeatures: const [FontFeature.tabularFigures()])),
+    ]));
+  }
+
+  // ══════════════════════════════════════════
+  //  ★ E: 메모 섹션 (기존 + 입력 필드)
+  // ══════════════════════════════════════════
+  Widget _memoSection() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _dk ? Colors.white.withValues(alpha: 0.03) : const Color(0xFFFFFBF5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFB07D3A).withValues(alpha: 0.1))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Text('📝', style: TextStyle(fontSize: 12)),
+          const SizedBox(width: 6),
+          Text('메모', style: TextStyle(
+            fontSize: 11, fontWeight: FontWeight.w700, color: _textMain)),
+          const Spacer(),
+          if (_dailyMemos.isNotEmpty)
+            Text('${_dailyMemos.length}개', style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w600, color: _textMuted)),
+        ]),
+        if (_dailyMemos.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          ..._dailyMemos.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final memo = entry.value;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: Container(
+                    width: 4, height: 4,
+                    decoration: BoxDecoration(
+                      color: memo.startsWith('📌')
+                        ? const Color(0xFFB07D3A)
+                        : _textMuted.withValues(alpha: 0.4),
+                      shape: BoxShape.circle)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Text(memo, style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w500,
+                  color: _textSub, height: 1.4))),
+                GestureDetector(
+                  onTap: () async {
+                    final updated = List<String>.from(_dailyMemos)..removeAt(idx);
+                    _safeSetState(() => _dailyMemos = updated);
+                    await FirebaseService().updateTodayField('dailyMemos', updated);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(Icons.close_rounded, size: 12,
+                      color: _textMuted.withValues(alpha: 0.4)))),
+              ]),
+            );
+          }),
+        ],
+        const SizedBox(height: 8),
+        // ── 메모 입력 필드 ──
+        _MemoInputField(
+          dk: _dk,
+          textMuted: _textMuted,
+          accent: _accent,
+          onSubmit: (text) async {
+            final updated = List<String>.from(_dailyMemos)..add(text);
+            _safeSetState(() => _dailyMemos = updated);
+            await FirebaseService().updateTodayField('dailyMemos', updated);
+          },
+        ),
+      ]),
+    );
+  }
+
+  // ══════════════════════════════════════════
+  //  ★ E: 한 줄 요약
+  // ══════════════════════════════════════════
+  Widget _oneLinerSummary() {
+    final wakeStr = _wake ?? '--:--';
+    final effH = _effMin ~/ 60;
+    final effM = _effMin % 60;
+    final effStr = effH > 0
+      ? '${effH}h${effM > 0 ? "${effM}m" : ""}'
+      : '${effM}m';
+
+    // D-Day 계산 (목표일이 있으면 사용, 없으면 비표시)
+    String dDayStr = '';
+    try {
+      final goals = _orderData?.goals ?? [];
+      final activeGoals = goals.where((g) =>
+        !g.isCompleted && g.deadline != null && g.deadline!.isNotEmpty).toList();
+      if (activeGoals.isNotEmpty) {
+        activeGoals.sort((a, b) => a.deadline!.compareTo(b.deadline!));
+        final nearest = activeGoals.first;
+        final deadline = DateFormat('yyyy-MM-dd').parse(nearest.deadline!);
+        final diff = deadline.difference(DateTime.now()).inDays;
+        dDayStr = ' · D-$diff';
+      }
+    } catch (_) {}
+
+    return Center(
+      child: Text(
+        '기상 $wakeStr · 순공 $effStr$dDayStr',
+        style: TextStyle(
+          fontSize: 11, fontWeight: FontWeight.w600,
+          color: _textMuted,
+          fontFeatures: const [FontFeature.tabularFigures()],
+          letterSpacing: -0.2),
+      ),
     );
   }
 
@@ -657,4 +841,89 @@ extension _HomeDailyLog on _HomeScreenState {
     } catch (_) { return 0; }
   }
 
+}
+
+/// ★ E: 메모 입력 StatefulWidget (TextField 상태 격리)
+class _MemoInputField extends StatefulWidget {
+  final bool dk;
+  final Color textMuted;
+  final Color accent;
+  final Future<void> Function(String text) onSubmit;
+  const _MemoInputField({
+    required this.dk, required this.textMuted,
+    required this.accent, required this.onSubmit});
+  @override
+  State<_MemoInputField> createState() => _MemoInputFieldState();
+}
+
+class _MemoInputFieldState extends State<_MemoInputField> {
+  final _ctrl = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final text = _ctrl.text.trim();
+    if (text.isEmpty || _sending) return;
+    setState(() => _sending = true);
+    try {
+      await widget.onSubmit(text);
+      _ctrl.clear();
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Expanded(
+        child: TextField(
+          controller: _ctrl,
+          style: TextStyle(
+            fontSize: 12,
+            color: widget.dk ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A)),
+          decoration: InputDecoration(
+            hintText: '메모 추가...',
+            hintStyle: TextStyle(
+              fontSize: 12, color: widget.textMuted.withValues(alpha: 0.5)),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            filled: true,
+            fillColor: widget.dk
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: widget.textMuted.withValues(alpha: 0.15))),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: widget.textMuted.withValues(alpha: 0.15))),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: widget.accent.withValues(alpha: 0.5))),
+          ),
+          textInputAction: TextInputAction.send,
+          onSubmitted: (_) => _submit(),
+        ),
+      ),
+      const SizedBox(width: 8),
+      GestureDetector(
+        onTap: _submit,
+        child: Container(
+          width: 32, height: 32,
+          decoration: BoxDecoration(
+            color: widget.accent.withValues(alpha: widget.dk ? 0.15 : 0.1),
+            borderRadius: BorderRadius.circular(8)),
+          child: Icon(
+            _sending ? Icons.hourglass_empty_rounded : Icons.add_rounded,
+            size: 16, color: widget.accent),
+        ),
+      ),
+    ]);
+  }
 }

@@ -1,7 +1,6 @@
 package com.cheonhong.cheonhong_studio
 
 import android.Manifest
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -11,10 +10,6 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import androidx.core.content.ContextCompat
-import com.google.android.gms.location.ActivityRecognition
-import com.google.android.gms.location.ActivityTransition
-import com.google.android.gms.location.ActivityTransitionRequest
-import com.google.android.gms.location.DetectedActivity
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -37,11 +32,10 @@ class BixbyNotificationListener : NotificationListenerService() {
         private const val UID = "sJ8Pxusw9gR0tNR44RhkIge7OiG2"
         private const val OUT_KEYWORD = "CHSTUDIO_OUT"
         private const val HOME_KEYWORD = "CHSTUDIO_HOME"
-        private const val MY_BOT = "8514127849:AAF8_F7SBfm51SGHtp9X5lva7yexdnFyapo"
+        private const val MY_BOT = "8253264860:AAE8mKRSNN31ubdOvk4KPghOYcOmnXg0v50"
         private const val MY_CHAT = "8724548311"
         private const val GF_BOT = "8613977898:AAEuuoTVARS-a9nrDp85NWHHOYM0lRvmZmc"
         private const val GF_CHAT = "8624466505"
-        private const val ACTIVITY_REQ_CODE = 1001
         private const val SCREEN_THROTTLE_MS = 5 * 60 * 1000L  // 5분 throttle
     }
 
@@ -119,6 +113,13 @@ class BixbyNotificationListener : NotificationListenerService() {
         val text = extras.getCharSequence("android.text")?.toString() ?: ""
         val content = "$title $text"
 
+        // ★ Tuya 도어센서 알림 감지 (com.tuya.smart)
+        val pkg = sbn.packageName ?: ""
+        if (pkg == "com.tuya.smart") {
+            handleTuyaNotification(title, text, sbn.key)
+            return
+        }
+
         when {
             content.contains(OUT_KEYWORD) -> handleOut()
             content.contains(HOME_KEYWORD) -> handleHome()
@@ -192,8 +193,6 @@ class BixbyNotificationListener : NotificationListenerService() {
         iotRef().update(updates as Map<String, Any>)
             .addOnSuccessListener {
                 Log.d(TAG, "OUT pending saved: $timeStr")
-                // 외출 시작 → Activity Recognition 시작
-                startActivityRecognition()
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "OUT update error: ${e.message}")
@@ -207,7 +206,6 @@ class BixbyNotificationListener : NotificationListenerService() {
                     )),
                     SetOptions.merge()
                 )
-                startActivityRecognition()
             }
     }
 
@@ -225,27 +223,50 @@ class BixbyNotificationListener : NotificationListenerService() {
             val type = movement["type"] as? String ?: ""
 
             if (pending) {
-                // 20분 안 됐음 → pending 취소 (외출 아님)
-                val returnTime = timeStr()
-                iotRef().update(
-                    mapOf(
-                        "movement.pending" to false,
-                        "movement.type" to "cancelled"
-                    )
-                )
-                // ★ SharedPreferences 상태 복원 (outing → returned)
-                val prefs = applicationContext.getSharedPreferences(
-                    "FlutterSharedPreferences", Context.MODE_PRIVATE
-                )
-                prefs.edit()
-                    .putString("flutter.nfc_state", "returned")
-                    .putString("flutter.nfc_state_date", todayKey())
-                    .apply()
-                stopActivityRecognition()
+                // pending 상태에서 귀가 — 경과시간으로 판단
                 val leftLocal = movement["leftAtLocal"] as? String
-                val dur = calcDuration(leftLocal, returnTime)
-                sendTelegram("✅ 복귀 $returnTime — 외출 취소$dur", meOnly = true)
-                Log.d(TAG, "HOME: pending cancelled (short outing)")
+                val returnTime = timeStr()
+                val elapsedMin = calcElapsedMinutes(leftLocal, returnTime)
+
+                if (elapsedMin >= 20) {
+                    // 20분 이상 → 실제 외출+귀가. pending 확정 후 귀가 처리
+                    Log.d(TAG, "HOME: pending but ${elapsedMin}min elapsed → confirm outing + return")
+                    iotRef().update(
+                        mapOf(
+                            "movement.pending" to false,
+                            "movement.type" to "home",
+                            "movement.returnedAt" to FieldValue.serverTimestamp(),
+                            "movement.returnedAtLocal" to returnTime
+                        )
+                    )
+                    val prefs = applicationContext.getSharedPreferences(
+                        "FlutterSharedPreferences", Context.MODE_PRIVATE
+                    )
+                    prefs.edit()
+                        .putString("flutter.nfc_state", "returned")
+                        .putString("flutter.nfc_state_date", todayKey())
+                        .apply()
+                    val dur = calcDuration(leftLocal, returnTime)
+                    sendTelegram("🏠 귀가 $returnTime$dur", meOnly = false)
+                } else {
+                    // 20분 미만 → 짧은 외출, 취소 처리
+                    iotRef().update(
+                        mapOf(
+                            "movement.pending" to false,
+                            "movement.type" to "cancelled"
+                        )
+                    )
+                    val prefs = applicationContext.getSharedPreferences(
+                        "FlutterSharedPreferences", Context.MODE_PRIVATE
+                    )
+                    prefs.edit()
+                        .putString("flutter.nfc_state", "returned")
+                        .putString("flutter.nfc_state_date", todayKey())
+                        .apply()
+                    val dur = calcDuration(leftLocal, returnTime)
+                    sendTelegram("✅ 복귀 $returnTime — 외출 취소$dur", meOnly = true)
+                    Log.d(TAG, "HOME: pending cancelled (short outing, ${elapsedMin}min)")
+                }
             } else if (type == "out") {
                 // 확정된 외출에서 귀가
                 confirmReturn(movement)
@@ -270,9 +291,6 @@ class BixbyNotificationListener : NotificationListenerService() {
             )
         )
 
-        // 귀가 → Activity Recognition 중지
-        stopActivityRecognition()
-
         // SharedPreferences → Flutter 상태 동기화
         val prefs = applicationContext.getSharedPreferences(
             "FlutterSharedPreferences", Context.MODE_PRIVATE
@@ -283,84 +301,6 @@ class BixbyNotificationListener : NotificationListenerService() {
             .apply()
 
         Log.d(TAG, "HOME: iot event written $returnTime")
-    }
-
-    // ═══════════════════════════════════════════
-    //  Activity Recognition — 이동/정지 감지
-    // ═══════════════════════════════════════════
-
-    private fun activityPendingIntent(): PendingIntent {
-        val intent = Intent(this, ActivityTransitionReceiver::class.java)
-        return PendingIntent.getBroadcast(
-            this, ACTIVITY_REQ_CODE, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-        )
-    }
-
-    private fun startActivityRecognition() {
-        // 권한 확인 (Android 10+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                Log.w(TAG, "ACTIVITY_RECOGNITION 권한 없음 — 스킵")
-                return
-            }
-        }
-
-        val transitions = mutableListOf(
-            // 정지 진입
-            ActivityTransition.Builder()
-                .setActivityType(DetectedActivity.STILL)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
-                .build(),
-            // 걷기 진입
-            ActivityTransition.Builder()
-                .setActivityType(DetectedActivity.WALKING)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
-                .build(),
-            // 달리기 진입
-            ActivityTransition.Builder()
-                .setActivityType(DetectedActivity.RUNNING)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
-                .build(),
-            // 차량 진입
-            ActivityTransition.Builder()
-                .setActivityType(DetectedActivity.IN_VEHICLE)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
-                .build(),
-            // 자전거 진입
-            ActivityTransition.Builder()
-                .setActivityType(DetectedActivity.ON_BICYCLE)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
-                .build(),
-        )
-
-        val request = ActivityTransitionRequest(transitions)
-
-        // 날짜 변경 시 이전 transitions 클리어
-        iotRef().update(
-            mapOf(
-                "activity.current" to "moving",
-                "activity.date" to todayKey(),
-                "activity.updatedAt" to FieldValue.serverTimestamp(),
-                "activity.transitions" to listOf(
-                    hashMapOf("type" to "moving", "time" to timeStr())
-                )
-            )
-        )
-
-        ActivityRecognition.getClient(this)
-            .requestActivityTransitionUpdates(request, activityPendingIntent())
-            .addOnSuccessListener { Log.d(TAG, "Activity Recognition 시작") }
-            .addOnFailureListener { Log.e(TAG, "Activity Recognition 실패: ${it.message}") }
-    }
-
-    private fun stopActivityRecognition() {
-        ActivityRecognition.getClient(this)
-            .removeActivityTransitionUpdates(activityPendingIntent())
-            .addOnSuccessListener { Log.d(TAG, "Activity Recognition 중지") }
-            .addOnFailureListener { Log.e(TAG, "Activity Recognition 중지 실패: ${it.message}") }
     }
 
     // ═══════════════════════════════════════════
@@ -389,6 +329,19 @@ class BixbyNotificationListener : NotificationListenerService() {
         )
     }
 
+    private fun calcElapsedMinutes(from: String?, to: String): Int {
+        if (from == null) return 0
+        try {
+            val fp = from.split(":").map { it.toInt() }
+            val tp = to.split(":").map { it.toInt() }
+            var m = (tp[0] * 60 + tp[1]) - (fp[0] * 60 + fp[1])
+            if (m < 0) m += 24 * 60  // 자정 넘긴 경우
+            return m
+        } catch (_: Exception) {
+            return 0
+        }
+    }
+
     private fun calcDuration(from: String?, to: String): String {
         if (from == null) return ""
         try {
@@ -399,6 +352,78 @@ class BixbyNotificationListener : NotificationListenerService() {
             return " (${m / 60}h${(m % 60).toString().padStart(2, '0')}m)"
         } catch (_: Exception) {
             return ""
+        }
+    }
+
+    // ═══════════════════════════════════════════
+    //  Tuya 도어센서 → 자동 기상 (07:00~15:00, 하루 1번)
+    // ═══════════════════════════════════════════
+
+    private var lastWakeDate: String = ""
+
+    private fun handleTuyaNotification(title: String, text: String, notifKey: String) {
+        val cal = Calendar.getInstance()
+        val hour = cal.get(Calendar.HOUR_OF_DAY)
+        val dateStr = todayKey()
+
+        // 이미 기상 기록됐으면 → 알림 자동 삭제 + Tuya 알림 채널 차단
+        if (lastWakeDate == dateStr) {
+            try { cancelNotification(notifKey) } catch (_: Exception) {}
+            return
+        }
+
+        // 07:00~15:00만 반응
+        if (hour < 7 || hour >= 15) {
+            return
+        }
+
+        // Firestore에 이미 wake 있는지 확인
+        val studyRef = db().document("users/$UID/data/study")
+        studyRef.get().addOnSuccessListener { doc ->
+            @Suppress("UNCHECKED_CAST")
+            val allTr = doc.get("timeRecords") as? Map<String, Any> ?: emptyMap()
+            @Suppress("UNCHECKED_CAST")
+            val todayTr = allTr[dateStr] as? Map<String, Any>
+            if (todayTr?.get("wake") != null) {
+                Log.d(TAG, "Tuya door: wake already recorded for $dateStr")
+                lastWakeDate = dateStr
+                return@addOnSuccessListener
+            }
+
+            // ★ 기상 기록!
+            lastWakeDate = dateStr
+            val wakeTime = timeStr()
+
+            // study doc (nested)
+            studyRef.set(
+                hashMapOf("timeRecords" to hashMapOf(dateStr to hashMapOf("wake" to wakeTime))),
+                SetOptions.merge()
+            )
+
+            // today doc (flat)
+            db().document("users/$UID/data/today").set(
+                hashMapOf("timeRecords" to hashMapOf("wake" to wakeTime)),
+                SetOptions.merge()
+            )
+
+            // iot doc 도어 상태
+            iotRef().set(
+                hashMapOf("door" to hashMapOf(
+                    "isOpen" to true,
+                    "state" to "open",
+                    "openedToday" to true,
+                    "openedDate" to dateStr,
+                    "firstOpenTime" to wakeTime,
+                    "lastChanged" to FieldValue.serverTimestamp()
+                )),
+                SetOptions.merge()
+            )
+
+            Log.d(TAG, "★ Auto wake recorded: $wakeTime ($dateStr)")
+            sendTelegram("⏰ 자동 기상 $wakeTime (도어센서)", meOnly = true)
+
+            // ★ 기상 후 첫 알림도 삭제 (사용자에게 안 보임)
+            try { cancelNotification(notifKey) } catch (_: Exception) {}
         }
     }
 

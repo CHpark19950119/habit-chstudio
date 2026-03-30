@@ -107,7 +107,7 @@ class CreatureService extends ChangeNotifier {
     final creature = await getCreature();
     if ((creature['coins'] as int? ?? 0) < cost) return false;
 
-    creature['coins'] = (creature['coins'] as int) - cost;
+    creature['coins'] = (creature['coins'] as int? ?? 0) - cost;
     final owned = List<String>.from(creature['ownedItems'] ?? []);
     if (!owned.contains(itemId)) owned.add(itemId);
     creature['ownedItems'] = owned;

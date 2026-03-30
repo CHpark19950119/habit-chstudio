@@ -1,58 +1,34 @@
 # Session Handoff
 > 이 파일은 Claude Code 세션 간 작업 연속성을 위한 핸드오프 문서.
-> 세션 종료 시 자동 업데이트됨. 다음 세션 시작 시 이 파일부터 읽는다.
+> session_save 호출 시 자동 업데이트됨. 다른 세션은 이 파일을 읽어 현재 상태를 파악한다.
 
 ## 마지막 세션
-- **날짜**: 2026-03-21
-- **버전**: v10.14.1
-- **커밋**: `34bd30c` — 자동취침 오판 방지 + wake 기반 날짜 귀속 + 캐시 동기화
+- **날짜**: 2026-03-31
+- **시각**: 03:31
+- **파일**: 2026-03-31_05.json
 
-## 이번 세션 완료 작업
+## 진행 중 작업
+사용자 롤 게임 중.
 
-### 1. 자동취침 오판 방지 — 폰 사용 중 취침 감지 차단
-- BixbyNotificationListener에서 SCREEN_ON 시 `phone.lastScreenOn` Firestore 기록 (5분 throttle)
-- CF `checkSleepByPresence`에서 lastScreenOn 30분 이내면 취침 스킵
-- 침대에서 폰 사용 중 peaceful로 잡혀도 취침 안 찍힘
-
-### 2. wake 기반 bedTime 날짜 귀속 알고리즘
-- 기존: 4AM 경계 + 4~7시 예외 → 경계 애매, 롤오버 후 중복 취침 버그
-- 변경: wake 있고 bedTime 없는 가장 최근 날짜에 bedTime 기록
-- CF + 앱(`day_action_part.dart`) 양쪽 동일 알고리즘 적용
-
-### 3. today doc 캐시 동기화
-- today doc 스트림 수신 시 로컬 캐시(SharedPrefs) 갱신
-- `_parseStudyData`에서 timeRecords 파싱 제거 → today doc 단일 소스
-- study doc 스트림에서 `_prevBedTime` 갱신 (수면시간 실시간 반영)
-
-### 4. CF 데이터 조회/수정 엔드포인트
-- `checkDoorManual?q=date&date=2026-03-20` → study doc timeRecords 조회
-- `checkDoorManual?q=date&doc=today` → today doc 전체 조회
-- `checkDoorManual?q=set&date=...&field=...&value=...` → timeRecords 수정/삭제
-
-### 5. Codemagic 자동 트리거 비활성화
-- `codemagic.yaml` events: [] → push 시 빌드 안 돌아감, 메일 안 옴
-
-### 6. 3/20 bedTime 수정
-- 02:19(mmWave 오판) → 05:30(실제 취침) 수정
-- 3/21 bedTime 05:38(버그 중복) 삭제
-
-## 미커밋 파일
-- `telegram_claude.js` (untracked, 로컬 전용)
-
-## 결정사항
-- bedTime 날짜 귀속: wake 기반 (시간 경계 X)
-- 취침 판정 조건: mmWave peaceful + 침대 zone + 화면 30분 OFF + stationarySince 30분
-- timeRecords는 today doc에서만 읽음 (study doc 충돌 방지)
-- Codemagic은 트리거 꺼둠 (로컬 빌드 사용)
+## 미해결 이슈
+- ElevenLabs Starter 크레딧 소진 (4/25 리셋)
+- Tuya Cloud 쿼터 초과 (4/13 리셋) — CF 거짓 성공
+- 에리카러스트 iPad Auto 화질 고정
+- battery_manager pythonw 중복 실행 (시작 프로그램 등록 문제)
 
 ## 다음 할 일
-- [ ] **홈 대시보드 컴팩트 리디자인** — 카드별 레이아웃 개선 (Phase 2)
-- [ ] 오늘 밤 자동취침 정상 동작 확인 (화면 OFF 30분 + mmWave)
-- [ ] AI 비서 전반적 앱 관리 기능 확장
-- [ ] 고시 크롤러 대안 (로컬 Python)
-- [ ] 헤드위그 mmWave 연동
+- 커밋 (안정화 수정 전체)
+- CF rolloverManual 테스트
+- 웹페이지 리뉴얼
+- 음성 비서 시스템 프로토타입
+- 에리카러스트 화질 우회
+- battery_manager 중복 실행 방지 (PID lock)
+- 비바체 키오스크 IP (다음 방문 시)
 
-## 알려진 이슈
-- gosi.kr GCP IP 차단
-- 무선충전 스탠드 자동화 불가
-- 서명: release 빌드가 debug keystore 사용 중
+## 이번 세션 요약
+포트노이의 불평 1~10쪽 한국어 번역 HTML 완성 + 텔레 전송. 롤 프레임 최적화 (프로세스 정리 + RealTime 우선순위). WiFi 복구 후 전등 tinytuya 제어 성공. CF light 거짓 성공 피드백 기록.
+
+## 결정사항
+- CF light endpoint 완전 사용 불가 (거짓 성공 반환) — 어떤 상황에서도 시도 금지
+- 롤 중 불필요 프로세스 적극 정리 OK
+- 비코딩 작업은 터미널 세션이 적합

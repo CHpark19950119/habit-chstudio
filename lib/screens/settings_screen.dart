@@ -6,7 +6,6 @@ import '../constants.dart';
 import '../theme/botanical_theme.dart';
 import '../services/day_service.dart';
 import '../services/local_cache_service.dart';
-import '../services/sleep_detect_service.dart';
 import '../services/wake_service.dart';
 import '../models/iot_models.dart';
 import '../services/door_sensor_service.dart';
@@ -23,11 +22,9 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _nfc = DayService();
-  final _sleepDetect = SleepDetectService();
   final _wake = WakeService();
   static const _bixbyChannel = MethodChannel('com.cheonhong.cheonhong_studio/bixby');
   bool _loading = true;
-  bool _sleepDetectEnabled = false;
   String _wakeMode = 'sensor';
   bool _notifListenerEnabled = false;
   bool _safetyNetEnabled = true;
@@ -58,7 +55,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     try {
       await _nfc.initialize().timeout(const Duration(seconds: 5), onTimeout: () {});
-      _sleepDetectEnabled = _sleepDetect.enabled;
       _wakeMode = _wake.mode;
       _safetyNetEnabled = SafetyNetService().enabled;
       try {

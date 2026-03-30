@@ -129,13 +129,8 @@ class FirestoreWriteQueue {
 
   /// Pattern A: update() → set(merge:true) 폴백
   Future<void> _executeWrite(_WriteTask task) async {
-    // __DELETE__ 센티넬 → FieldValue.delete()
-    final processed = <String, dynamic>{};
-    for (final entry in task.fields.entries) {
-      processed[entry.key] = entry.value == '__DELETE__'
-          ? FieldValue.delete()
-          : entry.value;
-    }
+    // ★ __FIELD_DELETE__ 센티넬 → FieldValue.delete() 복원 (Hive 저널 복구 포함)
+    final processed = _restoreSentinels(task.fields);
 
     try {
       await _db.doc(task.docPath)
@@ -150,6 +145,28 @@ class FirestoreWriteQueue {
           .set(setFields, SetOptions(merge: true))
           .timeout(const Duration(seconds: 8));
     }
+  }
+
+  /// 센티넬 문자열 → FieldValue.delete() 재변환 (재귀, 중첩 맵 지원)
+  static Map<String, dynamic> _restoreSentinels(Map<String, dynamic> fields) {
+    final result = <String, dynamic>{};
+    for (final entry in fields.entries) {
+      result[entry.key] = _restoreValue(entry.value);
+    }
+    return result;
+  }
+
+  static dynamic _restoreValue(dynamic value) {
+    if (value == '__FIELD_DELETE__' || value == '__DELETE__') {
+      return FieldValue.delete();
+    }
+    if (value is Map) {
+      return value.map((k, v) => MapEntry(k, _restoreValue(v)));
+    }
+    if (value is List) {
+      return value.map(_restoreValue).toList();
+    }
+    return value;
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -251,8 +268,13 @@ class _WriteTask {
   }
 
   /// Hive 저장용: FieldValue/Timestamp/DateTime → 직렬화 가능 값으로 변환
+  /// ★ FieldValue.delete() → '__FIELD_DELETE__' 센티넬로 보존 (rehydrate 시 복원)
   static dynamic _sanitizeForHive(dynamic value) {
-    if (value is FieldValue) return null;
+    if (value is FieldValue) {
+      // FieldValue.delete()의 toString은 "FieldValue(delete)"
+      if (value.toString().contains('delete')) return '__FIELD_DELETE__';
+      return null; // arrayUnion 등 기타 FieldValue는 저널에서 복구 불가
+    }
     if (value is Timestamp) return value.millisecondsSinceEpoch;
     if (value is DateTime) return value.millisecondsSinceEpoch;
     if (value is Map) {

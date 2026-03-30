@@ -34,9 +34,14 @@ extension FirebaseStudyOps on FirebaseService {
     _studyCacheTime = DateTime.now();
     await LocalCacheService().updateStudyField('$_timeRecordsField.$date', recordMap);
     if (date == StudyDateUtils.todayKey()) {
+      // ★ dot-notation으로 개별 필드만 업데이트 (기존 필드 보존)
+      final todayFields = <String, dynamic>{};
+      for (final e in recordMap.entries) {
+        todayFields['timeRecords.${e.key}'] = e.value;
+      }
       FirestoreWriteQueue().enqueueDualWrite(
         _studyDoc, {'$_timeRecordsField.$date': recordMap},
-        _todayDoc2, {'timeRecords': recordMap},
+        _todayDoc2, todayFields,
       );
     } else {
       FirestoreWriteQueue().enqueue(_studyDoc, {
@@ -55,7 +60,10 @@ extension FirebaseStudyOps on FirebaseService {
           date, StudyTimeRecord.fromMap(date, Map<String, dynamic>.from(value as Map))));
   }
 
-  Future<void> updateStudyTimeRecord(String date, StudyTimeRecord record) async {
+  /// [effectiveDelta] — 이번에 추가/차감된 순공 분(분). 전달 시 today doc에
+  /// FieldValue.increment 사용 (race-condition 방지). null이면 절대값 덮어쓰기.
+  Future<void> updateStudyTimeRecord(String date, StudyTimeRecord record,
+      {int? effectiveDelta}) async {
     if (record.effectiveMinutes == 0 && record.totalMinutes == 0) return;
     final recordMap = record.toMap();
     LocalCacheService().markWrite();
@@ -64,9 +72,12 @@ extension FirebaseStudyOps on FirebaseService {
     _studyCacheTime = DateTime.now();
     LocalCacheService().updateStudyField('$_studyTimeRecordsField.$date', recordMap);
     if (date == StudyDateUtils.todayKey()) {
+      final todayValue = effectiveDelta != null
+          ? FieldValue.increment(effectiveDelta)
+          : record.effectiveMinutes;
       FirestoreWriteQueue().enqueueDualWrite(
         _studyDoc, {'$_studyTimeRecordsField.$date': recordMap},
-        _todayDoc2, {'studyTime.total': record.effectiveMinutes},
+        _todayDoc2, {'studyTime.total': todayValue},
       );
     } else {
       FirestoreWriteQueue().enqueue(_studyDoc, {
@@ -140,7 +151,7 @@ extension FirebaseStudyOps on FirebaseService {
         if (cached is Map) {
           for (final key in keysToDelete.keys) {
             final dateKey = key.replaceFirst('$_focusCyclesField.', '');
-            (cached as Map).remove(dateKey);
+            cached.remove(dateKey);
           }
         }
         debugPrint('[FocusClean] ${keysToDelete.length} old dates deleted');

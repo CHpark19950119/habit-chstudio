@@ -279,7 +279,8 @@ class FocusService extends ChangeNotifier {
       await box.put('sessions_$dateStr', list);
       // 오늘 총 순공시간 갱신
       final total = list.fold<int>(0, (s, m) {
-        return s + ((m['effectiveMin'] ?? 0) as int);
+        final v = m['effectiveMin'];
+        return s + (v is int ? v : int.tryParse(v?.toString() ?? '') ?? 0);
       });
       await box.put('todayStudyMin_$dateStr', total);
       debugPrint('[FocusService] saved session to Hive: ${cycle.id} (${cycle.effectiveMin}min)');
@@ -627,7 +628,8 @@ class FocusService extends ChangeNotifier {
             lectureMinutes: (prev.lectureMinutes - target.lectureMin).clamp(0, 999999),
             effectiveMinutes: (prev.effectiveMinutes - target.effectiveMin).clamp(0, 999999),
           );
-          await fb.updateStudyTimeRecord(date, record);
+          await fb.updateStudyTimeRecord(date, record,
+              effectiveDelta: -target.effectiveMin);
         }
       }
 
@@ -750,7 +752,8 @@ class FocusService extends ChangeNotifier {
         lectureMinutes: (prev?.lectureMinutes ?? 0) + cycle.lectureMin,
         effectiveMinutes: (prev?.effectiveMinutes ?? 0) + cycle.effectiveMin,
       );
-      await fb.updateStudyTimeRecord(cycle.date, record);
+      await fb.updateStudyTimeRecord(cycle.date, record,
+          effectiveDelta: cycle.effectiveMin);
 
       // today doc studyTime.subjects 갱신 (total은 updateStudyTimeRecord에서 처리됨)
       if (addedMin > 0) {

@@ -139,6 +139,26 @@ class LocalCacheService {
   }
 
   void _setNestedValue(Map<String, dynamic> map, String dotPath, dynamic value) {
+    // FieldValue.increment → 로컬 캐시에서 실제 증감 적용
+    if (value is FieldValue) {
+      final str = value.toString();
+      final match = RegExp(r'increment:\s*([-\d.]+)').firstMatch(str);
+      if (match != null) {
+        final delta = num.tryParse(match.group(1)!) ?? 0;
+        dynamic current = map;
+        for (final part in dotPath.split('.')) {
+          if (current is Map && current.containsKey(part)) {
+            current = current[part];
+          } else {
+            current = 0;
+            break;
+          }
+        }
+        final existing = current is num ? current : 0;
+        _setNestedValue(map, dotPath, existing + delta);
+      }
+      return;
+    }
     final parts = dotPath.split('.');
     if (parts.length == 1) {
       map[parts.first] = value;

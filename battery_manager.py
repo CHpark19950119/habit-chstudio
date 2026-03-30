@@ -6,12 +6,17 @@
 """
 import time
 import ctypes
+import subprocess
 import psutil
 import requests
 import tinytuya
 
 CF_URL = "https://us-central1-cheonhong-studio.cloudfunctions.net/checkDoorManual"
-TG_BOT = "8514127849:AAF8_F7SBfm51SGHtp9X5lva7yexdnFyapo"
+WIFI_SSID = "U+Net74BF"
+_wifi_ok = False
+_wifi_check_time = 0
+WIFI_CHECK_INTERVAL = 60  # 1분마다 확인
+TG_BOT = "8253264860:AAE8mKRSNN31ubdOvk4KPghOYcOmnXg0v50"
 TG_CHAT = "8724548311"
 LOW = 20
 HIGH = 80
@@ -23,13 +28,80 @@ SYNC_INTERVAL = 600  # 10분마다 실제 플러그 상태 동기화
 
 
 # ═══ Tuya 로컬 제어 설정 ═══
-# 20a(ebee3d9bf2c862c41fpw0j, 101) = 전등 (스탠드)
-# 16a(ebeaff0f5a69754067yfdv, 104) = 충전기
+# IP는 시작 시 자동 발견 (discover_tuya_ips)
 TUYA_DEVICES = {
     "charger": {"id": "ebeaff0f5a69754067yfdv", "ip": "192.168.219.104", "key": ">|(blpf;WLCPsLq&", "ver": 3.5},
     "light":   {"id": "ebee3d9bf2c862c41fpw0j", "ip": "192.168.219.101", "key": "['NP3>F'CP(/7H':", "ver": 3.5},
     "mmwave":  {"id": "eb21426cfb9a18c166v56z", "ip": "192.168.219.113", "key": "uX9-fLcHTxYD=DMt", "ver": 3.5},
 }
+
+def discover_tuya_ips():
+    """Tuya 기기 IP 자동 발견 — 100~120 범위 스캔"""
+    for name, d in TUYA_DEVICES.items():
+        try:
+            dev = tinytuya.OutletDevice(d["id"], d["ip"], d["key"], version=d["ver"])
+            dev.set_socketTimeout(2)
+            s = dev.status()
+            if s and "dps" in s:
+                print(f"[IP] {name}: {d['ip']} OK")
+                continue
+        except:
+            pass
+        # 현재 IP 안 되면 스캔
+        print(f"[IP] {name}: {d['ip']} 실패, 스캔 중...")
+        found = False
+        for i in range(100, 120):
+            ip = f"192.168.219.{i}"
+            try:
+                dev = tinytuya.OutletDevice(d["id"], ip, d["key"], version=d["ver"])
+                dev.set_socketTimeout(1)
+                s = dev.status()
+                if s and "dps" in s:
+                    d["ip"] = ip
+                    print(f"[IP] {name}: {ip} 발견!")
+                    found = True
+                    break
+            except:
+                pass
+        if not found:
+            print(f"[IP] {name}: 못 찾음")
+
+
+def ensure_wifi():
+    """U+Net74BF WiFi 연결 확인, 안 되어 있으면 자동 연결"""
+    global _wifi_ok, _wifi_check_time
+    now = time.time()
+    if now - _wifi_check_time < WIFI_CHECK_INTERVAL:
+        return _wifi_ok
+    _wifi_check_time = now
+    try:
+        r = subprocess.run(
+            ["netsh", "wlan", "show", "interfaces"],
+            capture_output=True, text=True, timeout=5, encoding="cp949", errors="replace"
+        )
+        if WIFI_SSID in r.stdout:
+            _wifi_ok = True
+            return True
+        print(f"[WiFi] {WIFI_SSID} 미연결 — 자동 연결 시도")
+        subprocess.run(
+            ["netsh", "wlan", "connect", f"name={WIFI_SSID}"],
+            capture_output=True, timeout=10
+        )
+        time.sleep(3)
+        r2 = subprocess.run(
+            ["netsh", "wlan", "show", "interfaces"],
+            capture_output=True, text=True, timeout=5, encoding="cp949", errors="replace"
+        )
+        _wifi_ok = WIFI_SSID in r2.stdout
+        if _wifi_ok:
+            print(f"[WiFi] {WIFI_SSID} 연결 성공")
+        else:
+            print(f"[WiFi] {WIFI_SSID} 연결 실패")
+        return _wifi_ok
+    except Exception as e:
+        print(f"[WiFi] error: {e}")
+        return False
+
 
 def _tuya_device(name):
     d = TUYA_DEVICES[name]
@@ -159,6 +231,18 @@ def check():
 
     pct = b.percent
 
+    # WiFi 연결 확인 (tinytuya 로컬 제어 전제조건)
+    if not ensure_wifi():
+        # WiFi 없으면 위험 배터리만 CF fallback으로 처리
+        if pct <= 10:
+            try:
+                requests.get(f"{CF_URL}?q=light&on=true&device=16a", timeout=10)
+                print(f"[Plug] WiFi 없음, CF fallback 충전 ON ({pct}%)")
+            except:
+                pass
+        heartbeat(pct, plug_on)
+        return
+
     # 주기적으로 실제 플러그 상태와 동기화
     sync_plug_state()
 
@@ -179,6 +263,10 @@ def check():
 
 if __name__ == "__main__":
     print(f"배터리 매니저 시작 ({LOW}~{HIGH}%, {INTERVAL}초 간격)")
+    # 시작 시 WiFi 연결 확인
+    ensure_wifi()
+    # 시작 시 Tuya 기기 IP 자동 발견
+    discover_tuya_ips()
     # 시작 시 실제 플러그 상태 확인
     actual = get_actual_plug_state()
     if actual is not None:

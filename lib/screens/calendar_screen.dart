@@ -33,6 +33,7 @@ class _CalendarScreenState extends State<CalendarScreen>
   late DateTime _selectedDate;
   bool _loading = true;
   bool _loadLock = false;   // 중복 호출 방지 (UI 상태와 분리)
+  bool _pendingReload = false; // ★ Bug #2 fix: 로딩 중 월 변경 시 재로드 예약
 
   Map<String, List<String>> _monthMemos = {};
   List<String> _selectedMemos = [];
@@ -95,10 +96,10 @@ class _CalendarScreenState extends State<CalendarScreen>
   }
 
   Future<void> _loadMonth() async {
-    if (_loadLock) return; // 중복 호출 방지 (_loading과 분리)
+    if (_loadLock) { _pendingReload = true; return; } // ★ Bug #2 fix: 로딩 중이면 예약
     _loadLock = true;
     _safeSetState(() => _loading = true);
-    FirebaseService().invalidateStudyCache();
+    // ★ Bug #4 fix: 캐시 무효화 제거 — 읽기 전용 화면에서 캐시 삭제는 불필요한 서버 재요청 유발
     const t = Duration(seconds: 8);
 
     try {
@@ -116,7 +117,8 @@ class _CalendarScreenState extends State<CalendarScreen>
       }
 
       // study 문서도 로드 (today 데이터 + restDays/journals 등)
-      final studyData = await _fb.getStudyData().timeout(t);
+      // ★ Bug #1 fix: onTimeout 추가 — 타임아웃 시 null 반환 (예외 대신)
+      final studyData = await _fb.getStudyData().timeout(t, onTimeout: () => null);
 
       // studyTimeRecords: history → study fallback
       try {
@@ -149,14 +151,17 @@ class _CalendarScreenState extends State<CalendarScreen>
           final strRaw = studyData['studyTimeRecords'] as Map<String, dynamic>?;
           if (strRaw != null) {
             for (final entry in strRaw.entries) {
-              if (entry.key.startsWith(monthKey) && !_monthStudyRecords.containsKey(entry.key)) {
-                _monthStudyRecords[entry.key] = StudyTimeRecord.fromMap(
-                    entry.key, entry.value as Map<String, dynamic>);
-              }
+              // ★ Bug #3 fix: 개별 항목 에러가 전체 데이터 삭제하지 않도록
+              try {
+                if (entry.key.startsWith(monthKey) && !_monthStudyRecords.containsKey(entry.key)) {
+                  _monthStudyRecords[entry.key] = StudyTimeRecord.fromMap(
+                      entry.key, Map<String, dynamic>.from(entry.value as Map));
+                }
+              } catch (_) {} // 개별 항목 스킵
             }
           }
         }
-      } catch (_) { _monthStudyRecords = {}; }
+      } catch (_) { /* history 파싱 실패해도 study fallback 데이터는 보존 */ }
 
       // focusCycles: history → study fallback
       try {
@@ -207,7 +212,7 @@ class _CalendarScreenState extends State<CalendarScreen>
             }
           }
         }
-      } catch (_) { _monthFocusCycles = {}; }
+      } catch (_) { /* focusCycles 파싱 실패해도 기존 데이터 보존 */ }
 
       // ★ Hive 로컬 fallback: Firestore sync 실패해도 로컬 데이터 표시
       try {
@@ -285,6 +290,11 @@ class _CalendarScreenState extends State<CalendarScreen>
       _loadLock = false;
       _safeSetState(() => _loading = false);
       if (mounted) _fadeCtrl.forward(from: 0);
+      // ★ Bug #2 fix: 로딩 중 월 변경 요청이 있었으면 재로드
+      if (_pendingReload) {
+        _pendingReload = false;
+        _loadMonth();
+      }
     }
   }
 

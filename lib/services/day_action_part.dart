@@ -61,8 +61,6 @@ extension _DayActionHandlers on DayService {
       }
       _triggerWidgetUpdate();
 
-      BusService().startPolling();
-
       // 안전망 알림 해제
       SafetyNetService().clearAlert(SafetyCheck.wakeMiss);
 
@@ -111,8 +109,6 @@ extension _DayActionHandlers on DayService {
         _routine.setState(DayState.outing);
         await _routine.saveState();
         _routine.cancelReminders();
-        BusService().stopPolling();
-        GeofenceService().notifyLeftHome(); // ★ GPS 귀가 감지 시작
         TelegramService().sendNfc('🚶 외출 $tgTime$loc');
         _notifyNative(title: '외출', body: '외출 $tgTime');
         _emitAction('outing_start', '🚪', '외출 $tgTime$loc');
@@ -174,7 +170,6 @@ extension _DayActionHandlers on DayService {
       }
 
       // Case 3: 새 공부 시작
-      BusService().stopPolling();
       await fb.updateTimeRecord(dateStr, _withFields(dateStr, e, study: timeStr))
           .timeout(const Duration(seconds: 5));
       _routine.setState(DayState.studying);

@@ -571,6 +571,8 @@ class SubjectConfig {
     '경제학': SubjectInfo('경제학', '💰', 0xFF2D7D9A),
     '국제법': SubjectInfo('국제법', '⚖️', 0xFF7A5195),
     '국제정치학': SubjectInfo('국제정치학', '🌏', 0xFF3B7A57),
+    // 기타
+    '기타': SubjectInfo('기타', '📚', 0xFF6366F1),
   };
 
   // ── 시험 라운드 분류 ──
@@ -614,6 +616,11 @@ class SubjectConfig {
     } catch (_) {
       _subjects = Map.from(_factoryDefaults);
     }
+    // 기본값에 있는데 목록에 없는 과목 자동 추가
+    for (final entry in _factoryDefaults.entries) {
+      _subjects.putIfAbsent(entry.key, () => entry.value);
+    }
+    await _save();
     _loaded = true;
   }
 

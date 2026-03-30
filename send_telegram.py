@@ -8,7 +8,7 @@ import urllib.request, urllib.parse, json, sys, os
 
 BOTS = {
     'me': {
-        'token': '8514127849:AAF8_F7SBfm51SGHtp9X5lva7yexdnFyapo',
+        'token': '8253264860:AAE8mKRSNN31ubdOvk4KPghOYcOmnXg0v50',
         'chat_id': '8724548311',
     },
     'girlfriend': {

@@ -8,7 +8,7 @@ const db = admin.firestore();
 
 const UID = "sJ8Pxusw9gR0tNR44RhkIge7OiG2";
 const TUYA_BASE = "https://openapi.tuyaus.com";
-const MY_BOT_TOKEN = "8514127849:AAF8_F7SBfm51SGHtp9X5lva7yexdnFyapo";
+const MY_BOT_TOKEN = "8253264860:AAE8mKRSNN31ubdOvk4KPghOYcOmnXg0v50";
 const MY_CHAT_ID = "8724548311";
 const GF_BOT_TOKEN = "8613977898:AAEuuoTVARS-a9nrDp85NWHHOYM0lRvmZmc";
 const GF_CHAT_ID = "8624466505";
@@ -198,26 +198,26 @@ async function setDeskLight(on) {
 async function pollDoorLogic() {
   const {accessId, accessSecret, deviceId} = getConfig();
 
-  // Get Tuya API token
-  const token = await getTuyaToken(accessId, accessSecret);
-
-  // Get device status (현재 상태)
-  const statusArr = await getDeviceStatus(accessId, accessSecret, token, deviceId);
-
+  // ═══ Tuya API 호출 (쿼터 초과 시 fallback) ═══
+  let token = null;
+  let statusArr = [];
+  let tuyaApiOk = false;
   let doorContactState = null;
-  for (const s of statusArr) {
-    if (s.code === "doorcontact_state") {
-      doorContactState = s.value;
+
+  try {
+    token = await getTuyaToken(accessId, accessSecret);
+    statusArr = await getDeviceStatus(accessId, accessSecret, token, deviceId);
+    tuyaApiOk = true;
+    for (const s of statusArr) {
+      if (s.code === "doorcontact_state") {
+        doorContactState = s.value;
+      }
     }
+  } catch (e) {
+    console.warn("Tuya API failed (quota?), using Firestore fallback:", e.message);
   }
 
-  if (doorContactState === null) {
-    return {success: false, msg: "doorcontact_state not found", raw: statusArr};
-  }
-
-  const isOpen = doorContactState; // true = open, false = closed
-
-  // Read IoT doc
+  // Read IoT doc (Tuya 성공 여부와 무관하게 항상 읽기)
   const todayRef = db.doc("users/" + UID + "/data/iot");
   const doc = await todayRef.get();
   const iotData = doc.exists ? doc.data() : {};
@@ -225,18 +225,28 @@ async function pollDoorLogic() {
   const iotConfig = iotData.config || {};
   const bedThreshold = iotConfig.bedThresholdCm || DEFAULT_BED_THRESHOLD;
 
-  const stateChanged =
-    currentDoor.isOpen === undefined || currentDoor.isOpen !== isOpen;
+  // ═══ Tuya API 실패 시 → Firestore fallback (battery_manager가 쓴 데이터) ═══
+  const isOpen = doorContactState; // null이면 도어센서 못 읽은 것
+  const mmPresence = iotConfig.mmwave_presence || null; // battery_manager가 로컬 폴링→Firestore
+  const mmDistance = Number(iotConfig.mmwave_distance) || 0;
 
-  const doorUpdate = {
-    isOpen: isOpen,
-    state: isOpen ? "open" : "closed",
-    lastPolled: admin.firestore.FieldValue.serverTimestamp(),
-    sensorId: "front_door",
-  };
+  // 도어센서 못 읽었으면 도어 업데이트 스킵
+  if (isOpen === null && !tuyaApiOk) {
+    console.log("Door sensor unavailable, mmWave-only mode. presence=" + mmPresence);
+  }
 
-  if (stateChanged) {
-    doorUpdate.lastChanged = admin.firestore.FieldValue.serverTimestamp();
+  const stateChanged = isOpen !== null &&
+    (currentDoor.isOpen === undefined || currentDoor.isOpen !== isOpen);
+
+  const doorUpdate = {};
+  if (isOpen !== null) {
+    doorUpdate.isOpen = isOpen;
+    doorUpdate.state = isOpen ? "open" : "closed";
+    doorUpdate.lastPolled = admin.firestore.FieldValue.serverTimestamp();
+    doorUpdate.sensorId = "front_door";
+    if (stateChanged) {
+      doorUpdate.lastChanged = admin.firestore.FieldValue.serverTimestamp();
+    }
   }
 
   // ═══ 문 열림 일별 추적 — 이벤트 로그 기반 (폴링 놓침 방지) ═══
@@ -315,25 +325,46 @@ async function pollDoorLogic() {
   let wakeTime = null;
   const doorMerged = {...currentDoor, ...doorUpdate};
   if (doorMerged.openedToday) {
+    // 도어센서 기반 기상
     wakeTime = await checkWakeAndNotify(doc, doorMerged.firstOpenTime);
+  }
+  // ★ mmWave fallback 기상: 도어센서 못 읽고, mmWave가 재실 감지하면 기상 시도
+  if (!wakeTime && isOpen === null && mmPresence && mmPresence !== "none") {
+    console.log("mmWave wake fallback — presence=" + mmPresence);
+    wakeTime = await checkWakeAndNotify(doc, null);
   }
 
   // ═══ 외출 20분 확정 체크 ═══
   let outingTime = null;
   outingTime = await checkMovementPending(doc);
 
-  // ═══ mmWave presence 폴링 (토큰 재활용) ═══
+  // ═══ mmWave presence 폴링 (Tuya API 또는 Firestore fallback) ═══
   let sleepTime = null;
   const {mmwaveId} = getConfig();
   if (mmwaveId) {
-    try {
-      const mmStatus = await getDeviceStatus(accessId, accessSecret, token, mmwaveId);
-      let presenceState = null;
-      let targetDist = null;
-      for (const s of mmStatus) {
-        if (s.code === "presence_state") presenceState = s.value;
-        if (s.code === "target_dis_closest") targetDist = s.value;
+    let presenceState = null;
+    let targetDist = null;
+
+    if (tuyaApiOk && token) {
+      try {
+        const mmStatus = await getDeviceStatus(accessId, accessSecret, token, mmwaveId);
+        for (const s of mmStatus) {
+          if (s.code === "presence_state") presenceState = s.value;
+          if (s.code === "target_dis_closest") targetDist = s.value;
+        }
+      } catch (e) {
+        console.warn("mmWave Tuya API failed:", e.message);
       }
+    }
+
+    // ★ Firestore fallback: battery_manager.py가 로컬 폴링한 데이터
+    if (!presenceState && mmPresence) {
+      presenceState = mmPresence;
+      targetDist = mmDistance;
+      console.log("mmWave using Firestore fallback: " + presenceState + " " + targetDist + "cm");
+    }
+
+    if (presenceState) {
 
       const prevPresence = iotData.presence || {};
       const presenceUpdate = {
@@ -410,10 +441,8 @@ async function pollDoorLogic() {
 
       // ═══ 취침 자동 감지 (필터된 거리 사용) ═══
       sleepTime = await checkSleepByPresence(doc, presenceState, prevPresence, zoneDist, bedThreshold);
-    } catch (e) {
-      console.error("mmWave poll error:", e.message);
-    }
-  }
+    } // end if (presenceState)
+  } // end if (mmwaveId)
 
   return {success: true, isOpen, stateChanged, wakeTime, outingTime, sleepTime, raw: statusArr};
 }
@@ -925,9 +954,10 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       const allowed = {today: "data/today", study: "data/study", iot: "data/iot"};
       if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot"}); return; }
 
-      // 타입 자동 변환
+      // 타입 자동 변환 (__DELETE__ → FieldValue.delete())
       let parsed;
-      if (rawValue === "true") parsed = true;
+      if (rawValue === "__DELETE__") parsed = admin.firestore.FieldValue.delete();
+      else if (rawValue === "true") parsed = true;
       else if (rawValue === "false") parsed = false;
       else if (rawValue === "null") parsed = null;
       else if (!isNaN(rawValue) && rawValue !== "") {
@@ -941,13 +971,15 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       await docRef.update({[field]: parsed});
 
       // ★ dual-write: today↔study 자동 동기화
-      if (docName === "today" || docName === "study") {
+      // __DELETE__는 미러링 건너뜀 — today/study 문서 구조가 다르므로
+      // 삭제는 각 문서에 명시적으로 보내야 한다 (?q=delete 또는 doc별 개별 write)
+      if (rawValue !== "__DELETE__" && (docName === "today" || docName === "study")) {
         const mirrorName = docName === "today" ? "study" : "today";
         const mirrorRef = db.doc("users/" + UID + "/" + allowed[mirrorName]);
         try { await mirrorRef.update({[field]: parsed}); } catch (_) { /* mirror doc 없으면 무시 */ }
       }
 
-      res.status(200).json({ok: true, doc: docName, field, value: parsed});
+      res.status(200).json({ok: true, doc: docName, field, value: rawValue === "__DELETE__" ? "__DELETED__" : parsed});
       return;
     }
 
@@ -2347,6 +2379,227 @@ exports.batteryWatchdog = functions.pubsub
     }
     return null;
   });
+
+// ═══════════════════════════════════════════════════════════
+//  🔄 일일 롤오버 — 매일 04:10 KST
+//  today doc 아카이빙 → history/{month}.days.{dd}
+//  today doc 리셋 (orderData 보존)
+//  iot doc 리셋 (movement, activity)
+//  멱등: 여러 번 실행해도 안전 (date 비교 + _rolloverInProgress 가드)
+// ═══════════════════════════════════════════════════════════
+
+async function dailyRolloverLogic() {
+  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const todayKey = kstStudyDate(kstNow);
+  const log = [];
+  log.push("Rollover check at KST " +
+    String(kstNow.getUTCHours()).padStart(2, "0") + ":" +
+    String(kstNow.getUTCMinutes()).padStart(2, "0") +
+    " todayKey=" + todayKey);
+
+  // 1. Read today doc
+  const todayRef = db.doc("users/" + UID + "/data/today");
+  const todaySnap = await todayRef.get();
+  if (!todaySnap.exists) {
+    log.push("today doc does not exist — skip");
+    return {rolled: false, log};
+  }
+  const todayData = todaySnap.data();
+  const savedDate = todayData.date;
+
+  // Already current date — no rollover needed
+  if (!savedDate || savedDate === todayKey) {
+    log.push("date=" + (savedDate || "null") + " == todayKey — no rollover");
+    // Still reset iot even if today doc is current (idempotent daily iot reset)
+    await resetIotDoc(todayKey, log);
+    return {rolled: false, log};
+  }
+
+  // Guard: _rolloverInProgress (stuck flag from app crash)
+  if (todayData._rolloverInProgress) {
+    log.push("_rolloverInProgress stuck flag found — clearing");
+    await todayRef.update({
+      _rolloverInProgress: admin.firestore.FieldValue.delete(),
+    });
+  }
+
+  log.push("Rolling " + savedDate + " → " + todayKey);
+
+  // 2. Mark rollover in progress (prevent concurrent runs)
+  await todayRef.update({
+    date: todayKey,
+    _rolloverInProgress: true,
+  });
+
+  try {
+    // 3. Archive today data to history/{month}.days.{dd}
+    const month = savedDate.substring(0, 7); // "yyyy-MM"
+    const day = savedDate.substring(8, 10);   // "dd"
+
+    // Clone todayData for archive (exclude internal fields)
+    const archiveData = {...todayData};
+    delete archiveData._rolloverInProgress;
+
+    const historyRef = db.doc("users/" + UID + "/history/" + month);
+    await historyRef.set({
+      month: month,
+      days: {[day]: archiveData},
+      lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+    }, {merge: true});
+    log.push("Archived to history/" + month + ".days." + day);
+
+    // 4. Reset today doc — preserve orderData, reset everything else
+    const newToday = {
+      date: todayKey,
+      timeRecords: {},
+      studyTime: {total: 0, subjects: {}},
+      todos: [],
+      orderData: todayData.orderData || {},
+      lastModified: Date.now(),
+      lastDevice: "cf_rollover",
+    };
+    await todayRef.set(newToday);
+    log.push("Today doc reset for " + todayKey);
+
+    // 5. Reset iot doc (movement + activity)
+    await resetIotDoc(todayKey, log);
+
+    // 6. Recalculate month summary (fire-and-forget)
+    recalculateMonthSummary(month).catch((e) =>
+      console.error("Rollover summary error:", e.message));
+
+    // 7. Telegram notification
+    const msg = "🔄 CF 롤오버 완료\n" + savedDate + " → " + todayKey;
+    await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
+      {chat_id: MY_CHAT_ID, text: msg}).catch(() => {});
+
+    log.push("Rollover complete");
+    return {rolled: true, from: savedDate, to: todayKey, log};
+  } finally {
+    // Always clear rollover flag
+    try {
+      await todayRef.update({
+        _rolloverInProgress: admin.firestore.FieldValue.delete(),
+      });
+    } catch (_) {}
+  }
+}
+
+// iot doc daily reset — movement + activity
+async function resetIotDoc(todayKey, log) {
+  const iotRef = db.doc("users/" + UID + "/data/iot");
+  const iotSnap = await iotRef.get();
+  if (!iotSnap.exists) {
+    log.push("iot doc does not exist — skip iot reset");
+    return;
+  }
+  const iotData = iotSnap.data();
+
+  const iotUpdate = {};
+  let changed = false;
+
+  // Reset movement (stale outing from yesterday)
+  const movement = iotData.movement || {};
+  if (movement.type !== "home" || movement.pending) {
+    iotUpdate.movement = {
+      type: "home",
+      pending: false,
+      resetBy: "cf_rollover",
+      resetAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    changed = true;
+    log.push("iot.movement reset to home");
+  }
+
+  // Reset activity transitions for new day
+  const activity = iotData.activity || {};
+  if (activity.date !== todayKey) {
+    iotUpdate.activity = {
+      date: todayKey,
+      current: activity.current || "still",
+      transitions: [],
+    };
+    changed = true;
+    log.push("iot.activity reset for " + todayKey);
+  }
+
+  if (changed) {
+    await iotRef.set(iotUpdate, {merge: true});
+  } else {
+    log.push("iot doc already current — no reset needed");
+  }
+}
+
+// Month summary recalculation (mirrors Flutter _calculateMonthlySummary)
+async function recalculateMonthSummary(month) {
+  const historyRef = db.doc("users/" + UID + "/history/" + month);
+  const snap = await historyRef.get();
+  if (!snap.exists) return;
+  const data = snap.data();
+  const days = data.days || {};
+
+  let totalMinutes = 0;
+  const subjectTotals = {};
+  let todosCompleted = 0;
+  let todosTotal = 0;
+  let daysWithStudy = 0;
+
+  for (const [, dayData] of Object.entries(days)) {
+    const st = dayData.studyTime || {};
+    const dayMin = st.total || 0;
+    if (dayMin > 0) {
+      totalMinutes += dayMin;
+      daysWithStudy++;
+    }
+    const subs = st.subjects || {};
+    for (const [subj, min] of Object.entries(subs)) {
+      subjectTotals[subj] = (subjectTotals[subj] || 0) + (min || 0);
+    }
+    const todos = dayData.todos || [];
+    if (Array.isArray(todos)) {
+      todosTotal += todos.length;
+      todosCompleted += todos.filter((t) => t.completed).length;
+    }
+  }
+
+  await historyRef.update({
+    summary: {
+      totalMinutes,
+      subjectTotals,
+      todosCompleted,
+      todosTotal,
+      daysWithStudy,
+      daysCount: Object.keys(days).length,
+    },
+    lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+// Scheduled: 04:10 KST daily
+exports.dailyRollover = functions.pubsub
+  .schedule("10 4 * * *")
+  .timeZone("Asia/Seoul")
+  .onRun(async () => {
+    try {
+      const result = await dailyRolloverLogic();
+      console.log("DailyRollover:", JSON.stringify(result));
+    } catch (err) {
+      console.error("DailyRollover error:", err.message);
+      await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
+        {chat_id: MY_CHAT_ID, text: "⚠️ 롤오버 실패\n" + err.message}).catch(() => {});
+    }
+    return null;
+  });
+
+// Manual rollover test endpoint
+exports.rolloverManual = functions.https.onRequest(async (req, res) => {
+  try {
+    const result = await dailyRolloverLogic();
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(500).json({success: false, error: err.message});
+  }
+});
 
 // ═══ 부곡도서관 좌석 프록시 ═══
 exports.librarySeats = functions.https.onRequest(async (req, res) => {

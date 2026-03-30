@@ -191,8 +191,13 @@ class DataAuditService {
               final sMod = studyData['lastModified'] as int? ?? 0;
               final tMod = todayData['lastModified'] as int? ?? 0;
               if (sMod >= tMod) {
-                await fb.updateTodayField('timeRecords', sFields);
-                results.add('  → study doc 기준으로 today 동기화');
+                // ★ dot-notation으로 개별 필드만 동기화 (기존 필드 보존)
+                for (final key in ['wake', 'study', 'studyEnd', 'outing', 'returnHome', 'bedTime']) {
+                  if (sFields[key] != null) {
+                    await fb.updateTodayField('timeRecords.$key', sFields[key]);
+                  }
+                }
+                results.add('  → study doc 기준으로 today 동기화 (필드별)');
               } else {
                 final tr = TimeRecord.fromMap(todayKey, tFields);
                 await fb.updateTimeRecord(todayKey, tr);

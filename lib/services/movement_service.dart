@@ -7,7 +7,6 @@ import '../utils/study_date_utils.dart';
 import 'routine_service.dart';
 import 'day_service.dart' show DayState;
 import 'firebase_service.dart';
-import 'geofence_service.dart';
 
 /// NFC Action — UI 표시용 (movement에서 발생하는 이벤트)
 class MovementAction {
@@ -17,7 +16,7 @@ class MovementAction {
   MovementAction(this.action, this.emoji, this.message);
 }
 
-/// MovementService — 이동/체류 감지, Bixby movement, Geofence, Activity Recognition
+/// MovementService — 이동/체류 감지, Bixby movement
 class MovementService extends ChangeNotifier {
   static final MovementService _instance = MovementService._internal();
   factory MovementService() => _instance;
@@ -36,7 +35,6 @@ class MovementService extends ChangeNotifier {
   // ═══ Movement listener ═══
   String? _lastMovementType;
   bool _movementFirstSnapshot = true;
-  StreamSubscription<bool>? _geofenceSub;
   StreamSubscription<DocumentSnapshot>? _movementSub;
 
   // ═══ Action callback ═══
@@ -60,63 +58,8 @@ class MovementService extends ChangeNotifier {
 
   Future<void> initialize() async {
     if (_initialized) return;
-    _geofenceSub?.cancel();
-    _geofenceSub = GeofenceService().homeStream.listen(_onGeofenceEvent);
     _startMovementListener();
     _initialized = true;
-  }
-
-  // ═══════════════════════════════════════════
-  //  Geofence 이벤트 처리
-  // ═══════════════════════════════════════════
-
-  void _onGeofenceEvent(bool entering) {
-    final routine = RoutineService();
-    final now = DateTime.now();
-    final timeStr = DateFormat('HH:mm').format(now);
-
-    if (!entering && routine.state != DayState.outing) {
-      if (routine.state == DayState.idle || routine.state == DayState.sleeping) return;
-      _log('Geofence EXIT → iot 이벤트 기록');
-      _outingTime = timeStr;
-      _returnTime = null;
-      _writeGeofenceToIot(type: 'out', timeStr: timeStr);
-      routine.forceState(DayState.outing);
-      onAction?.call('outing_start', '🚪', '외출 $timeStr (GPS)');
-    } else if (entering && routine.state == DayState.outing) {
-      _log('Geofence ENTER → iot 이벤트 기록');
-      _returnTime = timeStr;
-      _writeGeofenceToIot(type: 'home', timeStr: timeStr);
-      routine.forceState(DayState.returned);
-      onAction?.call('outing_end', '🏠', '귀가 $timeStr (GPS)');
-    }
-  }
-
-  Future<void> _writeGeofenceToIot({required String type, required String timeStr}) async {
-    try {
-      final ref = FirebaseFirestore.instance.doc(_iotDocPath);
-      if (type == 'out') {
-        await ref.set({
-          'movement': {
-            'pending': false,
-            'type': 'out',
-            'leftAt': FieldValue.serverTimestamp(),
-            'leftAtLocal': timeStr,
-            'source': 'geofence',
-            'confirmedAt': FieldValue.serverTimestamp(),
-          }
-        }, SetOptions(merge: true)).timeout(const Duration(seconds: 5));
-      } else {
-        await ref.update({
-          'movement.type': 'home',
-          'movement.returnedAt': FieldValue.serverTimestamp(),
-          'movement.returnedAtLocal': timeStr,
-          'movement.source': 'geofence',
-        }).timeout(const Duration(seconds: 5));
-      }
-    } catch (e) {
-      _log('iot 기록 에러: $e');
-    }
   }
 
   // ═══════════════════════════════════════════
@@ -317,7 +260,6 @@ class MovementService extends ChangeNotifier {
 
   @override
   void dispose() {
-    _geofenceSub?.cancel();
     _movementSub?.cancel();
     super.dispose();
   }

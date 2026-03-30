@@ -25,10 +25,6 @@
     <!-- 카메라 (QR 기상 인증) -->
     <uses-permission android:name="android.permission.CAMERA" />
 
-    <!-- Activity Recognition (이동/정지 감지) -->
-    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
-    <uses-permission android:name="com.google.android.gms.permission.ACTIVITY_RECOGNITION" />
-
     <!-- NFC -->
     <uses-permission android:name="android.permission.NFC" />
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
@@ -80,6 +76,20 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="cheonhong" android:host="nfc"/>
             </intent-filter>
+
+            <!-- 딥링크: 포커스/앱/상태 제어 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="cheonhong" android:host="focus"/>
+                <data android:scheme="cheonhong" android:host="app"/>
+                <data android:scheme="cheonhong" android:host="wake"/>
+                <data android:scheme="cheonhong" android:host="sleep"/>
+                <data android:scheme="cheonhong" android:host="outing"/>
+                <data android:scheme="cheonhong" android:host="meal"/>
+                <data android:scheme="cheonhong" android:host="order"/>
+            </intent-filter>
         </activity>
 
         <meta-data
@@ -101,16 +111,6 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
-
-        <!-- Activity Recognition (이동/정지 감지) -->
-        <receiver
-            android:name=".ActivityTransitionReceiver"
-            android:exported="false" />
-
-        <!-- Sleep detection alarm receiver -->
-        <receiver
-            android:name=".SleepAlarmReceiver"
-            android:exported="false" />
 
         <!-- Home screen widget -->
         <receiver

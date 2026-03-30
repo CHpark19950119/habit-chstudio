@@ -11,7 +11,7 @@ class TelegramService {
   TelegramService._internal();
 
   // ── 내 봇 (시스템/배포/알람 알림) ──
-  static const _myToken  = '8514127849:AAF8_F7SBfm51SGHtp9X5lva7yexdnFyapo';
+  static const _myToken  = '8253264860:AAE8mKRSNN31ubdOvk4KPghOYcOmnXg0v50';
   static const _myChatId = '8724548311';
 
   // ── 애인 봇 (NFC 활동 알림) ──

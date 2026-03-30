@@ -1,5 +1,5 @@
 $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
-$token = "8514127849:AAF8_F7SBfm51SGHtp9X5lva7yexdnFyapo"
+$token = "8253264860:AAE8mKRSNN31ubdOvk4KPghOYcOmnXg0v50"
 $chatId = "8724548311"
 $apk = "build\app\outputs\flutter-apk\app-debug.apk"
 $pkg = "com.cheonhong.cheonhong_studio"

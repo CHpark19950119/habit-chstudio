@@ -3,16 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'services/firebase_service.dart';
 import 'services/focus_service.dart';
 import 'services/local_cache_service.dart';
 import 'services/day_service.dart';
 import 'services/cradle_service.dart';
-import 'services/geofence_service.dart';
 import 'services/door_sensor_service.dart';
 import 'services/report_service.dart';
-import 'services/sleep_detect_service.dart';
 import 'services/wake_service.dart';
 import 'services/widget_render_service.dart';
 import 'services/fcm_service.dart';
@@ -30,26 +27,12 @@ class AppInit {
     await LocalCacheService().init();
     await FirestoreWriteQueue().init();
 
-    // ── Phase 1.5: Day Rollover (경량, 블로킹 OK) ──
-    try {
-      await FirebaseService().checkDayRollover()
-          .timeout(const Duration(seconds: 5));
-    } catch (e) {
-      debugPrint('[AppInit] rollover error: $e');
-    }
+    // ── Phase 1.5: Day Rollover (비블로킹 — Phase 2와 병렬 실행) ──
+    final rolloverFuture = FirebaseService().checkDayRollover()
+        .timeout(const Duration(seconds: 12))
+        .catchError((e) { debugPrint('[AppInit] rollover error: $e'); });
 
-    // ── Phase 1.6: stuck rollover 플래그 정리 ──
-    try {
-      final td = await FirebaseService().getTodayDoc();
-      if (td != null && td['_rolloverInProgress'] == true) {
-        debugPrint('[AppInit] stuck rollover flag — removing');
-        await FirebaseService().updateTodayField(
-          '_rolloverInProgress', FieldValue.delete(),
-        );
-      }
-    } catch (_) {}
-
-    // ── Phase 2: 서비스 초기화 (병렬, 개별 try-catch) ──
+    // ── Phase 2: 서비스 초기화 (병렬, 개별 try-catch) — rollover와 동시 진행 ──
     await Future.wait([
       FocusService().initialize().timeout(const Duration(seconds: 10)).catchError((_) {}),
       DayService().initialize().timeout(const Duration(seconds: 10)).catchError((_) {}),
@@ -60,17 +43,18 @@ class AppInit {
       FocusService().restoreState().timeout(const Duration(seconds: 8)).catchError((_) => false),
     ]);
 
-    // ── Phase 4a: 센서 기반 서비스 (순서 의존: Door → Wake, Geo → NFC) ──
+    // ★ rollover 완료 대기 (센서 서비스가 today doc에 의존)
+    await rolloverFuture;
+
+    // ── Phase 4a: 센서 기반 서비스 ──
     await Future.wait([
       DoorSensorService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
-      GeofenceService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
       CradleService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
     ]);
 
-    // ── Phase 4b: Door/Geo 의존 서비스 ──
+    // ── Phase 4b: 의존 서비스 ──
     await Future.wait([
       WakeService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
-      SleepDetectService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
       FcmService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
     ]);
 

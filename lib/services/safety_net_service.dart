@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import '../constants.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart' show Colors, showDialog;
@@ -10,14 +9,12 @@ import '../utils/study_date_utils.dart';
 import '../models/iot_models.dart';
 import 'routine_service.dart';
 import '../models/models.dart' show ActionType, TimeRecord;
-import '../models/order_models.dart' show OrderData, OrderHabit;
+import '../models/order_models.dart' show OrderData;
 import '../models/creature_mood.dart';
 import 'day_service.dart';
 import 'creature_service.dart';
-import 'geofence_service.dart';
 import 'door_sensor_service.dart';
 import 'meal_service.dart';
-import 'movement_service.dart';
 import 'firebase_service.dart';
 import 'local_cache_service.dart';
 import '../main.dart' show navigatorKey;
@@ -224,7 +221,6 @@ class SafetyNetService {
   Future<void> runChecks() async {
     if (!_enabled) return;
     final routine = RoutineService();
-    final geofence = GeofenceService();
     final door = DoorSensorService();
     final now = DateTime.now();
     final todayKey = StudyDateUtils.todayKey(now);
@@ -252,26 +248,6 @@ class SafetyNetService {
       }
     }
 
-    // ── 2. 외출 미감지 ──
-    if (routine.state != DayState.outing
-        && routine.state != DayState.idle
-        && routine.state != DayState.sleeping
-        && geofence.enabled && geofence.hasHome && !geofence.isHome) {
-      _maybeAlert(SafetyCheck.outingMiss, todayKey,
-          title: '나간 거야?',
-          body: 'GPS가 집 밖인데 외출 상태가 아니에요',
-          confirmActionId: _actionConfirmOuting);
-    }
-
-    // ── 3. 귀가 미감지 ──
-    if (routine.state == DayState.outing
-        && geofence.enabled && geofence.hasHome && geofence.isHome) {
-      _maybeAlert(SafetyCheck.returnMiss, todayKey,
-          title: '돌아온 거야?',
-          body: 'GPS가 집인데 아직 외출 중이에요',
-          confirmActionId: _actionConfirmReturn);
-    }
-
     // ── 4. 식사 미기록 ──
     if (routine.state == DayState.studying && !MealService().isMealing) {
       await _checkMealMiss(todayKey, now);
@@ -280,15 +256,7 @@ class SafetyNetService {
     // ── 5. 비정상 데이터 ──
     await _checkAbnormalData(todayKey);
 
-    // ── 6. 체류 감지 시 장소 확인 (집이면 스킵) ──
-    if (routine.state == DayState.outing && !geofence.isHome) {
-      final activity = MovementService().currentActivity;
-      if (activity == 'still') {
-        _maybeLocationAlert(todayKey);
-      }
-    }
-
-    // ── 7. 홈데이 확인 (homeDayConfirm) ──
+    // ── 6. 홈데이 확인 (homeDayConfirm) ──
     if (routine.state == DayState.awake) {
       await _checkHomeDayConfirm(todayKey, now);
     }

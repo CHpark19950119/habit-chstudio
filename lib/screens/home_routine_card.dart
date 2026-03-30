@@ -109,63 +109,6 @@ extension _HomeRoutineCard on _HomeScreenState {
     );
   }
 
-  Future<void> _showDayEndDialog(String dateStr) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('🌙 하루 마무리', style: BotanicalTypo.heading(size: 18, weight: FontWeight.w800)),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('오늘 하루 수고하셨습니다.\n공부를 종료하고 하루를 마무리할까요?',
-            style: TextStyle(fontSize: 14, color: _textSub, height: 1.5)),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: BotanicalColors.primary.withValues(alpha: _dk ? 0.08 : 0.04),
-              borderRadius: BorderRadius.circular(12)),
-            child: Row(children: [
-              Text('📚', style: const TextStyle(fontSize: 20)),
-              const SizedBox(width: 10),
-              Text('순공 ${_effMin ~/ 60}h ${_effMin % 60}m',
-                style: BotanicalTypo.label(size: 14, weight: FontWeight.w800, color: BotanicalColors.primary)),
-            ]),
-          ),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false),
-            child: Text('아직', style: TextStyle(color: _textMuted))),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(c, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2D5F2D),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            child: const Text('마무리', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
-        ],
-      ),
-    );
-    if (confirm == true && mounted) {
-      final now = DateTime.now();
-      final endStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-      final fb = FirebaseService();
-      final records = await fb.getTimeRecords();
-      final existing = records[dateStr];
-      if (existing != null && existing.studyEnd == null) {
-        await fb.updateTimeRecord(dateStr, TimeRecord(
-          date: dateStr, wake: existing.wake,
-          study: existing.study, studyEnd: endStr,
-          outing: existing.outing, returnHome: existing.returnHome,
-          arrival: existing.arrival, bedTime: existing.bedTime,
-          mealStart: existing.mealStart, mealEnd: existing.mealEnd,
-          meals: existing.meals,
-        ));
-      }
-      _load();
-    }
-  }
-
   Future<void> _editTimeField(String field, String label, String? current) async {
     final d = _studyDate();
     final fb = FirebaseService();
@@ -217,73 +160,6 @@ extension _HomeRoutineCard on _HomeScreenState {
         duration: const Duration(seconds: 2),
       ));
     }
-  }
-
-  String _fmt12h(String? hhmm) {
-    if (hhmm == null || !hhmm.contains(':')) return '--:--';
-    try {
-      final p = hhmm.split(':');
-      final h = int.parse(p[0]); final m = p[1];
-      final prefix = h < 12 ? '오전' : '오후';
-      final h12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
-      return '$prefix $h12:$m';
-    } catch (_) { return hhmm; }
-  }
-
-  /// 공부 시작/종료 토글
-  Future<void> _quickStudy() async {
-    final d = _studyDate();
-    final now = DateTime.now();
-    final timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    final fb = FirebaseService();
-    final records = await fb.getTimeRecords();
-    final ex = records[d];
-
-    if (_studyStart != null && _studyEnd == null) {
-      // 공부 종료
-      await fb.updateTimeRecord(d, TimeRecord(
-        date: d, wake: ex?.wake, study: ex?.study, studyEnd: timeStr,
-        outing: ex?.outing, returnHome: ex?.returnHome,
-        arrival: ex?.arrival, bedTime: ex?.bedTime,
-        mealStart: ex?.mealStart, mealEnd: ex?.mealEnd, meals: ex?.meals));
-      _nfc.forceStudyState(false);
-      _safeSetState(() => _studyEnd = timeStr);
-    } else {
-      // 공부 시작 (기상 안했으면 자동 기상)
-      if (_wake == null) await WakeService().recordWake();
-      await fb.updateTimeRecord(d, TimeRecord(
-        date: d, wake: ex?.wake ?? timeStr, study: timeStr, studyEnd: null,
-        outing: ex?.outing, returnHome: ex?.returnHome,
-        arrival: ex?.arrival, bedTime: ex?.bedTime,
-        mealStart: ex?.mealStart, mealEnd: ex?.mealEnd, meals: ex?.meals));
-      _nfc.forceStudyState(true);
-      _safeSetState(() { _studyStart = timeStr; _studyEnd = null; if (_wake == null) _wake = timeStr; });
-    }
-  }
-
-  /// 취침 기록
-  Future<void> _quickSleep() async {
-    final d = _studyDate();
-    final now = DateTime.now();
-    final timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    final fb = FirebaseService();
-    final records = await fb.getTimeRecords();
-    final ex = records[d];
-
-    // 공부 중이면 자동 종료
-    final studyEnd = (ex?.study != null && ex?.studyEnd == null) ? timeStr : ex?.studyEnd;
-
-    await fb.updateTimeRecord(d, TimeRecord(
-      date: d, wake: ex?.wake, study: ex?.study, studyEnd: studyEnd,
-      outing: ex?.outing, returnHome: ex?.returnHome,
-      arrival: ex?.arrival, bedTime: timeStr,
-      mealStart: ex?.mealStart, mealEnd: ex?.mealEnd, meals: ex?.meals));
-
-    if (ex?.study != null && ex?.studyEnd == null) _nfc.forceStudyState(false);
-    _safeSetState(() {
-      _bedTime = timeStr;
-      if (_studyStart != null && _studyEnd == null) _studyEnd = timeStr;
-    });
   }
 
 }

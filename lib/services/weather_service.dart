@@ -17,7 +17,7 @@ class WeatherService {
   static const _hardcodedKey = '0aa8ab8d78e7f3b2ff5dd159446d0a13';
 
   // ★ Telegram 날씨 알림 (비/눈 아침 7시)
-  static const _tgToken = '8514127849:AAF8_F7SBfm51SGHtp9X5lva7yexdnFyapo';
+  static const _tgToken = '8253264860:AAE8mKRSNN31ubdOvk4KPghOYcOmnXg0v50';
   static const _tgChatId = '8724548311';
   static const _tgAlertKey = 'weather_alert_sent_date';
 

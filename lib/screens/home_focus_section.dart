@@ -168,6 +168,29 @@ extension _HomeFocusSection on _HomeScreenState {
                 .where((e) => SubjectConfig.round2Subjects.contains(e.key))
                 .map((e) => _fSubjectChip(e.key, e.value.emoji, dk)),
           ])),
+          // 기타 과목 (1차/2차에 속하지 않는 커스텀 과목)
+          if (SubjectConfig.subjects.entries.any((e) =>
+              !SubjectConfig.round1Subjects.contains(e.key) &&
+              !SubjectConfig.round2Subjects.contains(e.key)))
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: SizedBox(height: 38, child: Row(children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  margin: const EdgeInsets.only(right: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withValues(alpha: dk ? 0.15 : 0.08),
+                    borderRadius: BorderRadius.circular(4)),
+                  child: Text('기타', style: TextStyle(
+                    fontSize: 8, fontWeight: FontWeight.w800,
+                    color: dk ? const Color(0xFFA5A7F7) : const Color(0xFF6366F1))),
+                ),
+                ...SubjectConfig.subjects.entries
+                    .where((e) => !SubjectConfig.round1Subjects.contains(e.key) &&
+                                  !SubjectConfig.round2Subjects.contains(e.key))
+                    .map((e) => _fSubjectChip(e.key, e.value.emoji, dk)),
+              ])),
+            ),
           const SizedBox(height: 24),
 
           // ── Mode ──
@@ -922,7 +945,7 @@ extension _HomeFocusSection on _HomeScreenState {
         totalMinutes: (existing?.totalMinutes ?? 0) + tMin,
         studyMinutes: (existing?.studyMinutes ?? 0) + cycle.studyMin,
         lectureMinutes: (existing?.lectureMinutes ?? 0) + cycle.lectureMin,
-      ));
+      ), effectiveDelta: cycle.effectiveMin);
     } catch (_) {}
     _load();
     _loadFocusRecords();

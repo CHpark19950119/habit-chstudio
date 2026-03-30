@@ -55,10 +55,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
   // ★ 공부통계 강화
   int _weekAvgMin = 0;       // 주간 일평균 (분)
-  int _monthAvgMin = 0;      // 월간 일평균
   int _bestDayMin = 0;       // 이번주 최고
   String _bestDayLabel = ''; // 최고일 라벨
-  int _studyDays7 = 0;       // 7일중 공부한 날 수
 
   // ★ 세션별 집중도 + 시간별 집중도
   List<FocusCycle> _todayCycles = [];
@@ -252,7 +250,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         // 준비시간: 기상→외출 (or 공부시작)
         if (rec.wake != null && (rec.outing ?? rec.study) != null) {
           final end = rec.outing ?? rec.study!;
-          final diff = TimeRecord(date: ds, wake: rec.wake, outing: end).outingMinutes;
           // 수동 계산 (wake→end)
           final wp = rec.wake!.split(':'); final ep = end.split(':');
           final wm = int.parse(wp[0]) * 60 + int.parse(wp[1]);
@@ -387,7 +384,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       }
     } catch (e) { debugPrint('[Statistics] Time usage error: $e'); }
 
-    final totalTracked = timeUsage.values.fold<int>(0, (s, v) => s + v);
 
     if (!mounted) return;
     _safeSetState(() {
@@ -407,9 +403,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       _todayCycles = todayCycles;
       _hourlyEffective = hourlyEff;
       // 공부통계 강화
-      _weekAvgMin = weekAvg; _monthAvgMin = monthAvg;
+      _weekAvgMin = weekAvg;
       _bestDayMin = bestMin; _bestDayLabel = bestLabel;
-      _studyDays7 = studyDays7;
       // 데일리 로그 강화
       _timeUsage7d = timeUsage;
       _wakeTrend = wakes; _bedTrend = beds;

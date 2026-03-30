@@ -28,10 +28,6 @@ import android.content.ComponentName
 import android.nfc.NfcAdapter
 import android.util.Log
 import android.nfc.NdefMessage
-import com.google.android.gms.location.ActivityRecognition
-import com.google.android.gms.location.ActivityTransition
-import com.google.android.gms.location.ActivityTransitionRequest
-import com.google.android.gms.location.DetectedActivity
 import android.nfc.NdefRecord
 import android.os.Bundle
 import android.os.Parcelable
@@ -44,10 +40,8 @@ class MainActivity : FlutterActivity() {
     private val VOLUME_CHANNEL = "com.cheonhong.cheonhong_studio/volume"
     private val NFC_CHANNEL = "com.cheonhong.cheonhong_studio/nfc"
     private val BROWSER_CHANNEL = "com.cheonhong.cheonhong_studio/browser"
-    private val SLEEP_CHANNEL = "com.cheonhong.cheonhong_studio/sleep"
     private val BIXBY_CHANNEL = "com.cheonhong.cheonhong_studio/bixby"
     private var nfcChannel: MethodChannel? = null
-    private var screenReceiver: android.content.BroadcastReceiver? = null
     private var flutterReadyForNfc: Boolean = false
     private var pendingNfcPayload: HashMap<String, Any>? = null
     private var silentReaderEnabled: Boolean = false
@@ -97,15 +91,6 @@ nfcChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NFC_CHANN
             }
             "requestNotificationPermission" -> {
                 requestPostNotificationsPermission()
-                requestActivityRecognitionPermission()
-                result.success(true)
-            }
-            "startActivityRecognition" -> {
-                startActivityRecognitionFromMain()
-                result.success(true)
-            }
-            "stopActivityRecognition" -> {
-                stopActivityRecognitionFromMain()
                 result.success(true)
             }
             else -> result.notImplemented()
@@ -333,35 +318,6 @@ handleNfcIntent(intent)?.let { payload ->
 
         createNfcNotificationChannel()
 
-        // ─── 수면 감지 채널 ───
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SLEEP_CHANNEL).setMethodCallHandler { call, result ->
-            when (call.method) {
-                "startMonitoring" -> {
-                    startScreenMonitoring()
-                    result.success(true)
-                }
-                "stopMonitoring" -> {
-                    stopScreenMonitoring()
-                    result.success(true)
-                }
-                "consumeSleepDetection" -> {
-                    val prefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
-                    val detected = prefs.getBoolean("flutter.sleep_detected", false)
-                    if (detected) {
-                        val time = prefs.getString("flutter.sleep_detected_time", null)
-                        prefs.edit()
-                            .remove("flutter.sleep_detected")
-                            .remove("flutter.sleep_detected_time")
-                            .apply()
-                        result.success(hashMapOf("detected" to true, "time" to time))
-                    } else {
-                        result.success(null)
-                    }
-                }
-                else -> result.notImplemented()
-            }
-        }
-
         // ─── 빅스비 연동 채널 ───
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, BIXBY_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
@@ -383,7 +339,6 @@ handleNfcIntent(intent)?.let { payload ->
 // ══════════════════════════════════════════
 
 override fun onDestroy() {
-    stopScreenMonitoring()
     try {
         _bgmPlayer?.release()
         _bgmPlayer = null
@@ -394,60 +349,6 @@ override fun onDestroy() {
         }
     } catch (_: Exception) {}
     super.onDestroy()
-}
-
-// ══════════════════════════════════════════
-//  수면 감지: 화면 꺼짐/켜짐 모니터링
-// ══════════════════════════════════════════
-
-private fun startScreenMonitoring() {
-    if (screenReceiver != null) return
-    val prefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
-    if (!prefs.getBoolean("flutter.sleep_detect_enabled", false)) return
-
-    SleepAlarmReceiver.createChannel(this)
-
-    screenReceiver = object : android.content.BroadcastReceiver() {
-        override fun onReceive(ctx: Context, intent: Intent) {
-            val p = ctx.getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
-            if (!p.getBoolean("flutter.sleep_detect_enabled", false)) return
-
-            when (intent.action) {
-                Intent.ACTION_SCREEN_OFF -> {
-                    val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-                    if (hour >= 22 || hour < 4) {
-                        p.edit().putString("flutter.screen_off_time",
-                            System.currentTimeMillis().toString()).apply()
-                        SleepAlarmReceiver.scheduleSleepCheck(ctx, 30 * 60 * 1000L)
-                        Log.d("SleepDetect", "Screen off at night — 30min alarm set")
-                    }
-                }
-                Intent.ACTION_SCREEN_ON -> {
-                    SleepAlarmReceiver.cancelSleepCheck(ctx)
-                    Log.d("SleepDetect", "Screen on — alarm cancelled")
-                }
-            }
-        }
-    }
-
-    val filter = android.content.IntentFilter().apply {
-        addAction(Intent.ACTION_SCREEN_OFF)
-        addAction(Intent.ACTION_SCREEN_ON)
-    }
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        registerReceiver(screenReceiver, filter, RECEIVER_NOT_EXPORTED)
-    } else {
-        registerReceiver(screenReceiver, filter)
-    }
-    Log.d("SleepDetect", "Screen monitoring started")
-}
-
-private fun stopScreenMonitoring() {
-    screenReceiver?.let {
-        try { unregisterReceiver(it) } catch (_: Exception) {}
-    }
-    screenReceiver = null
-    SleepAlarmReceiver.cancelSleepCheck(this)
 }
 
 override fun onNewIntent(intent: Intent) {
@@ -693,78 +594,6 @@ private fun disableSilentReaderMode() {
                 this,
                 arrayOf(Manifest.permission.POST_NOTIFICATIONS),
                 9001
-            )
-        }
-    }
-
-    // ─── Activity Recognition (MainActivity 직접 관리) ───
-
-    private fun activityPendingIntent(): PendingIntent {
-        val intent = Intent(this, ActivityTransitionReceiver::class.java)
-        return PendingIntent.getBroadcast(
-            this, 1001, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-        )
-    }
-
-    private fun startActivityRecognitionFromMain() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                Log.w("ActivityMain", "ACTIVITY_RECOGNITION 권한 없음")
-                return
-            }
-        }
-
-        val transitions = listOf(
-            ActivityTransition.Builder()
-                .setActivityType(DetectedActivity.STILL)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
-                .build(),
-            ActivityTransition.Builder()
-                .setActivityType(DetectedActivity.WALKING)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
-                .build(),
-            ActivityTransition.Builder()
-                .setActivityType(DetectedActivity.RUNNING)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
-                .build(),
-            ActivityTransition.Builder()
-                .setActivityType(DetectedActivity.IN_VEHICLE)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
-                .build(),
-            ActivityTransition.Builder()
-                .setActivityType(DetectedActivity.ON_BICYCLE)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
-                .build(),
-        )
-
-        val request = ActivityTransitionRequest(transitions)
-        ActivityRecognition.getClient(this)
-            .requestActivityTransitionUpdates(request, activityPendingIntent())
-            .addOnSuccessListener { Log.d("ActivityMain", "Activity Recognition 시작 (from MainActivity)") }
-            .addOnFailureListener { Log.e("ActivityMain", "Activity Recognition 실패: ${it.message}") }
-    }
-
-    private fun stopActivityRecognitionFromMain() {
-        ActivityRecognition.getClient(this)
-            .removeActivityTransitionUpdates(activityPendingIntent())
-            .addOnSuccessListener { Log.d("ActivityMain", "Activity Recognition 중지 (from MainActivity)") }
-            .addOnFailureListener { Log.e("ActivityMain", "Activity Recognition 중지 실패: ${it.message}") }
-    }
-
-    private fun requestActivityRecognitionPermission() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
-        val granted = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACTIVITY_RECOGNITION
-        ) == PackageManager.PERMISSION_GRANTED
-        if (!granted) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACTIVITY_RECOGNITION),
-                9002
             )
         }
     }

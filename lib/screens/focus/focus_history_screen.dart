@@ -346,7 +346,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
             date: cycle.date,
             effectiveMinutes: newEff.clamp(0, 1440),
             totalMinutes: newTotal.clamp(0, 1440),
-          ));
+          ), effectiveDelta: diffEff);
         } catch (_) {}
       }
       _loadCycles();
@@ -507,7 +507,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
         date: _selectedDate,
         effectiveMinutes: (existing?.effectiveMinutes ?? 0) + newEffMin,
         totalMinutes: (existing?.totalMinutes ?? 0) + totalMin,
-      ));
+      ), effectiveDelta: newEffMin);
     } catch (_) {}
     _loadCycles();
   }

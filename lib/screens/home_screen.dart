@@ -27,8 +27,8 @@ import '../models/plan_models.dart';
 import '../services/todo_service.dart';
 import '../services/local_cache_service.dart';
 import '../services/cradle_service.dart';
-import '../services/wake_service.dart';
-import '../services/bus_service.dart';
+import 'package:app_links/app_links.dart';
+
 import '../utils/study_date_utils.dart';
 
 part 'home_focus_section.dart';
@@ -112,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _pendingTab = 0;
   List<MealEntry> _todayMeals = []; // ★ v9: 다회 식사
   List<String> _dailyMemos = [];   // ★ 데일리 메모
+  String? _mood;                   // ★ E: 오늘의 무드 이모지
 
   // ★ Focus setup (home tab)
   final _cradle = CradleService();
@@ -137,6 +138,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _fbSub;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _todaySub;
   int _retryDelay = 5; // ★ 스트림 재연결 지수 백오프 (초)
+  Completer<void>? _loadCompleter; // ★ _load() in-flight dedup
 
   late AnimationController _staggerController;
   final List<Animation<double>> _fadeAnims = [];
@@ -176,6 +178,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _tabFadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
 
     _nfc.addListener(_onNfcChanged);
+    _initDeepLinks();
     _ui = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       final isOut = _outing != null && _returnHome == null;
@@ -183,8 +186,76 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
+  // ═══ Deep Link 처리 ═══
+  StreamSubscription<Uri>? _deepLinkSub;
+
+  void _initDeepLinks() {
+    final appLinks = AppLinks();
+    // 앱이 이미 실행 중일 때 들어오는 딥링크
+    _deepLinkSub = appLinks.uriLinkStream.listen((uri) {
+      _handleDeepLink(uri);
+    });
+    // 앱이 딥링크로 처음 열렸을 때
+    appLinks.getInitialLink().then((uri) {
+      if (uri != null) _handleDeepLink(uri);
+    });
+  }
+
+  void _handleDeepLink(Uri uri) {
+    debugPrint('[DeepLink] $uri');
+    if (uri.host == 'focus') {
+      final subject = uri.queryParameters['subject'] ?? _focusSubj;
+      final mode = uri.queryParameters['mode'] ?? _focusMode;
+      // 포커스 시작
+      _safeSetState(() {
+        _focusSubj = subject;
+        _focusMode = mode;
+      });
+      _ft.startSession(subject: subject, mode: mode).then((_) {
+        if (mounted) {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => const FocusScreen()));
+        }
+      });
+    } else if (uri.host == 'app') {
+      // 앱 제어 (탭 전환 등)
+      final tab = uri.queryParameters['tab'];
+      if (tab != null) {
+        final tabIndex = int.tryParse(tab) ?? 0;
+        _safeSetState(() => _tab = tabIndex);
+      }
+    } else if (uri.host == 'wake') {
+      _nfc.triggerAction(ActionType.wake).then((msg) {
+        debugPrint('[DeepLink] wake → $msg');
+        if (mounted && !_isLoading) _load();
+      });
+    } else if (uri.host == 'sleep') {
+      _nfc.triggerAction(ActionType.sleep).then((msg) {
+        debugPrint('[DeepLink] sleep → $msg');
+        if (mounted && !_isLoading) _load();
+      });
+    } else if (uri.host == 'outing') {
+      _nfc.triggerAction(ActionType.outing).then((msg) {
+        debugPrint('[DeepLink] outing → $msg');
+        if (mounted && !_isLoading) _load();
+      });
+    } else if (uri.host == 'meal') {
+      _nfc.triggerAction(ActionType.meal).then((msg) {
+        debugPrint('[DeepLink] meal → $msg');
+        if (mounted && !_isLoading) _load();
+      });
+    } else if (uri.host == 'order') {
+      if (mounted) {
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => const OrderScreen(),
+        ));
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _deepLinkSub?.cancel();
     _ui?.cancel();
     _fbSub?.cancel();
     _todaySub?.cancel();
@@ -273,6 +344,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           }
         } catch (_) {}
 
+        _retryDelay = 5; // ★ 스트림 데이터 수신 성공 → 백오프 리셋
         _safeSetState(() {
           // ★ v10: timeRecords는 스트림에서 업데이트하지 않음 (플리커 방지)
           if (effMin != null) _effMin = effMin;
@@ -291,7 +363,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       });
     });
-    _retryDelay = 5;
+    // ★ _retryDelay 리셋은 onData 콜백 내부에서 수행 (위 _safeSetState 블록)
+    // 스트림 등록 직후 리셋하면 지수 백오프가 깨짐
 
     // ★ today doc 실시간 리스너 — CF 외부 쓰기 즉시 반영
     _todaySub?.cancel();
@@ -313,15 +386,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Future<void> _load({bool forceServer = false}) async {
     // NFC 리스너는 initState에서 등록됨 (ChangeNotifier 방식)
-    if (_isLoading) return;
+    // ★ in-flight dedup: 이미 로딩 중이면 같은 Future 재사용
+    if (_isLoading && _loadCompleter != null) {
+      return _loadCompleter!.future;
+    }
     _isLoading = true;
+    _loadCompleter = Completer<void>();
     try {
       if (forceServer) FirebaseService().invalidateAllCaches();
       await _doLoad(); // ★ 전체 타임아웃 제거 — 각 문서별 개별 타임아웃으로 처리
+      _loadCompleter!.complete();
     } catch (e) {
       debugPrint('[Home] _load error: $e');
+      _loadCompleter!.completeError(e);
     } finally {
       _isLoading = false; // ★ 어떤 상황에서도 반드시 해제
+      _loadCompleter = null;
     }
   }
 
@@ -568,6 +648,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       }
     } catch (e) { debugPrint('[Home] today todos: $e'); }
+
+    // ★ E: mood
+    try {
+      final m = data['mood'];
+      if (m is String && m.isNotEmpty) _mood = m;
+    } catch (_) {}
+
+    // ★ E: dailyMemos
+    try {
+      final memos = data['dailyMemos'];
+      if (memos is List) {
+        _dailyMemos = memos.map((e) => e.toString()).toList();
+      }
+    } catch (_) {}
   }
 
   /// 독립 실행 헬퍼 — 실패해도 앱에 영향 없음
@@ -627,12 +721,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final fb = FirebaseService();
     // 스트림과 로드를 즉시 시작
     _startFirebaseListener();
-    _load();
+    await _load();
     _loadFocusRecords();
     // ★ 자동 아카이브 (7일 이전 데이터 → 월별 아카이브, UI 블로킹 없음)
     fb.autoArchive().catchError((e) {
       debugPrint('[Home] autoArchive error: $e');
     });
+    // ★ study→today studyTime 재동기화 — _load 완료 후 실행 (데이터 의존)
+    _syncStudyTimeToToday(fb);
+  }
+
+  Future<void> _syncStudyTimeToToday(FirebaseService fb) async {
+    try {
+      final todayKey = StudyDateUtils.todayKey();
+      final studyData = await fb.getStudyData();
+      if (studyData == null) return;
+      final records = studyData['studyTimeRecords'] as Map?;
+      if (records == null) return;
+      final todayRecord = records[todayKey] as Map?;
+      if (todayRecord == null) return;
+      final effectiveMin = todayRecord['effectiveMinutes'] as int? ?? 0;
+      if (effectiveMin <= 0) return;
+      // today doc 확인
+      final todayDoc = await fb.getTodayDoc();
+      final currentTotal = (todayDoc?['studyTime'] as Map?)?['total'] as int? ?? 0;
+      if (currentTotal != effectiveMin) {
+        await fb.updateTodayField('studyTime.total', effectiveMin);
+        debugPrint('[Home] studyTime sync: today=$currentTotal → study=$effectiveMin');
+      }
+    } catch (e) {
+      debugPrint('[Home] studyTime sync error: $e');
+    }
   }
 
   bool get _dk => Theme.of(context).brightness == Brightness.dark;
@@ -848,75 +967,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _sectionHeader(String emoji, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 2),
-      child: Row(children: [
-        Text(emoji, style: const TextStyle(fontSize: 16)),
-        const SizedBox(width: 8),
-        Text(title, style: BotanicalTypo.label(
-          size: 13, weight: FontWeight.w800, letterSpacing: 0.5, color: _textMain)),
-      ]),
-    );
-  }
-
-  Widget _toolCard({
-    required String icon, required String label, required String subtitle,
-    required Color color, required VoidCallback onTap,
-    bool isLive = false, Widget? trailing,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: _dk ? color.withValues(alpha: 0.06) : Colors.white.withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _dk
-            ? color.withValues(alpha: 0.12) : color.withValues(alpha: 0.08)),
-          boxShadow: _dk ? null : [
-            BoxShadow(color: color.withValues(alpha: 0.04),
-              blurRadius: 12, offset: const Offset(0, 3))],
-        ),
-        child: Row(children: [
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: _dk ? 0.12 : 0.08),
-              borderRadius: BorderRadius.circular(12)),
-            child: Center(
-              child: Stack(clipBehavior: Clip.none, children: [
-                Text(icon, style: const TextStyle(fontSize: 20)),
-                if (isLive)
-                  Positioned(right: -3, top: -3,
-                    child: Container(width: 8, height: 8,
-                      decoration: BoxDecoration(
-                        color: BotanicalColors.success, shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(
-                          color: BotanicalColors.success.withValues(alpha: 0.5),
-                          blurRadius: 6, spreadRadius: 1)]))),
-              ]),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: BotanicalTypo.body(
-              size: 14, weight: FontWeight.w700, color: _textMain)),
-            const SizedBox(height: 2),
-            Text(subtitle, style: BotanicalTypo.label(
-              size: 11, color: _textMuted),
-              overflow: TextOverflow.ellipsis, maxLines: 1),
-          ])),
-          if (trailing != null) ...[const SizedBox(width: 8), trailing],
-          const SizedBox(width: 4),
-          Icon(Icons.chevron_right_rounded, size: 18, color: _textMuted.withValues(alpha: 0.5)),
-        ]),
-      ),
-    );
-  }
-
   // ══════════════════════════════════════════
   //  ① 헤더 + 날씨 통합 상단바
   // ══════════════════════════════════════════
@@ -953,16 +1003,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ],
           const Spacer(),
-          _headerIconBtn(Icons.directions_bus_rounded, () async {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('버스 도착정보 조회 중...'), duration: Duration(seconds: 1)));
-            await BusService().fetchNow();
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('텔레그램으로 전송 완료'), duration: Duration(seconds: 2)));
-            }
-          }),
-          const SizedBox(width: 4),
           _headerIconBtn(Icons.settings_outlined, () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => const SettingsScreen())), size: 18),
         ]),
@@ -1135,82 +1175,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           color: _dk ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(10)),
         child: Icon(icon, size: size, color: _textMuted)),
-    );
-  }
-
-  // ══════════════════════════════════════════
-  //  ★ #9: 데일리 메모 대시보드 위젯
-  // ══════════════════════════════════════════
-
-  Widget _dashboardMemoWidget() {
-    return GestureDetector(
-      onTap: _showAddMemoDialog,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: _dk ? const Color(0xFF2A2218).withValues(alpha: 0.6) : const Color(0xFFFFFBF5),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFB07D3A).withValues(alpha: _dk ? 0.15 : 0.1)),
-          boxShadow: _dk ? null : [
-            BoxShadow(color: const Color(0xFFB07D3A).withValues(alpha: 0.04),
-              blurRadius: 12, offset: const Offset(0, 3))]),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFB07D3A).withValues(alpha: _dk ? 0.15 : 0.08),
-                borderRadius: BorderRadius.circular(8)),
-              child: const Text('📝', style: TextStyle(fontSize: 12))),
-            const SizedBox(width: 8),
-            Text('오늘의 메모', style: BotanicalTypo.label(
-              size: 12, weight: FontWeight.w700,
-              color: _dk ? const Color(0xFFD4A66A) : const Color(0xFFB07D3A))),
-            const Spacer(),
-            if (_dailyMemos.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFB07D3A).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8)),
-                child: Text('${_dailyMemos.length}', style: BotanicalTypo.label(
-                  size: 10, weight: FontWeight.w800,
-                  color: const Color(0xFFB07D3A)))),
-            const SizedBox(width: 6),
-            Icon(Icons.add_circle_outline_rounded, size: 16,
-              color: _textMuted.withValues(alpha: 0.5)),
-          ]),
-          if (_dailyMemos.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            ..._dailyMemos.take(3).map((memo) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 5),
-                  child: Container(
-                    width: 4, height: 4,
-                    decoration: BoxDecoration(
-                      color: _textMuted.withValues(alpha: 0.3),
-                      shape: BoxShape.circle))),
-                const SizedBox(width: 8),
-                Expanded(child: Text(memo, style: BotanicalTypo.label(
-                  size: 11, color: _textSub),
-                  maxLines: 1, overflow: TextOverflow.ellipsis)),
-              ]),
-            )),
-            if (_dailyMemos.length > 3)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text('+${_dailyMemos.length - 3}개 더보기',
-                  style: BotanicalTypo.label(size: 10, weight: FontWeight.w600,
-                    color: _textMuted.withValues(alpha: 0.5)))),
-          ] else ...[
-            const SizedBox(height: 8),
-            Text('탭하여 메모를 추가하세요', style: BotanicalTypo.label(
-              size: 11, color: _textMuted.withValues(alpha: 0.5))),
-          ],
-        ]),
-      ),
     );
   }
 
