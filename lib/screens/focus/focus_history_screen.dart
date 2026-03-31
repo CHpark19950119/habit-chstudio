@@ -260,7 +260,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
       context: context,
       builder: (dCtx) => StatefulBuilder(
         builder: (_, setDlg) {
-          int effMin = studyMin + (lectureMin * 0.5).round();
+          int effMin = studyMin + lectureMin;
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Text('세션 수정'),
@@ -320,7 +320,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
 
     if (result != null) {
       final newEffMin = (result['studyMin'] as int) +
-          ((result['lectureMin'] as int) * 0.5).round();
+          (result['lectureMin'] as int);
       final updated = FocusCycle(
         id: cycle.id, date: cycle.date,
         startTime: cycle.startTime, endTime: cycle.endTime,
@@ -385,7 +385,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (dCtx) => StatefulBuilder(builder: (_, setDlg) {
-        int effMin = studyMin + (lectureMin * 0.5).round();
+        int effMin = studyMin + lectureMin;
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('수동 세션 추가'),
@@ -483,7 +483,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
     final startDt = DateTime(now.year, now.month, now.day, st.hour, st.minute);
     final endDt = DateTime(now.year, now.month, now.day, et.hour, et.minute);
     final newEffMin = (result['studyMin'] as int) +
-        ((result['lectureMin'] as int) * 0.5).round();
+        (result['lectureMin'] as int);
 
     final cycle = FocusCycle(
       id: 'fc_manual_${now.millisecondsSinceEpoch}',

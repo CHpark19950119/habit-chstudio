@@ -123,7 +123,11 @@ class FocusService extends ChangeNotifier {
         final sessions = <FocusCycle>[];
         for (final e in list) {
           try {
-            if (e is Map) sessions.add(FocusCycle.fromMap(Map<String, dynamic>.from(e)));
+            if (e is Map) {
+              final m = Map<String, dynamic>.from(e);
+              m['effectiveMin'] = ((m['studyMin'] as num?)?.toInt() ?? 0) + ((m['lectureMin'] as num?)?.toInt() ?? 0);
+              sessions.add(FocusCycle.fromMap(m));
+            }
           } catch (_) {}
         }
         if (sessions.isNotEmpty) result[dateStr] = sessions;
@@ -145,7 +149,12 @@ class FocusService extends ChangeNotifier {
         _todaySessions = [];
         for (final e in list) {
           try {
-            if (e is Map) _todaySessions.add(FocusCycle.fromMap(Map<String, dynamic>.from(e)));
+            if (e is Map) {
+              final m = Map<String, dynamic>.from(e);
+              // ★ effectiveMin 재계산 (구 0.5 가중치 데이터 교정)
+              m['effectiveMin'] = ((m['studyMin'] as num?)?.toInt() ?? 0) + ((m['lectureMin'] as num?)?.toInt() ?? 0);
+              _todaySessions.add(FocusCycle.fromMap(m));
+            }
           } catch (_) {}
         }
       } else {
@@ -164,8 +173,54 @@ class FocusService extends ChangeNotifier {
       debugPrint('[Focus] merge error: $e');
     }
 
+    // ★ Firestore focusCycles fallback: Hive에 없는 세션 복구
+    try {
+      final remoteCycles = await FirebaseService().getFocusCycles(dateStr).timeout(const Duration(seconds: 3));
+      if (remoteCycles.isNotEmpty) {
+        final localIds = _todaySessions.map((s) => s.id).toSet();
+        int recovered = 0;
+        for (final rc in remoteCycles) {
+          if (rc.id.isNotEmpty && !localIds.contains(rc.id)) {
+            _todaySessions.add(FocusCycle(
+              id: rc.id, date: rc.date,
+              startTime: rc.startTime, endTime: rc.endTime,
+              subject: rc.subject, segments: rc.segments,
+              studyMin: rc.studyMin, lectureMin: rc.lectureMin,
+              effectiveMin: rc.studyMin + rc.lectureMin,
+              restMin: rc.restMin,
+            ));
+            recovered++;
+          }
+        }
+        if (recovered > 0) {
+          box ??= await _openBox();
+          await box.put('sessions_$dateStr', _todaySessions.map((c) => c.toMap()).toList());
+          debugPrint('[Focus] recovered $recovered sessions from Firestore');
+        }
+      }
+    } catch (_) {}
+
+    // ★ 고스트 세션 정리: effectiveMin=0이고 실제 공부 시간 없는 세션 제거
+    _todaySessions.removeWhere((c) => c.studyMin + c.lectureMin == 0 && c.restMin == 0);
+
     _todayStudyMinutes = _todaySessions.fold(0, (s, c) => s + c.effectiveMin);
     debugPrint('[Focus] loaded ${_todaySessions.length} sessions ($dateStr, ${_todayStudyMinutes}min)');
+
+    // ★ Firestore studyTimeRecords 자동 교정 (Hive 재계산 결과 반영)
+    if (_todaySessions.isNotEmpty) {
+      try {
+        int totalStudy = 0, totalLecture = 0;
+        for (final s in _todaySessions) { totalStudy += s.studyMin; totalLecture += s.lectureMin; }
+        final record = StudyTimeRecord(
+          date: dateStr,
+          totalMinutes: totalStudy + totalLecture,
+          studyMinutes: totalStudy,
+          lectureMinutes: totalLecture,
+          effectiveMinutes: _todayStudyMinutes,
+        );
+        await FirebaseService().updateStudyTimeRecord(dateStr, record);
+      } catch (_) {}
+    }
   }
 
   Future<void> _mergeFirestoreSessions(String dateStr, Box box) async {
@@ -193,15 +248,17 @@ class FocusService extends ChangeNotifier {
         final m = Map<String, dynamic>.from(item);
         final id = m['id'] as String? ?? '';
         if (id.isNotEmpty && !localIds.contains(id)) {
+          final sMin = m['studyMinutes'] as int? ?? 0;
+          final lMin = m['lectureMinutes'] as int? ?? 0;
           _todaySessions.add(FocusCycle(
             id: id, date: dateStr,
             startTime: m['startTime'] as String? ?? '',
             endTime: m['endTime'] as String? ?? '',
             subject: m['subject'] as String? ?? '',
             segments: [],
-            studyMin: m['studyMinutes'] as int? ?? 0,
-            lectureMin: m['lectureMinutes'] as int? ?? 0,
-            effectiveMin: m['studyMinutes'] as int? ?? 0,
+            studyMin: sMin,
+            lectureMin: lMin,
+            effectiveMin: sMin + lMin,
             restMin: m['restMinutes'] as int? ?? 0,
           ));
           merged++;
@@ -223,17 +280,42 @@ class FocusService extends ChangeNotifier {
     try {
       final box = await _openBox();
       final dateStr = cycle.date;
-      final raw = box.get('sessions_$dateStr');
+      final key = 'sessions_$dateStr';
+      final raw = box.get(key);
       List<Map<String, dynamic>> list = [];
       if (raw != null) {
-        final decoded = List<dynamic>.from(raw is String ? jsonDecode(raw) : raw);
-        list = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        // ★ 개별 항목 안전 파싱: 하나가 깨져도 나머지 보존
+        try {
+          final decoded = List<dynamic>.from(raw is String ? jsonDecode(raw) : raw);
+          for (final e in decoded) {
+            try {
+              if (e is Map) list.add(Map<String, dynamic>.from(e));
+            } catch (_) {} // 개별 항목 스킵
+          }
+        } catch (e) {
+          // ★ 전체 파싱 실패 → 기존 데이터 날리지 않고 백업 후 진행
+          debugPrint('[Focus] Hive parse failed, backing up: $e');
+          await box.put('${key}_backup', raw);
+        }
       }
+
+      // 중복 ID 방지
+      list.removeWhere((m) => m['id'] == cycle.id);
       list.add(cycle.toMap());
-      await box.put('sessions_$dateStr', list);
+      await box.put(key, list);
+
+      // ★ Write 검증: 저장 후 읽어서 세션 수 확인
+      final verify = box.get(key);
+      if (verify != null) {
+        final verifyList = List<dynamic>.from(verify is String ? jsonDecode(verify) : verify);
+        if (verifyList.length < list.length) {
+          debugPrint('[Focus] ⚠️ Hive write verification failed: wrote ${list.length}, read ${verifyList.length}');
+        }
+      }
+
       await box.put('todayStudyMin_$dateStr',
-          list.fold<int>(0, (s, m) => s + ((m['effectiveMin'] as int?) ?? 0)));
-      debugPrint('[Focus] saved to Hive: ${cycle.id} (${cycle.effectiveMin}min)');
+          list.fold<int>(0, (s, m) => s + ((m['effectiveMin'] as num?)?.toInt() ?? 0)));
+      debugPrint('[Focus] saved to Hive: ${cycle.id} (${cycle.effectiveMin}min, total ${list.length} sessions)');
     } catch (e) {
       debugPrint('[Focus] saveSessionToHive error: $e');
     }
@@ -250,7 +332,11 @@ class FocusService extends ChangeNotifier {
       final raw = box.get('sessions_$dateStr');
       if (raw != null) {
         final list = List<dynamic>.from(raw is String ? jsonDecode(raw) : raw);
-        final sessions = list.map((e) => FocusCycle.fromMap(Map<String, dynamic>.from(e as Map))).toList();
+        final sessions = list.map((e) {
+          final m = Map<String, dynamic>.from(e as Map);
+          m['effectiveMin'] = ((m['studyMin'] as num?)?.toInt() ?? 0) + ((m['lectureMin'] as num?)?.toInt() ?? 0);
+          return FocusCycle.fromMap(m);
+        }).toList();
         if (sessions.isNotEmpty) return sessions;
       }
     } catch (_) {}
@@ -320,7 +406,7 @@ class FocusService extends ChangeNotifier {
     _stopLiveSync();
     await FlutterForegroundTask.stopService();
 
-    final effectiveMin = _totalStudyMin + (_totalLectureMin * 0.5).round();
+    final effectiveMin = _totalStudyMin + _totalLectureMin;
     final cycle = FocusCycle(
       id: 'fc_${_sessionStart!.millisecondsSinceEpoch}',
       date: StudyDateUtils.todayKey(_sessionStart!),
@@ -333,6 +419,15 @@ class FocusService extends ChangeNotifier {
       effectiveMin: effectiveMin,
       restMin: _totalRestMin,
     );
+
+    // ★ 고스트 세션 방지: 실제 공부/강의 시간이 1분 미만이면 저장하지 않음
+    if (effectiveMin < 1) {
+      debugPrint('[Focus] session discarded: effectiveMin=$effectiveMin (< 1min)');
+      await _clearState();
+      notifyListeners();
+      try { await FirebaseService().clearLiveFocus(cycle.date); } catch (_) {}
+      return cycle;
+    }
 
     _todaySessions.add(cycle);
     _todayStudyMinutes += effectiveMin;
@@ -434,13 +529,11 @@ class FocusService extends ChangeNotifier {
     if (!_isRunning || _segmentStart == null) return FocusTimerState.idle();
     final now = DateTime.now();
     final segSec = now.difference(_segmentStart!).inSeconds;
-    final effMin = _totalStudyMin + (_totalLectureMin * 0.5).round();
+    final effMin = _totalStudyMin + _totalLectureMin;
     int curMin = segSec ~/ 60;
     int dispEff = effMin;
-    if (_currentMode == 'study') {
+    if (_currentMode == 'study' || _currentMode == 'lecture') {
       dispEff += curMin;
-    } else if (_currentMode == 'lecture') {
-      dispEff += (curMin * 0.5).round();
     }
     final totalActive = _totalStudyMin + _totalLectureMin + curMin;
     final sessionSec = _sessionStart != null ? now.difference(_sessionStart!).inSeconds : 0;
@@ -548,7 +641,7 @@ class FocusService extends ChangeNotifier {
         lectureMinutes: totalLecture,
         effectiveMinutes: totalEffective,
       );
-      await fb.updateStudyTimeRecord(cycle.date, record, effectiveDelta: cycle.effectiveMin);
+      await fb.updateStudyTimeRecord(cycle.date, record);
       debugPrint('[Focus] studyTimeRecord OK: effective=$totalEffective');
     } catch (e) {
       debugPrint('[Focus] studyTimeRecord FAIL: $e');
@@ -689,7 +782,7 @@ class FocusService extends ChangeNotifier {
   }
 
   String _notifText() {
-    final eff = _totalStudyMin + (_totalLectureMin * 0.5).round();
+    final eff = _totalStudyMin + _totalLectureMin;
     final sessionMin = _sessionStart != null ? DateTime.now().difference(_sessionStart!).inMinutes : 0;
     return '순공 ${eff ~/ 60}h${eff % 60}m · 세션 ${sessionMin}분';
   }
@@ -816,7 +909,7 @@ class _FocusHandler extends TaskHandler {
         if (ssStr != null) sessionMin = DateTime.now().difference(DateTime.parse(ssStr)).inMinutes;
         final ts = mode == 'study' ? sm + cur : sm;
         final tl = mode == 'lecture' ? lm + cur : lm;
-        final eff = ts + (tl * 0.5).round();
+        final eff = ts + tl;
         final modeEmoji = paused ? '⏸️' : (mode == 'study' ? '📖' : mode == 'lecture' ? '🎧' : '☕');
         final modeLabel = paused ? '일시정지' : (mode == 'study' ? '집중' : mode == 'lecture' ? '강의' : '휴식');
         FlutterForegroundTask.updateService(

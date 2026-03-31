@@ -195,7 +195,7 @@ extension _HomeFocusSection on _HomeScreenState {
           Row(children: [
             Expanded(child: _fModeChip('📖', '집중', '순공 100%', 'study', sc)),
             const SizedBox(width: 10),
-            Expanded(child: _fModeChip('🎧', '강의', '순공 50%', 'lecture', sc)),
+            Expanded(child: _fModeChip('🎧', '강의', '순공 100%', 'lecture', sc)),
           ]),
           const SizedBox(height: 20),
 
@@ -663,7 +663,7 @@ extension _HomeFocusSection on _HomeScreenState {
                   child: Row(children: [
                     Text('순공시간', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: txt)),
                     const Spacer(),
-                    Text('${studyMin + (lectureMin * 0.5).round()}분',
+                    Text('${studyMin + lectureMin}분',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: BotanicalColors.primary)),
                   ]),
                 ),
@@ -699,7 +699,7 @@ extension _HomeFocusSection on _HomeScreenState {
       date: dateStr, startTime: startStr, endTime: endStr,
       subject: result['subject'],
       studyMin: result['studyMin'], lectureMin: result['lectureMin'],
-      effectiveMin: result['studyMin'] + (result['lectureMin'] * 0.5).round(),
+      effectiveMin: result['studyMin'] + result['lectureMin'],
       restMin: result['restMin'],
     );
     await FirebaseService().saveFocusCycle(dateStr, cycle);

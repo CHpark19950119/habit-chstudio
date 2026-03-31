@@ -35,10 +35,10 @@ extension _HomeDailyLog on _HomeScreenState {
     for (int i = 0; i < _focusSessions.length; i++) {
       final fc = _focusSessions[i];
       if (fc.startTime.isNotEmpty) {
-        events.add((time: fc.startTime, type: 'focus_${i}_start'));
+        events.add((time: _isoToHhmm(fc.startTime), type: 'focus_${i}_start'));
       }
       if (fc.endTime != null && fc.endTime!.isNotEmpty) {
-        events.add((time: fc.endTime!, type: 'focus_${i}_end'));
+        events.add((time: _isoToHhmm(fc.endTime!), type: 'focus_${i}_end'));
       }
     }
     if (_studyEnd != null) events.add((time: _studyEnd!, type: 'studyEnd'));
@@ -828,6 +828,16 @@ extension _HomeDailyLog on _HomeScreenState {
   }
 
   String _fmt24Now() => DateFormat('HH:mm').format(DateTime.now());
+
+  String _isoToHhmm(String t) {
+    if (t.contains('T')) {
+      try {
+        final dt = DateTime.parse(t);
+        return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      } catch (_) {}
+    }
+    return t;
+  }
 
   int _toMin(String hhmm) {
     try {
