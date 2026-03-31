@@ -310,8 +310,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final studyDays7 = weekData.where((d) => d.minutes > 0 && !d.isRestDay).length;
     final weekTotal = weekData.where((d) => !d.isRestDay).fold<int>(0, (s, d) => s + d.minutes);
     final weekAvg = studyDays7 > 0 ? weekTotal ~/ studyDays7 : 0;
-    final monthStudyDays = monthData.where((d) => d.minutes > 0 && !d.isRestDay).length;
-    final monthTotal = monthData.where((d) => !d.isRestDay).fold<int>(0, (s, d) => s + d.minutes);
     int bestMin = 0; String bestLabel = '';
     for (final d in weekData) {
       if (!d.isRestDay && d.minutes > bestMin) { bestMin = d.minutes; bestLabel = d.label; }

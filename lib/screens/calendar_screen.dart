@@ -35,7 +35,6 @@ class _CalendarScreenState extends State<CalendarScreen>
   bool _loadLock = false;   // 중복 호출 방지 (UI 상태와 분리)
   bool _pendingReload = false; // ★ Bug #2 fix: 로딩 중 월 변경 시 재로드 예약
 
-  Map<String, List<String>> _monthMemos = {};
   List<String> _selectedMemos = [];
   TimeRecord? _selectedTimeRecord;
   StudyTimeRecord? _selectedStudyRecord;
@@ -255,7 +254,7 @@ class _CalendarScreenState extends State<CalendarScreen>
         final todosRaw = studyData?['todos'];
         if (todosRaw is Map) {
           final monthPrefix = DateFormat('yyyy-MM').format(_viewMonth);
-          for (final e in (todosRaw as Map).entries) {
+          for (final e in todosRaw.entries) {
             if (e.key.toString().startsWith(monthPrefix) && e.value is Map) {
               final items = (e.value as Map)['items'];
               if (items is List && items.isNotEmpty) {

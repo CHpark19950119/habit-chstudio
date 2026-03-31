@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import '../../theme/botanical_theme.dart';
 import '../../models/models.dart';
@@ -19,66 +18,29 @@ class _FocusScreenState extends State<FocusScreen>
   final _fs = FocusService();
 
   late AnimationController _pulseCtrl;
-  late AnimationController _staggerCtrl;
-  late AnimationController _heroCountCtrl;
-
-  String _subj = '자료해석';
-  String _mode = 'study';
-
-  List<FocusCycle> _todaySessions = [];
-  Map<String, int> _weeklyData = {};
-  bool _recordsLoading = false;
-
   bool get _dk => Theme.of(context).brightness == Brightness.dark;
 
   // theme-aware colors — no hardcoding
   Color get _bg => _dk ? const Color(0xFF111015) : const Color(0xFFF6F4F0);
-  Color get _card => _dk ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.65);
-  Color get _cardBorder => _dk ? Colors.white.withValues(alpha: 0.07) : Colors.black.withValues(alpha: 0.04);
   Color get _t1 => _dk ? const Color(0xFFF2ECE4) : const Color(0xFF1A1714);
   Color get _t2 => _dk ? const Color(0xFFB8A898) : const Color(0xFF5C5048);
   Color get _t3 => _dk ? const Color(0xFF7A6E62) : const Color(0xFF9A8E82);
-  Color get _accent => BotanicalColors.subjectColor(_subj);
-
-  void _safeSetState(VoidCallback fn) {
-    if (!mounted) return;
-    final phase = SchedulerBinding.instance.schedulerPhase;
-    if (phase == SchedulerPhase.persistentCallbacks ||
-        phase == SchedulerPhase.midFrameMicrotasks) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(fn);
-      });
-    } else {
-      setState(fn);
-    }
-  }
 
   @override
   void initState() {
     super.initState();
     _pulseCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 3))
       ..repeat(reverse: true);
-    _staggerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
-      ..forward();
-    _heroCountCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))
-      ..forward();
     if (_fs.isRunning) {
-      final st = _fs.getCurrentState();
-      _subj = st.subject;
-      _mode = st.mode;
       _enterImmersive();
     }
     SubjectConfig.load();
-
-    _todaySessions = _fs.todaySessions;
     _loadRecords();
   }
 
   @override
   void dispose() {
     _pulseCtrl.dispose();
-    _staggerCtrl.dispose();
-    _heroCountCtrl.dispose();
     _exitImmersive();
     super.dispose();
   }
@@ -113,64 +75,10 @@ class _FocusScreenState extends State<FocusScreen>
   }
 
   Future<void> _loadRecords() async {
-    _safeSetState(() => _recordsLoading = true);
     try {
-      final w = await _fs.getWeeklyStudyMinutes();
+      await _fs.getWeeklyStudyMinutes();
       await _fs.refreshTodaySessions();
-      _safeSetState(() {
-        _weeklyData = w;
-        _todaySessions = _fs.todaySessions;
-        _recordsLoading = false;
-      });
-    } catch (_) {
-      _safeSetState(() => _recordsLoading = false);
-    }
-  }
-
-  // ── glass card ──
-  Widget _frost({
-    required Widget child,
-    double blur = 16,
-    double radius = 24,
-    EdgeInsets padding = const EdgeInsets.all(20),
-    Color? borderColor,
-    Color? fillColor,
-  }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: fillColor ?? _card,
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(color: borderColor ?? _cardBorder),
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-
-  // ── stagger helpers ──
-  Widget _stagger(int i, Widget child) {
-    final begin = (i * 0.10).clamp(0.0, 0.6);
-    final end = (begin + 0.5).clamp(0.0, 1.0);
-    final anim = CurvedAnimation(
-      parent: _staggerCtrl,
-      curve: Interval(begin, end, curve: Curves.easeOutCubic),
-    );
-    return AnimatedBuilder(
-      animation: anim,
-      builder: (_, __) {
-        final v = anim.value;
-        return Opacity(
-          opacity: v,
-          child: Transform.translate(offset: Offset(0, 24 * (1 - v)), child: child),
-        );
-      },
-    );
+    } catch (_) {}
   }
 
   @override
@@ -187,121 +95,6 @@ class _FocusScreenState extends State<FocusScreen>
       },
     );
   }
-
-  Widget _secLabel(String t) => Padding(
-    padding: const EdgeInsets.only(left: 2),
-    child: Text(t, style: TextStyle(
-      fontSize: 10, fontWeight: FontWeight.w800,
-      color: _t3.withValues(alpha: 0.55), letterSpacing: 2.5)),
-  );
-
-  Widget _modeChip(String emoji, String label, String desc, String m) {
-    final sel = _mode == m;
-    final c = m == 'study' ? const Color(0xFF6366F1) : BotanicalColors.subjectData;
-    return GestureDetector(
-      onTap: () => setState(() => _mode = m),
-      child: _frost(
-        blur: sel ? 14 : 8,
-        radius: 16,
-        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 14),
-        borderColor: sel ? c.withValues(alpha: 0.35) : _cardBorder,
-        fillColor: sel ? c.withValues(alpha: _dk ? 0.10 : 0.05) : _card,
-        child: Row(children: [
-          Text(emoji, style: const TextStyle(fontSize: 18)),
-          const SizedBox(width: 10),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: TextStyle(
-              fontSize: 13, fontWeight: FontWeight.w700, color: sel ? c : _t1)),
-            Text(desc, style: TextStyle(
-              fontSize: 9, fontWeight: FontWeight.w500, color: _t3)),
-          ]),
-          const Spacer(),
-          if (sel) Container(width: 7, height: 7, decoration: BoxDecoration(
-            shape: BoxShape.circle, color: c,
-            boxShadow: [BoxShadow(color: c.withValues(alpha: 0.4), blurRadius: 6)])),
-        ]),
-      ),
-    );
-  }
-
-  Widget _startButton() {
-    return GestureDetector(
-      onTap: _start,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  _accent.withValues(alpha: _dk ? 0.18 : 0.12),
-                  _accent.withValues(alpha: _dk ? 0.08 : 0.04),
-                ],
-                begin: Alignment.topLeft, end: Alignment.bottomRight),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: _accent.withValues(alpha: 0.25)),
-              boxShadow: [
-                BoxShadow(color: _accent.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8)),
-              ],
-            ),
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Container(
-                width: 34, height: 34,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _accent.withValues(alpha: 0.22),
-                  boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.15), blurRadius: 12)]),
-                child: Icon(Icons.play_arrow_rounded, size: 22, color: _accent),
-              ),
-              const SizedBox(width: 10),
-              Text('시작', style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w800,
-                color: _accent, letterSpacing: 0.5)),
-            ]),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _miniStat(String emoji, int min) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: _dk ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(7)),
-      child: Text('$emoji ${min}m', style: TextStyle(
-        fontSize: 9, fontWeight: FontWeight.w700, color: _t2,
-        fontFeatures: const [FontFeature.tabularFigures()])),
-    );
-  }
-
-  void _confirmDeleteSession(FocusCycle c) {
-    showDialog(context: context, builder: (dCtx) => AlertDialog(
-      backgroundColor: _dk ? const Color(0xFF18181E) : Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text('삭제할까요?', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _t1)),
-      content: Text(
-        '${c.subject} · ${_fmtTime(c.startTime)}~${c.endTime != null ? _fmtTime(c.endTime) : '...'} · 순공 ${c.effectiveMin}분',
-        style: TextStyle(fontSize: 12, color: _t2)),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(dCtx),
-          child: Text('취소', style: TextStyle(color: _t3))),
-        TextButton(onPressed: () async {
-          Navigator.pop(dCtx);
-          await _fs.deleteFocusCycle(c.date, c.id);
-          _safeSetState(() {
-            _todaySessions = _fs.todaySessions;
-          });
-        }, child: const Text('삭제', style: TextStyle(
-          color: Colors.redAccent, fontWeight: FontWeight.w700))),
-      ],
-    ));
-  }
-
 
   // ══════════════════════════════════════════
   //  Immersive Focus View
@@ -542,11 +335,6 @@ class _FocusScreenState extends State<FocusScreen>
   //  Actions
   // ══════════════════════════════════════════
 
-  Future<void> _start() async {
-    await _fs.startSession(subject: _subj, mode: _mode);
-    _enterImmersive();
-  }
-
   void _confirmEnd() {
     final st = _fs.getCurrentState();
     showDialog(context: context, builder: (dCtx) => AlertDialog(
@@ -623,93 +411,6 @@ class _FocusScreenState extends State<FocusScreen>
       )));
   }
 
-  static const _sColors = [
-    0xFF6366F1,0xFF10B981,0xFFF59E0B,0xFFEF4444,0xFF3B82F6,
-    0xFF8B5CF6,0xFFEC4899,0xFF14B8A6,0xFFF97316,0xFF06B6D4];
-
-  void _editSubjectDlg(String old, SubjectInfo info, BuildContext ctx, StateSetter setBS) {
-    final nc = TextEditingController(text: old);
-    final ec = TextEditingController(text: info.emoji);
-    int sc = info.colorValue;
-    showDialog(context: ctx, builder: (dCtx) => StatefulBuilder(builder: (_, setD) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      title: const Text('수정', style: TextStyle(fontSize: 15)),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: nc, decoration: const InputDecoration(labelText: '과목명', border: OutlineInputBorder())),
-        const SizedBox(height: 10),
-        TextField(controller: ec, decoration: const InputDecoration(labelText: '이모지', border: OutlineInputBorder())),
-        const SizedBox(height: 10),
-        Wrap(spacing: 6, runSpacing: 6, children: _sColors.map((c) => GestureDetector(
-          onTap: () => setD(() => sc = c),
-          child: Container(width: 28, height: 28, decoration: BoxDecoration(
-            color: Color(c), borderRadius: BorderRadius.circular(6),
-            border: sc == c ? Border.all(color: Colors.white, width: 2.5) : null)),
-        )).toList()),
-      ]),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(dCtx), child: const Text('취소')),
-        TextButton(onPressed: () async {
-          final n = nc.text.trim(); final e = ec.text.trim();
-          if (n.isEmpty) return;
-          await SubjectConfig.updateSubject(old, n, e.isEmpty ? '📚' : e, sc);
-          if (_subj == old) _subj = n;
-          if (dCtx.mounted) Navigator.pop(dCtx);
-          setBS(() {}); setState(() {});
-        }, child: const Text('저장')),
-      ])));
-  }
-
-  void _addSubjectDlg(BuildContext ctx, StateSetter setBS) {
-    final nc = TextEditingController();
-    final ec = TextEditingController(text: '📚');
-    int sc = _sColors.first;
-    showDialog(context: ctx, builder: (dCtx) => StatefulBuilder(builder: (_, setD) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      title: const Text('추가', style: TextStyle(fontSize: 15)),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: nc, decoration: const InputDecoration(labelText: '과목명', hintText: '국어')),
-        const SizedBox(height: 10),
-        TextField(controller: ec, decoration: const InputDecoration(labelText: '이모지'),
-          style: const TextStyle(fontSize: 22)),
-        const SizedBox(height: 10),
-        Wrap(spacing: 6, runSpacing: 6, children: _sColors.map((c) => GestureDetector(
-          onTap: () => setD(() => sc = c),
-          child: Container(width: 28, height: 28, decoration: BoxDecoration(
-            color: Color(c), borderRadius: BorderRadius.circular(6),
-            border: sc == c ? Border.all(color: Colors.white, width: 2.5) : null)),
-        )).toList()),
-      ]),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(dCtx), child: const Text('취소')),
-        TextButton(onPressed: () async {
-          final n = nc.text.trim(); final e = ec.text.trim();
-          if (n.isEmpty) return;
-          await SubjectConfig.addSubject(n, e.isEmpty ? '📚' : e, sc);
-          if (dCtx.mounted) Navigator.pop(dCtx);
-          setBS(() {}); setState(() {});
-        }, child: const Text('추가')),
-      ])));
-  }
-
-  // ── helpers ──
-  String _fmtMin(int m) {
-    final h = m ~/ 60; final r = m % 60;
-    if (h > 0 && r > 0) return '${h}h ${r}m';
-    if (h > 0) return '${h}h';
-    return '${r}m';
-  }
-
-  String _fmtTime(String? raw) {
-    if (raw == null) return '--:--';
-    if (raw.contains('T')) {
-      try {
-        final dt = DateTime.parse(raw);
-        return '${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}';
-      } catch (_) {}
-    }
-    if (raw.length >= 5 && raw.contains(':')) return raw.substring(0, 5);
-    return raw;
-  }
 }
 
 class _RingPainter extends CustomPainter {

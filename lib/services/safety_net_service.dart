@@ -1,7 +1,6 @@
 import 'dart:async';
 import '../constants.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter/material.dart' show Colors, showDialog;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -716,45 +715,6 @@ class SafetyNetService {
   // ═══════════════════════════════════════════
   //  설정
   // ═══════════════════════════════════════════
-
-  // ═══════════════════════════════════════════
-  //  체류 장소 확인 알림
-  // ═══════════════════════════════════════════
-
-  void _showLocationOverlay(BuildContext ctx) {
-    showDialog(
-      context: ctx,
-      barrierDismissible: false,
-      barrierColor: Colors.black87,
-      builder: (_) => CreatureAlertOverlay(
-        title: '어디에 있어?',
-        body: '체류 중인 것 같아요',
-        confirmLabel: null,
-        dismissLabel: null,
-        onConfirm: null,
-        onDismiss: null,
-      ),
-    );
-    // 3개 버튼 별도 다이얼로그 — 크리쳐 오버레이 위에 장소 선택
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (ctx.mounted) {
-        Navigator.of(ctx).pop(); // 기본 오버레이 닫기
-        _showLocationPickerOverlay(ctx);
-      }
-    });
-  }
-
-  void _showLocationPickerOverlay(BuildContext ctx) {
-    CreatureAlertOverlay.show(
-      context: ctx,
-      title: '어디에 있어?',
-      body: '체류 중인 것 같아요',
-      confirmLabel: '스카',
-      dismissLabel: '도서관',
-      onConfirm: () => _recordStayLocation('스카'),
-      onDismiss: () => _recordStayLocation('도서관'),
-    );
-  }
 
   /// 체류 장소 Firestore 기록
   static void _recordStayLocation(String location) {

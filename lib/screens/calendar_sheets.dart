@@ -135,7 +135,6 @@ class _AddEventMemoSheetState extends State<_AddEventMemoSheet> {
   Future<void> _save() async {
     final text = _titleCtrl.text.trim();
     if (text.isEmpty) return;
-    final dateStr = DateFormat('yyyy-MM-dd').format(_date);
     widget.onAdded();
     if (mounted) Navigator.pop(context);
   }
@@ -769,10 +768,3 @@ class _PlanOverviewSheetState extends State<_PlanOverviewSheet>
   }
 }
 
-extension _PlanDDayExt on PlanDDay {
-  bool get containsToday {
-    final now = DateTime.now();
-    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    return date == todayStr;
-  }
-}

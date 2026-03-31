@@ -325,7 +325,7 @@ class _ExamAnalysisScreenState extends State<ExamAnalysisScreen>
     ]),
   );
 
-  Widget _card(Widget child, {Color leftColor = _border}) => Container(
+  Widget _card(Widget child) => Container(
     margin: const EdgeInsets.only(bottom: 12),
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
