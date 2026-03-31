@@ -7,7 +7,6 @@ import 'services/firebase_service.dart';
 import 'services/focus_service.dart';
 import 'services/local_cache_service.dart';
 import 'services/day_service.dart';
-import 'services/cradle_service.dart';
 import 'services/door_sensor_service.dart';
 import 'services/report_service.dart';
 import 'services/wake_service.dart';
@@ -49,7 +48,6 @@ class AppInit {
     // ── Phase 4a: 센서 기반 서비스 ──
     await Future.wait([
       DoorSensorService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
-      CradleService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
     ]);
 
     // ── Phase 4b: 의존 서비스 ──

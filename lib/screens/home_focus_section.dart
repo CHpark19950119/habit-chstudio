@@ -27,10 +27,6 @@ extension _HomeFocusSection on _HomeScreenState {
   }
 
   Widget _focusPage() {
-    // Auto-start cradle when focus tab is shown (so it's ready when session starts)
-    if (_cradle.isCalibrated && !_cradle.isEnabled) {
-      _cradle.start();
-    }
     final isRunning = _ft.isRunning;
     final dk = _dk;
     _focusSessions = _ft.todaySessions;
@@ -202,10 +198,6 @@ extension _HomeFocusSection on _HomeScreenState {
             Expanded(child: _fModeChip('🎧', '강의', '순공 50%', 'lecture', sc)),
           ]),
           const SizedBox(height: 20),
-
-          // ── Cradle ──
-          _fCradleCard(),
-          const SizedBox(height: 28),
 
           // ── Start → 바로 이머시브 진입 ──
           GestureDetector(
@@ -407,107 +399,6 @@ extension _HomeFocusSection on _HomeScreenState {
     );
   }
 
-  Widget _fCradleCard() {
-    final cal = _cradle.isCalibrated;
-    final en = _cradle.isEnabled;
-    final on = _cradle.isOnCradle;
-    if (!cal) {
-      return _fFrostCard(
-        borderColor: Colors.orange.withValues(alpha: 0.15),
-        child: Row(children: [
-          const Text('📐', style: TextStyle(fontSize: 24)),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('거치대를 설정하세요', style: TextStyle(
-              fontSize: 13, fontWeight: FontWeight.w700, color: _textMain)),
-            const SizedBox(height: 2),
-            Text('각도를 등록하면 자동 감지됩니다', style: TextStyle(
-              fontSize: 10, color: _textMuted)),
-          ])),
-          GestureDetector(
-            onTap: () => _showCradleCal(),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.orange.withValues(alpha: 0.25))),
-              child: const Text('거치대 등록', style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.orange)),
-            ),
-          ),
-        ]),
-      );
-    }
-
-    final statusColor = on ? const Color(0xFF10B981) : (en ? _textMuted.withValues(alpha: 0.6) : _textMuted.withValues(alpha: 0.4));
-    final statusMsg = on ? '거치 감지됨' : (en ? '대기 중' : '감지 OFF');
-
-    return _fFrostCard(
-      borderColor: statusColor.withValues(alpha: 0.12),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Text(on ? '✅' : '📐', style: const TextStyle(fontSize: 20)),
-          const SizedBox(width: 10),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Text('거치대 등록됨', style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w700, color: _textMain)),
-              if (_cradle.isChargingCalibrated) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(5)),
-                  child: const Text('🔌', style: TextStyle(fontSize: 10))),
-              ],
-            ]),
-            const SizedBox(height: 2),
-            Row(children: [
-              Container(width: 6, height: 6, decoration: BoxDecoration(
-                shape: BoxShape.circle, color: statusColor,
-                boxShadow: on ? [BoxShadow(color: statusColor.withValues(alpha: 0.5), blurRadius: 6)] : null)),
-              const SizedBox(width: 6),
-              Text(statusMsg, style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w600, color: statusColor)),
-              const SizedBox(width: 8),
-              Text('현재 ${_cradle.lastAngle.toStringAsFixed(0)}°', style: TextStyle(
-                fontSize: 10, color: _textMuted, fontFeatures: const [FontFeature.tabularFigures()])),
-            ]),
-          ])),
-          GestureDetector(
-            onTap: () => _showCradleCal(),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: _textMuted.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(8)),
-              child: Text('재등록', style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w700, color: _textMuted)),
-            ),
-          ),
-        ]),
-        if (!en) ...[
-          const SizedBox(height: 10),
-          GestureDetector(
-            onTap: () async { await _cradle.setEnabled(true); _safeSetState(() {}); },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.15))),
-              child: const Center(child: Text('감지 켜기', style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF10B981)))),
-            ),
-          ),
-        ],
-      ]),
-    );
-  }
-
   Widget _fMiniStat(String emoji, int min) {
     final dk = _dk;
     return Container(
@@ -608,126 +499,6 @@ extension _HomeFocusSection on _HomeScreenState {
           color: Colors.redAccent, fontWeight: FontWeight.w700))),
       ],
     ));
-  }
-
-  void _showCradleCal() {
-    final dk = _dk;
-    bool calibrating = false;
-    bool done = false;
-    String calType = 'normal';
-    showModalBottomSheet(context: context, isScrollControlled: true,
-      backgroundColor: dk ? BotanicalColors.cardDark : BotanicalColors.cardLight,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => StatefulBuilder(builder: (ctx, setBS) {
-        return SafeArea(child: Padding(
-          padding: EdgeInsets.only(left: 20, right: 20, top: 16,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + MediaQuery.of(ctx).padding.bottom + 16),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 36, height: 4, decoration: BoxDecoration(
-              color: _textMuted.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 20),
-            Text('거치대 각도 캘리브레이션', style: BotanicalTypo.heading(size: 17, color: _textMain)),
-            const SizedBox(height: 6),
-            Text('거치대에 올려놓고 시작 — 이 각도에서만 활성화됩니다', style: TextStyle(fontSize: 12, color: _textMuted)),
-            const SizedBox(height: 16),
-            // ── 모드 선택: 일반 / 충전 ──
-            if (!calibrating && !done) ...[
-              Row(children: [
-                Expanded(child: GestureDetector(
-                  onTap: () => setBS(() => calType = 'normal'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: calType == 'normal' ? BotanicalColors.primary.withValues(alpha: 0.12) : _textMuted.withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: calType == 'normal' ? BotanicalColors.primary.withValues(alpha: 0.35) : Colors.transparent)),
-                    child: Column(children: [
-                      const Text('📐', style: TextStyle(fontSize: 22)),
-                      const SizedBox(height: 4),
-                      Text('일반', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                        color: calType == 'normal' ? BotanicalColors.primary : _textMuted)),
-                      Text(_cradle.isCalibrated ? '등록됨' : '미등록', style: TextStyle(fontSize: 9,
-                        color: _cradle.isCalibrated ? const Color(0xFF10B981) : _textMuted.withValues(alpha: 0.5))),
-                    ]),
-                  ),
-                )),
-                const SizedBox(width: 10),
-                Expanded(child: GestureDetector(
-                  onTap: () => setBS(() => calType = 'charging'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: calType == 'charging' ? Colors.orange.withValues(alpha: 0.12) : _textMuted.withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: calType == 'charging' ? Colors.orange.withValues(alpha: 0.35) : Colors.transparent)),
-                    child: Column(children: [
-                      const Text('🔌', style: TextStyle(fontSize: 22)),
-                      const SizedBox(height: 4),
-                      Text('충전용', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                        color: calType == 'charging' ? Colors.orange : _textMuted)),
-                      Text(_cradle.isChargingCalibrated ? '등록됨' : '미등록', style: TextStyle(fontSize: 9,
-                        color: _cradle.isChargingCalibrated ? const Color(0xFF10B981) : _textMuted.withValues(alpha: 0.5))),
-                    ]),
-                  ),
-                )),
-              ]),
-              const SizedBox(height: 16),
-            ],
-            if (done) ...[
-              const Text('✅', style: TextStyle(fontSize: 44)),
-              const SizedBox(height: 10),
-              Text(calType == 'charging' ? '충전용 등록 완료!' : '등록 완료!',
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF10B981))),
-              const SizedBox(height: 6),
-              Text('기준 각도가 저장되었습니다', style: TextStyle(fontSize: 12, color: _textMuted)),
-              const SizedBox(height: 16),
-              SizedBox(width: double.infinity, height: 46, child: ElevatedButton(
-                onPressed: () { Navigator.pop(ctx); _safeSetState(() {}); },
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                child: const Text('닫기', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)))),
-            ] else if (calibrating) ...[
-              const SizedBox(height: 8),
-              const SizedBox(width: 48, height: 48, child: CircularProgressIndicator(strokeWidth: 3)),
-              const SizedBox(height: 16),
-              Text('측정 중... 폰을 움직이지 마세요', style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w600, color: _textMain)),
-              const SizedBox(height: 6),
-              Text(calType == 'charging' ? '충전 상태 각도를 측정합니다 (5초)' : '5초간 가속도계 데이터를 수집합니다',
-                style: TextStyle(fontSize: 11, color: _textMuted)),
-              const SizedBox(height: 24),
-            ] else ...[
-              Icon(calType == 'charging' ? Icons.battery_charging_full_rounded : Icons.phone_android_rounded,
-                size: 48, color: _textMuted.withValues(alpha: 0.5)),
-              const SizedBox(height: 12),
-              Text(calType == 'charging'
-                ? '충전 케이블을 꽂은 상태로\n거치대에 올려놓고 아래 버튼을 누르세요'
-                : '폰을 거치대에 올려놓고\n아래 버튼을 누르세요',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: _textSub, height: 1.5)),
-              const SizedBox(height: 20),
-              SizedBox(width: double.infinity, height: 46, child: ElevatedButton(
-                onPressed: () async {
-                  setBS(() => calibrating = true);
-                  if (calType == 'charging') {
-                    await _cradle.calibrateCharging();
-                  } else {
-                    await _cradle.calibrate();
-                  }
-                  await _cradle.setEnabled(true);
-                  setBS(() { calibrating = false; done = true; });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: calType == 'charging' ? Colors.orange : BotanicalColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                child: const Text('측정 시작', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)))),
-            ],
-            const SizedBox(height: 14),
-          ]),
-        ));
-      }));
   }
 
   void _manageSubjectsSheet() {

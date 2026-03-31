@@ -1,14 +1,11 @@
-import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import '../../theme/botanical_theme.dart';
 import '../../models/models.dart';
 import '../../services/focus_service.dart';
-import '../../services/cradle_service.dart';
 import 'focus_result_sheet.dart';
 
 class FocusScreen extends StatefulWidget {
@@ -20,9 +17,6 @@ class FocusScreen extends StatefulWidget {
 class _FocusScreenState extends State<FocusScreen>
     with TickerProviderStateMixin {
   final _fs = FocusService();
-  final _cradle = CradleService();
-  StreamSubscription? _cradleSub;
-  bool _cradleAutoStarted = false;
 
   late AnimationController _pulseCtrl;
   late AnimationController _staggerCtrl;
@@ -76,27 +70,12 @@ class _FocusScreenState extends State<FocusScreen>
     }
     SubjectConfig.load();
 
-    _fs.onCradleChanged(_cradle.isOnCradle);
-    if (!_cradle.isEnabled && _cradle.isCalibrated) {
-      _cradle.start();
-      _cradleAutoStarted = true;
-    }
-    _cradleSub = _cradle.cradleStream.listen((on) {
-      if (on) HapticFeedback.mediumImpact();
-      if (!on && _fs.isRunning) HapticFeedback.heavyImpact();
-      _fs.onCradleChanged(on);
-    }, onError: (e) {
-      debugPrint('[FocusScreen] cradle stream error: $e');
-    });
-
     _todaySessions = _fs.todaySessions;
     _loadRecords();
   }
 
   @override
   void dispose() {
-    _cradleSub?.cancel();
-    if (_cradleAutoStarted && !_cradle.isEnabled) _cradle.stop();
     _pulseCtrl.dispose();
     _staggerCtrl.dispose();
     _heroCountCtrl.dispose();
@@ -242,117 +221,6 @@ class _FocusScreenState extends State<FocusScreen>
             boxShadow: [BoxShadow(color: c.withValues(alpha: 0.4), blurRadius: 6)])),
         ]),
       ),
-    );
-  }
-
-  Widget _cradleCard() {
-    final cal = _cradle.isCalibrated;
-    final en = _cradle.isEnabled;
-    final on = _cradle.isOnCradle;
-
-    if (!cal) {
-      // Not calibrated
-      return _frost(
-        blur: 12, radius: 16,
-        padding: const EdgeInsets.all(16),
-        borderColor: Colors.orange.withValues(alpha: 0.15),
-        fillColor: Colors.orange.withValues(alpha: _dk ? 0.04 : 0.02),
-        child: Row(children: [
-          const Text('📐', style: TextStyle(fontSize: 24)),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('거치대를 설정하세요', style: TextStyle(
-              fontSize: 13, fontWeight: FontWeight.w700, color: _t1)),
-            const SizedBox(height: 2),
-            Text('거치대 각도를 등록하면 자동 감지됩니다', style: TextStyle(
-              fontSize: 10, color: _t3)),
-          ])),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: _showCradleCalibration,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.orange.withValues(alpha: 0.25))),
-              child: const Text('거치대 등록', style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.orange)),
-            ),
-          ),
-        ]),
-      );
-    }
-
-    // Calibrated
-    final statusColor = on ? const Color(0xFF10B981) : (en ? _t3.withValues(alpha: 0.6) : _t3.withValues(alpha: 0.4));
-    final statusMsg = on ? '거치 감지됨' : (en ? '대기 중' : '감지 OFF');
-
-    return _frost(
-      blur: 12, radius: 16,
-      padding: const EdgeInsets.all(16),
-      borderColor: statusColor.withValues(alpha: 0.12),
-      fillColor: statusColor.withValues(alpha: _dk ? 0.03 : 0.02),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Text(on ? '✅' : '📐', style: const TextStyle(fontSize: 20)),
-          const SizedBox(width: 10),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Text('거치대 등록됨', style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w700, color: _t1)),
-              if (_cradle.isChargingCalibrated) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(5)),
-                  child: const Text('🔌', style: TextStyle(fontSize: 10))),
-              ],
-            ]),
-            const SizedBox(height: 2),
-            Row(children: [
-              Container(width: 6, height: 6, decoration: BoxDecoration(
-                shape: BoxShape.circle, color: statusColor,
-                boxShadow: on ? [BoxShadow(color: statusColor.withValues(alpha: 0.5), blurRadius: 6)] : null)),
-              const SizedBox(width: 6),
-              Text(statusMsg, style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w600, color: statusColor)),
-              const SizedBox(width: 8),
-              Text('현재 ${_cradle.lastAngle.toStringAsFixed(0)}°', style: TextStyle(
-                fontSize: 10, color: _t3, fontFeatures: const [FontFeature.tabularFigures()])),
-            ]),
-          ])),
-          GestureDetector(
-            onTap: _showCradleCalibration,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: _t3.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(8)),
-              child: Text('재등록', style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w700, color: _t3)),
-            ),
-          ),
-        ]),
-        if (!en) ...[
-          const SizedBox(height: 10),
-          GestureDetector(
-            onTap: () async { await _cradle.setEnabled(true); _safeSetState(() {}); },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.15))),
-              child: const Center(child: Text('감지 켜기', style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF10B981)))),
-            ),
-          ),
-        ],
-      ]),
     );
   }
 
@@ -506,8 +374,6 @@ class _FocusScreenState extends State<FocusScreen>
                         ),
                       ),
                       const Spacer(),
-                      _cradleDot(),
-                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                         decoration: BoxDecoration(
@@ -600,10 +466,6 @@ class _FocusScreenState extends State<FocusScreen>
               ]),
             ]))),
 
-            // ── sub timer ──
-            if (!isRest) _subTimerBar(sc),
-            const SizedBox(height: 10),
-
             // ── cycle bar ──
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -635,7 +497,6 @@ class _FocusScreenState extends State<FocusScreen>
             const SizedBox(height: 22),
           ])),
 
-          if (_fs.cradlePaused) _cradleOverlay(),
         ]),
       ),
     );
@@ -645,25 +506,6 @@ class _FocusScreenState extends State<FocusScreen>
     fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: 0.6),
     fontFeatures: const [FontFeature.tabularFigures()]));
   Widget _imDiv() => Container(width: 1, height: 20, color: Colors.white.withValues(alpha: 0.05));
-
-  Widget _cradleDot() {
-    final on = _fs.isOnCradle;
-    final c = on ? const Color(0xFF10B981) : Colors.grey;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.withValues(alpha: 0.3))),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 6, height: 6, decoration: BoxDecoration(
-          shape: BoxShape.circle, color: c,
-          boxShadow: on ? [BoxShadow(color: c.withValues(alpha: 0.5), blurRadius: 5)] : null)),
-        const SizedBox(width: 4),
-        Text(on ? '거치' : '미감지', style: TextStyle(
-          fontSize: 9, fontWeight: FontWeight.w600, color: c)),
-      ]),
-    );
-  }
 
   Widget _imModeBtn(String emoji, String label, String m, Color c, String cur) {
     final sel = cur == m;
@@ -694,145 +536,6 @@ class _FocusScreenState extends State<FocusScreen>
               color: c.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12),
               border: Border.all(color: c.withValues(alpha: 0.22))),
             child: Icon(icon, color: c, size: size)))));
-  }
-
-  Widget _subTimerBar(Color sc) {
-    final elapsed = _fs.problemElapsedSec;
-    final mm = elapsed ~/ 60;
-    final ss = elapsed % 60;
-    final str = '${mm.toString().padLeft(2, '0')}:${ss.toString().padLeft(2, '0')}';
-    final laps = _fs.problemLaps;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: ClipRRect(borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 14),
-            decoration: BoxDecoration(
-              color: sc.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: sc.withValues(alpha: 0.10))),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Row(children: [
-                const Text('⏱️', style: TextStyle(fontSize: 12)),
-                const SizedBox(width: 5),
-                Text('문제', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
-                  color: Colors.white.withValues(alpha: 0.4), letterSpacing: 1)),
-                const Spacer(),
-                if (laps.isNotEmpty)
-                  Text('${laps.length}문제', style: TextStyle(
-                    fontSize: 9, fontWeight: FontWeight.w700, color: sc.withValues(alpha: 0.7))),
-              ]),
-              const SizedBox(height: 6),
-              Row(children: [
-                Text(_fs.subTimerActive ? str : '--:--', style: TextStyle(
-                  fontSize: 28, fontWeight: FontWeight.w300,
-                  color: _fs.subTimerActive ? sc : Colors.white.withValues(alpha: 0.15),
-                  fontFamily: 'monospace', letterSpacing: 2,
-                  fontFeatures: const [FontFeature.tabularFigures()])),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () {
-                    if (!_fs.subTimerActive) { _fs.toggleSubTimer(); }
-                    else if (_fs.problemStart != null) {
-                      _fs.toggleSubTimer(); _fs.toggleSubTimer();
-                    }
-                    HapticFeedback.lightImpact();
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: sc.withValues(alpha: _fs.subTimerActive ? 0.18 : 0.10),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: sc.withValues(alpha: 0.25))),
-                    child: Text(_fs.subTimerActive ? '다음' : '시작', style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w700, color: sc)),
-                  ),
-                ),
-                if (_fs.subTimerActive) ...[
-                  const SizedBox(width: 6),
-                  GestureDetector(
-                    onTap: () { _fs.toggleSubTimer(); HapticFeedback.lightImpact(); },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
-                      child: const Text('정지', style: TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w700, color: Colors.redAccent))),
-                  ),
-                ],
-              ]),
-              if (laps.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Row(children: laps.reversed.take(5).toList().asMap().entries.map((e) {
-                  final lap = e.value;
-                  final i = laps.length - e.key;
-                  return Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Text('#$i', style: TextStyle(fontSize: 8, color: Colors.white.withValues(alpha: 0.25))),
-                    Text('${lap.seconds ~/ 60}:${(lap.seconds % 60).toString().padLeft(2, '0')}',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                        color: Colors.white.withValues(alpha: 0.5), fontFamily: 'monospace',
-                        fontFeatures: const [FontFeature.tabularFigures()])),
-                  ]));
-                }).toList()),
-              ],
-            ]),
-          ))),
-    );
-  }
-
-  Widget _cradleOverlay() {
-    final sec = _fs.cradleRestSec;
-    final mm = sec ~/ 60; final ss = sec % 60;
-    final rate = _fs.concentrationRate;
-    return Positioned.fill(child: Container(
-      color: Colors.black.withValues(alpha: 0.75),
-      child: SafeArea(child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Text('☕', style: TextStyle(fontSize: 52)),
-        const SizedBox(height: 14),
-        const Text('휴식 중', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 6),
-        Text('거치대에 올려놓으면 재개', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13)),
-        const SizedBox(height: 18),
-        Text('${mm.toString().padLeft(2,'0')}:${ss.toString().padLeft(2,'0')}',
-          style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 34,
-            fontWeight: FontWeight.w300, fontFamily: 'monospace',
-            fontFeatures: [FontFeature.tabularFigures()])),
-        const SizedBox(height: 20),
-        if (_fs.cradleFocusSec + _fs.cradleRestSec > 30)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.08))),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Text('집중도 ', style: TextStyle(color: Colors.white38, fontSize: 12)),
-              Text('$rate%', style: TextStyle(
-                color: _concColor(rate), fontSize: 15, fontWeight: FontWeight.w800)),
-              Text(' · ${_fs.cradleRestCount}회', style: const TextStyle(color: Colors.white30, fontSize: 11)),
-            ]),
-          ),
-        const SizedBox(height: 28),
-        GestureDetector(
-          onTap: () { _fs.onCradleChanged(true); HapticFeedback.mediumImpact(); },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
-            decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.35))),
-            child: const Text('수동 재개', style: TextStyle(
-              color: Color(0xFF10B981), fontSize: 13, fontWeight: FontWeight.w700)),
-          ),
-        ),
-      ])))));
-  }
-
-  Color _concColor(int r) {
-    if (r >= 90) return const Color(0xFF10B981);
-    if (r >= 70) return const Color(0xFFFBBF24);
-    if (r >= 50) return const Color(0xFFF59E0B);
-    return const Color(0xFFEF4444);
   }
 
   // ══════════════════════════════════════════
@@ -867,11 +570,7 @@ class _FocusScreenState extends State<FocusScreen>
           _loadRecords();
           if (mounted) showFocusResultDialog(
             context: context, cycle: cycle, dk: _dk,
-            textMain: _t1, textSub: _t2, textMuted: _t3,
-            cradleFocusSec: _fs.cradleFocusSec,
-            cradleRestSec: _fs.cradleRestSec,
-            cradleRestCount: _fs.cradleRestCount,
-            magnetEnabled: _cradle.isEnabled);
+            textMain: _t1, textSub: _t2, textMuted: _t3);
         }, child: const Text('종료', style: TextStyle(
           color: Colors.redAccent, fontWeight: FontWeight.w700))),
       ],
@@ -922,125 +621,6 @@ class _FocusScreenState extends State<FocusScreen>
           const SizedBox(height: 14),
         ]),
       )));
-  }
-
-  void _showCradleCalibration() {
-    bool calibrating = false;
-    bool done = false;
-    String calType = 'normal'; // 'normal' or 'charging'
-    showModalBottomSheet(context: context, isScrollControlled: true,
-      backgroundColor: _dk ? BotanicalColors.cardDark : BotanicalColors.cardLight,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => StatefulBuilder(builder: (ctx, setBS) {
-        return SafeArea(child: Padding(
-          padding: EdgeInsets.only(left: 20, right: 20, top: 16,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + MediaQuery.of(ctx).padding.bottom + 16),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 36, height: 4, decoration: BoxDecoration(
-              color: _t3.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 20),
-            Text('거치대 각도 캘리브레이션', style: BotanicalTypo.heading(size: 17, color: _t1)),
-            const SizedBox(height: 6),
-            Text('거치대에 올려놓고 시작 — 이 각도에서만 활성화됩니다', style: TextStyle(fontSize: 12, color: _t3)),
-            const SizedBox(height: 16),
-            // ── 모드 선택: 일반 / 충전 ──
-            if (!calibrating && !done) ...[
-              Row(children: [
-                Expanded(child: GestureDetector(
-                  onTap: () => setBS(() => calType = 'normal'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: calType == 'normal' ? BotanicalColors.primary.withValues(alpha: 0.12) : _t3.withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: calType == 'normal' ? BotanicalColors.primary.withValues(alpha: 0.35) : Colors.transparent)),
-                    child: Column(children: [
-                      Text('📐', style: const TextStyle(fontSize: 22)),
-                      const SizedBox(height: 4),
-                      Text('일반', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                        color: calType == 'normal' ? BotanicalColors.primary : _t3)),
-                      Text(_cradle.isCalibrated ? '등록됨' : '미등록', style: TextStyle(fontSize: 9,
-                        color: _cradle.isCalibrated ? const Color(0xFF10B981) : _t3.withValues(alpha: 0.5))),
-                    ]),
-                  ),
-                )),
-                const SizedBox(width: 10),
-                Expanded(child: GestureDetector(
-                  onTap: () => setBS(() => calType = 'charging'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: calType == 'charging' ? Colors.orange.withValues(alpha: 0.12) : _t3.withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: calType == 'charging' ? Colors.orange.withValues(alpha: 0.35) : Colors.transparent)),
-                    child: Column(children: [
-                      const Text('🔌', style: TextStyle(fontSize: 22)),
-                      const SizedBox(height: 4),
-                      Text('충전용', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                        color: calType == 'charging' ? Colors.orange : _t3)),
-                      Text(_cradle.isChargingCalibrated ? '등록됨' : '미등록', style: TextStyle(fontSize: 9,
-                        color: _cradle.isChargingCalibrated ? const Color(0xFF10B981) : _t3.withValues(alpha: 0.5))),
-                    ]),
-                  ),
-                )),
-              ]),
-              const SizedBox(height: 16),
-            ],
-            if (done) ...[
-              const Text('✅', style: TextStyle(fontSize: 44)),
-              const SizedBox(height: 10),
-              Text(calType == 'charging' ? '충전용 등록 완료!' : '등록 완료!',
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF10B981))),
-              const SizedBox(height: 6),
-              Text('기준 각도가 저장되었습니다', style: TextStyle(fontSize: 12, color: _t3)),
-              const SizedBox(height: 16),
-              SizedBox(width: double.infinity, height: 46, child: ElevatedButton(
-                onPressed: () { Navigator.pop(ctx); _safeSetState(() {}); },
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                child: const Text('닫기', style: TextStyle(fontWeight: FontWeight.w700)))),
-            ] else if (calibrating) ...[
-              const SizedBox(height: 8),
-              const SizedBox(width: 48, height: 48, child: CircularProgressIndicator(strokeWidth: 3)),
-              const SizedBox(height: 16),
-              Text('측정 중... 폰을 움직이지 마세요', style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w600, color: _t1)),
-              const SizedBox(height: 6),
-              Text(calType == 'charging' ? '충전 상태 각도를 측정합니다 (5초)' : '5초간 가속도계 데이터를 수집합니다',
-                style: TextStyle(fontSize: 11, color: _t3)),
-              const SizedBox(height: 24),
-            ] else ...[
-              Icon(calType == 'charging' ? Icons.battery_charging_full_rounded : Icons.phone_android_rounded,
-                size: 48, color: _t3.withValues(alpha: 0.5)),
-              const SizedBox(height: 12),
-              Text(calType == 'charging'
-                ? '충전 케이블을 꽂은 상태로\n거치대에 올려놓고 아래 버튼을 누르세요'
-                : '폰을 거치대에 올려놓고\n아래 버튼을 누르세요',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: _t2, height: 1.5)),
-              const SizedBox(height: 20),
-              SizedBox(width: double.infinity, height: 46, child: ElevatedButton(
-                onPressed: () async {
-                  setBS(() => calibrating = true);
-                  if (calType == 'charging') {
-                    await _cradle.calibrateCharging();
-                  } else {
-                    await _cradle.calibrate();
-                  }
-                  await _cradle.setEnabled(true);
-                  setBS(() { calibrating = false; done = true; });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: calType == 'charging' ? Colors.orange : BotanicalColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                child: const Text('측정 시작', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)))),
-            ],
-            const SizedBox(height: 14),
-          ]),
-        ));
-      }));
   }
 
   static const _sColors = [

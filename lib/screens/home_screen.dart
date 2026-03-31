@@ -26,7 +26,6 @@ import '../models/order_models.dart';
 import '../models/plan_models.dart';
 import '../services/todo_service.dart';
 import '../services/local_cache_service.dart';
-import '../services/cradle_service.dart';
 import 'package:app_links/app_links.dart';
 
 import '../utils/study_date_utils.dart';
@@ -115,7 +114,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String? _mood;                   // ★ E: 오늘의 무드 이모지
 
   // ★ Focus setup (home tab)
-  final _cradle = CradleService();
   String _focusSubj = '자료해석';
   String _focusMode = 'study';
   List<FocusCycle> _focusSessions = [];
