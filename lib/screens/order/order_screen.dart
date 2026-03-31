@@ -574,7 +574,7 @@ class _OrderScreenState extends State<OrderScreen> {
         amount: result,
         category: 'AI',
       ));
-      setState(() {});
+      _safeSetState(() {});
       _save();
     }
   }

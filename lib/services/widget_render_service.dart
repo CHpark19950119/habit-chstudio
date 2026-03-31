@@ -144,7 +144,7 @@ class _DDayView extends StatelessWidget {
   }
 
   Widget _progressBar(PlanDDay p) {
-    final totalDays = 180;
+    const totalDays = 180;
     final elapsed = totalDays - p.daysLeft;
     final ratio = (elapsed / totalDays).clamp(0.0, 1.0);
 

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/creature_mood.dart';
 import 'firebase_service.dart';
-import 'local_cache_service.dart';
 
 class CreatureService extends ChangeNotifier {
   static final CreatureService _i = CreatureService._();
@@ -62,7 +61,6 @@ class CreatureService extends ChangeNotifier {
     _cache = Map<String, dynamic>.from(creature);
     try {
       await FirebaseService().updateField('creature', creature);
-      LocalCacheService().markWrite();
     } catch (e) {
       debugPrint('[Creature] save fail: $e');
     }
