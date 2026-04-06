@@ -1,8 +1,6 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- 위치 권한 -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
 
     <!-- 알림 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -11,23 +9,23 @@
 
     <!-- Foreground Service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
 
     <!-- 집중모드 -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
 
+    <!-- Claude Agent: 앱 강제 종료, 밝기 제어 -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
     <!-- WiFi SSID (장소 인식) -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 
-    <!-- 카메라 (QR 기상 인증) -->
-    <uses-permission android:name="android.permission.CAMERA" />
-
-    <!-- NFC -->
-    <uses-permission android:name="android.permission.NFC" />
-    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+    <!-- ★ AUDIT FIX: A-01 — CAMERA 권한 제거 (QR 기상 인증 미사용) -->
 
     <!-- 네트워크 -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -37,7 +35,8 @@
         android:label="CHEONHONG STUDIO"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="false"
+        android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -48,10 +47,7 @@
             android:windowSoftInputMode="adjustResize"
             android:showWhenLocked="true"
             android:turnScreenOn="true">
-            <!--
-                ✅ FIX #1: taskAffinity="" 제거 → 기본 패키지 태스크 사용
-                ✅ FIX #1: launchMode="singleTask" → NDEF 인텐트가 기존 인스턴스의 onNewIntent로 전달
-            -->
+            <!-- singleTask: 딥링크가 기존 인스턴스의 onNewIntent로 전달 -->
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
@@ -60,21 +56,6 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-
-            <!-- v8.6: NDEF URI 딥링크 (cheonhong://nfc?role=xxx) -->
-            <intent-filter>
-                <action android:name="android.nfc.action.NDEF_DISCOVERED"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <data android:scheme="cheonhong" android:host="nfc"/>
-            </intent-filter>
-
-            <!-- 딥링크 (다른 앱에서 열기) -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="cheonhong" android:host="nfc"/>
             </intent-filter>
 
             <!-- 딥링크: 포커스/앱/상태 제어 -->
@@ -102,7 +83,7 @@
             android:foregroundServiceType="location"
             android:exported="false" />
 
-        <!-- Bixby Routine notification listener -->
+        <!-- App notification listener (Tuya wake + screen ON) -->
         <service
             android:name=".BixbyNotificationListener"
             android:exported="true"
@@ -110,6 +91,19 @@
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
+        </service>
+
+        <!-- Claude Agent 접근성 서비스 (앱 사용 감시/제어) -->
+        <service
+            android:name=".ClaudeAgentService"
+            android:exported="false"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
         </service>
 
         <!-- Home screen widget -->

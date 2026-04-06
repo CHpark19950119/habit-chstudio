@@ -10,7 +10,11 @@ extension _HomeFocusSection on _HomeScreenState {
     _focusScreenOpen = true;
     Navigator.push(context,
       MaterialPageRoute(builder: (_) => const FocusScreen()))
-      .then((_) { _focusScreenOpen = false; _load(); _loadFocusRecords(); });
+      .then((_) {
+        _focusScreenOpen = false;
+        if (_ft.isRunning) _focusPausedAutoEnter = true;
+        _load(); _loadFocusRecords();
+      });
   }
 
   Future<void> _loadFocusRecords() async {
@@ -35,12 +39,11 @@ extension _HomeFocusSection on _HomeScreenState {
     final pct = (_ft.todayStudyMinutes / goalMin).clamp(0.0, 1.0);
     final totalEff = _focusSessions.fold<int>(0, (s, c) => s + c.effectiveMin);
 
-    // If running → auto-enter FocusScreen immersive (no intermediate card)
-    if (isRunning) {
+    // If running → auto-enter FocusScreen (unless user intentionally returned to dashboard)
+    if (isRunning && !_focusPausedAutoEnter) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _ft.isRunning) _pushFocusScreen();
+        if (mounted && _ft.isRunning && !_focusPausedAutoEnter) _pushFocusScreen();
       });
-      // Minimal placeholder while transition happens
       final mc = BotanicalColors.subjectColor(_ft.getCurrentState().subject);
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
         SizedBox(width: 32, height: 32, child: CircularProgressIndicator(
@@ -49,6 +52,44 @@ extension _HomeFocusSection on _HomeScreenState {
         Text('포커스 진입 중...', style: TextStyle(
           fontSize: 13, color: _textMuted)),
       ]));
+    }
+
+    // Running but user paused → show resume banner
+    if (isRunning && _focusPausedAutoEnter) {
+      return RefreshIndicator(
+        onRefresh: () async { await _load(); await _loadFocusRecords(); },
+        color: sc,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          children: [
+            const SizedBox(height: 40),
+            GestureDetector(
+              onTap: () { _focusPausedAutoEnter = false; _pushFocusScreen(); },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                decoration: BoxDecoration(
+                  color: sc.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: sc.withValues(alpha: 0.3))),
+                child: Row(children: [
+                  Icon(Icons.play_circle_rounded, color: sc, size: 36),
+                  const SizedBox(width: 14),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('세션 진행 중', style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w800, color: _textMain)),
+                    const SizedBox(height: 3),
+                    Text('${_ft.getCurrentState().subject} · 순공 ${_ft.getCurrentState().effectiveTimeFormatted}',
+                      style: TextStyle(fontSize: 13, color: _textSub)),
+                  ])),
+                  Text('복귀 →', style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w700, color: sc)),
+                ]),
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     // Setup view (not running)
@@ -106,6 +147,18 @@ extension _HomeFocusSection on _HomeScreenState {
                   fontSize: 11, fontWeight: FontWeight.w800, color: sc,
                   fontFeatures: const [FontFeature.tabularFigures()])),
               ),
+              // ⏳ mini hourglasses per completed cycle (90min each)
+              if (totalEff >= 90) ...[
+                const SizedBox(width: 6),
+                ...List.generate(
+                  (totalEff ~/ 90).clamp(0, 8),
+                  (_) => Padding(
+                    padding: const EdgeInsets.only(right: 1),
+                    child: Icon(Icons.hourglass_bottom_rounded,
+                      size: 12, color: sc.withValues(alpha: 0.55)),
+                  ),
+                ),
+              ],
               const SizedBox(width: 8),
               Text('순공시간', style: TextStyle(
                 fontSize: 11, fontWeight: FontWeight.w500, color: _textMuted)),

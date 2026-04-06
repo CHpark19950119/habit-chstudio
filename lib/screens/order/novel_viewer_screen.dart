@@ -461,7 +461,7 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _showCover ? const Color(0xFF0F0D0A) : _bg,
+      backgroundColor: _showCover ? const Color(0xFF181612) : _bg,
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _ac))
           : _chapters.isEmpty
@@ -502,8 +502,8 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF0A0908),
-              Color(0xFF1A1510),
+              Color(0xFF141210),
+              Color(0xFF201B16),
               Color(0xFF2A2118),
               Color(0xFF3A2E1E),
             ],

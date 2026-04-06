@@ -7,3 +7,24 @@
 .idea/
 .claude/
 .env
+
+# Temp files
+*.log
+*.pcap
+*.mp3
+temp_thumb_*.jpg
+phone_*.png
+screen_*.jpg
+screen_*.png
+google_debug.jpg
+dictation_tts.mp3
+sync_output.log
+fetch_output.log
+.sync_lock
+sent_urls.json
+timeline_data.json
+tuya_capture.pcap
+android/hs_err_pid*.log
+.vscode/
+functions/node_modules/
+functions/tuya_backup.ab

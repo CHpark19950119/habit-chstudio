@@ -5,13 +5,13 @@ part of 'home_screen.dart';
 /// ═══════════════════════════════════════════════════
 extension _HomeRoutineCard on _HomeScreenState {
 
-  Widget _nfcStatusCard() {
+  Widget _routineStatusCard() {
     final hasWake = _wake != null;
     final hasStudy = _studyStart != null;
     final isOut = _outing != null && _returnHome == null;
     final hasReturn = _outing != null && _returnHome != null;
     final hasBed = _bedTime != null;
-    final hasMeal = _todayMeals.isNotEmpty || _nfc.isMealing;
+    final hasMeal = _todayMeals.isNotEmpty || _day.isMealing;
 
     final items = <_RItem>[
       _RItem('☀️', '기상', hasWake, _wake, BotanicalColors.gold,
@@ -148,14 +148,14 @@ extension _HomeRoutineCard on _HomeScreenState {
     );
     await fb.updateTimeRecord(d, updated);
     if (updated.outing != null && updated.returnHome == null) {
-      _nfc.forceOutState(true);
+      _day.forceOutState(true);
     } else {
-      _nfc.forceOutState(false);
+      _day.forceOutState(false);
     }
     if (updated.study != null && updated.studyEnd == null) {
-      _nfc.forceStudyState(true);
+      _day.forceStudyState(true);
     } else {
-      _nfc.forceStudyState(false);
+      _day.forceStudyState(false);
     }
     _safeSetState(() {
       _wake = updated.wake;

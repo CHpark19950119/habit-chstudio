@@ -155,10 +155,11 @@ class WakeService {
   static String _fmtMin(int m) =>
       '${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
 
-  /// 기상 기록 — NfcService의 manualTestRole(wake) 위임
+  // ★ AUDIT FIX: Q-03 — deprecated manualTestRole → triggerAction
+  /// 기상 기록 — DayService.triggerAction(wake) 위임
   /// auto=true: 센서 자동 기상 → 기록 후 사후 확인 알림
   Future<void> recordWake({bool auto = false}) async {
-    final result = await DayService().manualTestRole(ActionType.wake);
+    final result = await DayService().triggerAction(ActionType.wake);
     debugPrint('[WakeService] recordWake(auto=$auto): $result');
     if (auto) {
       // 자동 기상 사후 확인: 기록은 이미 저장, 크리처가 확인 요청

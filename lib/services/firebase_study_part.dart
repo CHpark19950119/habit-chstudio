@@ -2,91 +2,129 @@ part of 'firebase_service.dart';
 
 /// ═══════════════════════════════════════════════════════════
 /// FIREBASE — Study Doc CRUD (timeRecords, studyTime, focusCycles, liveFocus, customTasks)
+/// Phase D: today doc = single source of truth. study doc = read-only legacy.
 /// ═══════════════════════════════════════════════════════════
 extension FirebaseStudyOps on FirebaseService {
 
   // ── timeRecords ──
 
   Future<Map<String, TimeRecord>> getTimeRecords() async {
+    // Phase D: today doc first, study doc legacy fallback (read-only)
+    final todayData = await getTodayDoc();
+    if (todayData != null && todayData['timeRecords'] is Map) {
+      final todayTr = Map<String, dynamic>.from(todayData['timeRecords'] as Map);
+      final todayDate = todayData['date'] as String?;
+      if (todayDate != null && todayTr.isNotEmpty) {
+        final result = <String, TimeRecord>{};
+        try {
+          result[todayDate] = TimeRecord.fromMap(todayDate, todayTr);
+        } catch (_) {}
+        // study doc legacy read for past dates
+        final studyData = await getStudyData();
+        if (studyData != null && studyData[_timeRecordsField] is Map) {
+          final raw = Map<String, dynamic>.from(studyData[_timeRecordsField] as Map);
+          for (final e in raw.entries) {
+            if (e.key != todayDate && e.value is Map) {
+              try {
+                result[e.key] = TimeRecord.fromMap(e.key, Map<String, dynamic>.from(e.value as Map));
+              } catch (_) {}
+            }
+          }
+        }
+        return result;
+      }
+    }
+    // fallback: study doc (legacy)
     final data = await getStudyData();
     if (data == null || data[_timeRecordsField] == null) return {};
     final raw = Map<String, dynamic>.from(data[_timeRecordsField] as Map);
-    return raw.map((date, value) => MapEntry(
-          date, TimeRecord.fromMap(date, Map<String, dynamic>.from(value as Map))));
+    final result = <String, TimeRecord>{};
+    for (final e in raw.entries) {
+      if (e.value is Map) {
+        try {
+          result[e.key] = TimeRecord.fromMap(e.key, Map<String, dynamic>.from(e.value as Map));
+        } catch (_) {}
+      }
+    }
+    return result;
   }
 
   Future<void> updateTimeRecord(String date, TimeRecord record) async {
-    // ── B1: TimeRecord 유효성 검증 ──
     final validation = TimeRecord.validate(record);
     if (!validation.isValid) {
       debugPrint('[FB] updateTimeRecord BLOCKED: $validation');
-      // 경고만 — 포맷 에러는 차단, 순서 이상은 경고 후 진행
       final hasFormatError = validation.errors.any((e) => e.contains('포맷'));
-      if (hasFormatError) return; // 포맷 에러 → 쓰기 차단
+      if (hasFormatError) return;
       debugPrint('[FB] updateTimeRecord WARNING: 순서 이상 감지, 쓰기 진행');
     }
 
     final recordMap = record.toMap();
     debugPrint('[FB] updateTimeRecord: $date');
     LocalCacheService().markWrite();
-    _studyCache ??= {};
-    (_studyCache!.putIfAbsent(_timeRecordsField, () => {}) as Map)[date] = recordMap;
-    _studyCacheTime = DateTime.now();
-    await LocalCacheService().updateStudyField('$_timeRecordsField.$date', recordMap);
+
+    // Phase D: today doc only (single source of truth)
     if (date == StudyDateUtils.todayKey()) {
-      // ★ dot-notation으로 개별 필드만 업데이트 (기존 필드 보존)
       final todayFields = <String, dynamic>{};
       for (final e in recordMap.entries) {
         todayFields['timeRecords.${e.key}'] = e.value;
       }
-      FirestoreWriteQueue().enqueueDualWrite(
-        _studyDoc, {'$_timeRecordsField.$date': recordMap},
-        _todayDoc2, todayFields,
-      );
+      _todayCache ??= {};
+      final trCache = Map<String, dynamic>.from(
+          (_todayCache!['timeRecords'] as Map?) ?? {});
+      trCache.addAll(recordMap);
+      _todayCache!['timeRecords'] = trCache;
+      _todayCacheTime = DateTime.now();
+      LocalCacheService().saveGeneric('today', _todayCache!);
+      FirestoreWriteQueue().enqueue(_todayDocPath, todayFields);
     } else {
-      FirestoreWriteQueue().enqueue(_studyDoc, {
-        '$_timeRecordsField.$date': recordMap,
-      });
+      debugPrint('[FB] updateTimeRecord: past date $date -> history');
+      await appendDayToHistory(date, {'timeRecords': recordMap});
     }
   }
 
   // ── studyTimeRecords ──
 
   Future<Map<String, StudyTimeRecord>> getStudyTimeRecords() async {
+    // Phase D: study doc legacy read (past data access)
     final data = await getStudyData();
     if (data == null || data[_studyTimeRecordsField] == null) return {};
     final raw = Map<String, dynamic>.from(data[_studyTimeRecordsField] as Map);
-    return raw.map((date, value) => MapEntry(
-          date, StudyTimeRecord.fromMap(date, Map<String, dynamic>.from(value as Map))));
+    final result = <String, StudyTimeRecord>{};
+    for (final e in raw.entries) {
+      if (e.value is Map) {
+        try {
+          result[e.key] = StudyTimeRecord.fromMap(e.key, Map<String, dynamic>.from(e.value as Map));
+        } catch (_) {}
+      }
+    }
+    return result;
   }
 
-  /// [effectiveDelta] — 이번에 추가/차감된 순공 분(분). 전달 시 today doc에
-  /// FieldValue.increment 사용 (race-condition 방지). null이면 절대값 덮어쓰기.
+  /// [effectiveDelta] -- delta minutes. Uses FieldValue.increment when provided.
   Future<void> updateStudyTimeRecord(String date, StudyTimeRecord record,
       {int? effectiveDelta}) async {
     if (record.effectiveMinutes == 0 && record.totalMinutes == 0) return;
-    final recordMap = record.toMap();
     LocalCacheService().markWrite();
-    _studyCache ??= {};
-    (_studyCache!.putIfAbsent(_studyTimeRecordsField, () => {}) as Map)[date] = recordMap;
-    _studyCacheTime = DateTime.now();
-    LocalCacheService().updateStudyField('$_studyTimeRecordsField.$date', recordMap);
+
+    // Phase D: today doc only
     if (date == StudyDateUtils.todayKey()) {
       final todayValue = effectiveDelta != null
           ? FieldValue.increment(effectiveDelta)
           : record.effectiveMinutes;
-      FirestoreWriteQueue().enqueueDualWrite(
-        _studyDoc, {'$_studyTimeRecordsField.$date': recordMap},
-        _todayDoc2, {'studyTime.total': todayValue},
-      );
-    } else {
-      FirestoreWriteQueue().enqueue(_studyDoc, {
-        '$_studyTimeRecordsField.$date': recordMap,
-      });
+      _todayCache ??= {};
+      if (effectiveDelta != null) {
+        MapUtils.setNestedValue(_todayCache!, 'studyTime.total', null, localDelta: effectiveDelta);
+      } else {
+        MapUtils.setNestedValue(_todayCache!, 'studyTime.total', record.effectiveMinutes);
+      }
+      _todayCacheTime = DateTime.now();
+      LocalCacheService().saveGeneric('today', _todayCache!);
+      FirestoreWriteQueue().enqueue(_todayDocPath, {'studyTime.total': todayValue});
     }
+    // past dates: ignored (already in history or rollover handles it)
   }
 
-  // ── focusCycles ──
+  // ── focusCycles (legacy read — ObjectBox is primary now) ──
 
   Future<List<FocusCycle>> getFocusCycles(String date) async {
     final data = await getStudyData();
@@ -108,6 +146,7 @@ extension FirebaseStudyOps on FirebaseService {
       cycles.add(cycle);
     }
     final cyclesList = cycles.map((c) => c.toMap()).toList();
+    // Phase D: study doc still used for focusCycles (not in today doc)
     _studyCache ??= {};
     (_studyCache!.putIfAbsent(_focusCyclesField, () => {}) as Map)[date] = cyclesList;
     _studyCacheTime = DateTime.now();
@@ -146,7 +185,7 @@ extension FirebaseStudyOps on FirebaseService {
         } catch (_) {}
       }
       if (keysToDelete.isNotEmpty) {
-        await _db.doc(_studyDoc).update(keysToDelete).timeout(const Duration(seconds: 5));
+        FirestoreWriteQueue().enqueue(_studyDoc, keysToDelete);
         final cached = _studyCache?[_focusCyclesField];
         if (cached is Map) {
           for (final key in keysToDelete.keys) {
@@ -183,7 +222,7 @@ extension FirebaseStudyOps on FirebaseService {
     }
   }
 
-  // ── customStudyTasks ──
+  // ── customStudyTasks (still in study doc — low-frequency data) ──
 
   Future<List<String>> getCustomStudyTasks(String date) async {
     final data = await getStudyData();

@@ -34,14 +34,14 @@ class BotanicalColors {
   static const textMuted = Color(0xFF94A3B8);         // 슬레이트 400
   static const textHint = Color(0xFFCBD5E1);          // 슬레이트 300
 
-  // ─── Dark Mode: 다크 슬레이트 ───
-  static const scaffoldDark = Color(0xFF0F172A);      // 슬레이트 900
-  static const cardDark = Color(0xFF1E293B);          // 슬레이트 800
-  static const surfaceDark = Color(0xFF334155);       // 슬레이트 700
-  static const borderDark = Color(0xFF475569);        // 슬레이트 600
+  // ─── Dark Mode: 다크 슬레이트 (밝기 개선) ───
+  static const scaffoldDark = Color(0xFF1A2236);      // 슬레이트 900 → 눈에 띄게 밝게
+  static const cardDark = Color(0xFF243042);          // 슬레이트 800 → 카드 더 밝게
+  static const surfaceDark = Color(0xFF3B4D63);       // 슬레이트 700 → 서피스 더 밝게
+  static const borderDark = Color(0xFF4B5B73);        // 슬레이트 600 → 약간 밝게
   static const textMainDark = Color(0xFFF1F5F9);     // 슬레이트 100
-  static const textSubDark = Color(0xFFCBD5E1);      // 슬레이트 300
-  static const textMutedDark = Color(0xFF94A3B8);    // 슬레이트 400
+  static const textSubDark = Color(0xFFD5DCE8);      // 슬레이트 300 → 약간 밝게
+  static const textMutedDark = Color(0xFFA8B8CC);    // 슬레이트 400 → 대비 개선
   static const lanternGold = Color(0xFF818CF8);       // 인디고 라이트 (다크 액센트)
 
   // ─── 과목 컬러 (선명하고 구분력 있는 톤) ───
@@ -304,7 +304,7 @@ class BotanicalDeco {
 
   /// ★ 글래스 카드
   static BoxDecoration warmGlass(bool dark, {double radius = 12}) => BoxDecoration(
-    color: dark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+    color: dark ? Colors.white.withValues(alpha: 0.07) : Colors.white.withValues(alpha: 0.7),
     borderRadius: BorderRadius.circular(radius),
     border: Border.all(
       color: dark ? BotanicalColors.borderDark.withValues(alpha: 0.3) : BotanicalColors.borderLight.withValues(alpha: 0.5)),

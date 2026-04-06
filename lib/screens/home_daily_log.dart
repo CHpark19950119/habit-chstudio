@@ -115,8 +115,8 @@ extension _HomeDailyLog on _HomeScreenState {
           else if (nextType.isEmpty) {
             // 마지막 세그먼트 (현재까지) → 홈데이 우선, NFC 상태 기반
             if (_isHomeDay) { label = '재택'; }
-            else if (_nfc.isOut) { label = '이동'; }
-            else if (_nfc.isStudying) { label = '휴식'; }
+            else if (_day.isOut) { label = '이동'; }
+            else if (_day.isStudying) { label = '휴식'; }
             else { label = '자유'; }
           } else if (nextType == 'studyStart' || nextType.startsWith('focus_')) {
             label = _isHomeDay ? '재택' : '준비';
@@ -176,7 +176,7 @@ extension _HomeDailyLog on _HomeScreenState {
     });
 
     // ── Activity Recognition: "이동" 세그먼트 → 이동/체류 세분화 (5분 이상만) ──
-    final actTransitions = _nfc.activityTransitions;
+    final actTransitions = _day.activityTransitions;
     if (actTransitions.isNotEmpty) {
       final refined = <_DaySegment>[];
       for (final seg in segments) {

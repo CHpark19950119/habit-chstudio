@@ -1,5 +1,6 @@
 package com.cheonhong.cheonhong_studio
 
+import android.accessibilityservice.AccessibilityService
 import android.app.AppOpsManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -25,12 +26,7 @@ import io.flutter.plugin.common.MethodChannel
 import java.util.Calendar
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
-import android.nfc.NfcAdapter
 import android.util.Log
-import android.nfc.NdefMessage
-import android.nfc.NdefRecord
-import android.os.Bundle
-import android.os.Parcelable
 
 class MainActivity : FlutterActivity() {
 
@@ -38,13 +34,10 @@ class MainActivity : FlutterActivity() {
     private val USAGE_CHANNEL = "com.cheonhong.cheonhong_studio/usage_stats"
     private val WIFI_CHANNEL = "com.cheonhong.cheonhong_studio/wifi"
     private val VOLUME_CHANNEL = "com.cheonhong.cheonhong_studio/volume"
-    private val NFC_CHANNEL = "com.cheonhong.cheonhong_studio/nfc"
+    private val APP_CHANNEL = "com.cheonhong.cheonhong_studio/app"
     private val BROWSER_CHANNEL = "com.cheonhong.cheonhong_studio/browser"
-    private val BIXBY_CHANNEL = "com.cheonhong.cheonhong_studio/bixby"
-    private var nfcChannel: MethodChannel? = null
-    private var flutterReadyForNfc: Boolean = false
-    private var pendingNfcPayload: HashMap<String, Any>? = null
-    private var silentReaderEnabled: Boolean = false
+    private val NOTIF_LISTENER_CHANNEL = "com.cheonhong.cheonhong_studio/notif_listener"
+    private val AGENT_CHANNEL = "com.cheonhong.cheonhong_studio/claude_agent"
     private var _bgmPlayer: MediaPlayer? = null
     private var _bgmFocusRequest: android.media.AudioFocusRequest? = null
 
@@ -52,55 +45,24 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-// ─── NFC 채널 (NDEF → Flutter 전달) ───
-nfcChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NFC_CHANNEL).apply {
-    setMethodCallHandler { call, result ->
-        when (call.method) {
-            "flutterReady" -> {
-                flutterReadyForNfc = true
-                // 초기 런치 또는 엔진 준비 전 수신된 NFC 인텐트 flush
-                pendingNfcPayload?.let { payload ->
-                    invokeMethod("onNfcTagFromIntent", payload)
-                    pendingNfcPayload = null
-                }
-                result.success(true)
-            }
-            "getPendingNfcIntent" -> {
-                // ★ NFC 첫 태그 보완: pending payload 명시적 반환
-                val payload = pendingNfcPayload
-                if (payload != null) {
-                    pendingNfcPayload = null
-                    result.success(payload)
-                } else {
-                    result.success(null)
-                }
-            }
-            "enableSilentReader" -> {
-                enableSilentReaderMode()
-                result.success(true)
-            }
-            "disableSilentReader" -> {
-                disableSilentReaderMode()
-                result.success(true)
-            }
-            "showNotification" -> {
-                val title = call.argument<String>("title") ?: "NFC 처리"
-                val body = call.argument<String>("body") ?: ""
-                showNfcNotification(title, body)
-                result.success(true)
-            }
-            "requestNotificationPermission" -> {
-                requestPostNotificationsPermission()
-                result.success(true)
-            }
-            else -> result.notImplemented()
+// ─── App 채널 (알림 표시, 권한 요청) ───
+MethodChannel(flutterEngine.dartExecutor.binaryMessenger, APP_CHANNEL).setMethodCallHandler { call, result ->
+    when (call.method) {
+        "flutterReady" -> {
+            result.success(true)
         }
+        "showNotification" -> {
+            val title = call.argument<String>("title") ?: "알림"
+            val body = call.argument<String>("body") ?: ""
+            showAppNotification(title, body)
+            result.success(true)
+        }
+        "requestNotificationPermission" -> {
+            requestPostNotificationsPermission()
+            result.success(true)
+        }
+        else -> result.notImplemented()
     }
-}
-
-// Cold start: 앱이 NFC 인텐트로 실행된 경우를 위해 초기 intent도 처리 (엔진 준비 전이면 큐에 저장)
-handleNfcIntent(intent)?.let { payload ->
-    sendNfcToFlutter(payload)
 }
 
         // ─── Browser 채널 (URL 열기) ───
@@ -316,10 +278,176 @@ handleNfcIntent(intent)?.let { payload ->
         }
 
 
-        createNfcNotificationChannel()
+        // ─── Claude Agent 채널 (접근성 서비스 제어) ───
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AGENT_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                // Agent 서비스 실행 중인지 확인
+                "isRunning" -> {
+                    result.success(ClaudeAgentService.isRunning())
+                }
+                // 접근성 설정 화면 열기
+                "openAccessibilitySettings" -> {
+                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    result.success(true)
+                }
+                // 현재 상태 조회 (포그라운드 앱, 규칙 등)
+                "getStatus" -> {
+                    val agent = ClaudeAgentService.instance
+                    if (agent != null) {
+                        result.success(agent.getStatus())
+                    } else {
+                        result.success(mapOf("running" to false))
+                    }
+                }
+                // 오버레이 경고 표시
+                "showOverlay" -> {
+                    val msg = call.argument<String>("message") ?: "경고"
+                    val duration = call.argument<Int>("duration")?.toLong() ?: 8000L
+                    val agent = ClaudeAgentService.instance
+                    if (agent != null) {
+                        agent.showOverlay(msg, duration)
+                        result.success(true)
+                    } else {
+                        result.success(false)
+                    }
+                }
+                // 화면 텍스트 읽기
+                "getScreenText" -> {
+                    val agent = ClaudeAgentService.instance
+                    result.success(agent?.getScreenText() ?: "")
+                }
+                // 앱 사용 로그 Firestore 기록
+                "flushLog" -> {
+                    ClaudeAgentService.instance?.flushUsageLog()
+                    result.success(true)
+                }
+                // 앱 강제 종료
+                "killApp" -> {
+                    val pkg = call.argument<String>("package")
+                    if (pkg != null) {
+                        val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+                        @Suppress("DEPRECATION")
+                        am.killBackgroundProcesses(pkg)
+                        result.success(true)
+                    } else {
+                        result.error("NO_PACKAGE", "package argument required", null)
+                    }
+                }
+                // URL 열기
+                "openUrl" -> {
+                    val url = call.argument<String>("url")
+                    if (url != null) {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("OPEN_URL_FAILED", e.message, null)
+                        }
+                    } else {
+                        result.error("NO_URL", "url argument required", null)
+                    }
+                }
+                // 앱 실행
+                "openApp" -> {
+                    val pkg = call.argument<String>("package")
+                    if (pkg != null) {
+                        val intent = packageManager.getLaunchIntentForPackage(pkg)
+                        if (intent != null) {
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            startActivity(intent)
+                            result.success(true)
+                        } else {
+                            result.error("NO_LAUNCH_INTENT", "No launch intent for $pkg", null)
+                        }
+                    } else {
+                        result.error("NO_PACKAGE", "package argument required", null)
+                    }
+                }
+                // 볼륨 제어
+                "setVolume" -> {
+                    val level = call.argument<Int>("level") ?: 7
+                    val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                    val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC, level.coerceIn(0, maxVol), 0)
+                    result.success(true)
+                }
+                // 화면 밝기
+                "setBrightness" -> {
+                    val level = call.argument<Int>("level") ?: 128
+                    try {
+                        Settings.System.putInt(
+                            contentResolver,
+                            Settings.System.SCREEN_BRIGHTNESS_MODE,
+                            Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
+                        )
+                        Settings.System.putInt(
+                            contentResolver,
+                            Settings.System.SCREEN_BRIGHTNESS,
+                            level.coerceIn(0, 255)
+                        )
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("BRIGHTNESS_FAILED", e.message, null)
+                    }
+                }
+                // 화면 잠금
+                "lockScreen" -> {
+                    val agent = ClaudeAgentService.instance
+                    if (agent != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        agent.performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
+                        result.success(true)
+                    } else {
+                        // Fallback: DevicePolicyManager
+                        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+                        val adminComp = android.content.ComponentName(this, AdminReceiver::class.java)
+                        if (dpm.isAdminActive(adminComp)) {
+                            dpm.lockNow()
+                            result.success(true)
+                        } else {
+                            result.success(false)
+                        }
+                    }
+                }
+                // TTS 음성
+                "speak" -> {
+                    val text = call.argument<String>("text") ?: "알림"
+                    val agent = ClaudeAgentService.instance
+                    if (agent != null) {
+                        // Agent 서비스의 TTS 사용
+                        result.success(true)
+                        // Firestore 명령으로 위임 (Agent가 TTS 엔진 보유)
+                        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                            .document("users/sJ8Pxusw9gR0tNR44RhkIge7OiG2/data/iot")
+                            .update(mapOf(
+                                "agent.command" to mapOf(
+                                    "action" to "speak",
+                                    "text" to text,
+                                    "handled" to false
+                                )
+                            ))
+                    } else {
+                        result.success(false)
+                    }
+                }
+                // 앱 사용 리포트
+                "getAppUsageReport" -> {
+                    if (!hasUsageStatsPermission()) {
+                        result.success(emptyList<Map<String, Any>>())
+                        return@setMethodCallHandler
+                    }
+                    result.success(getTodayUsageStats())
+                }
+                else -> result.notImplemented()
+            }
+        }
 
-        // ─── 빅스비 연동 채널 ───
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, BIXBY_CHANNEL).setMethodCallHandler { call, result ->
+        createAppNotificationChannel()
+
+        // ─── 알림 리스너 상태 채널 ───
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NOTIF_LISTENER_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "isNotificationListenerEnabled" -> {
                     val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
@@ -334,10 +462,6 @@ handleNfcIntent(intent)?.let { payload ->
         }
     }
 
-// ══════════════════════════════════════════
-//  NFC: NDEF 인텐트 처리 → Flutter 전달
-// ══════════════════════════════════════════
-
 override fun onDestroy() {
     try {
         _bgmPlayer?.release()
@@ -351,210 +475,19 @@ override fun onDestroy() {
     super.onDestroy()
 }
 
-override fun onNewIntent(intent: Intent) {
-    super.onNewIntent(intent)
-    setIntent(intent) // FlutterActivity가 들고 있는 intent 갱신
-    handleNfcIntent(intent)?.let { payload ->
-        sendNfcToFlutter(payload)
-    }
-}
-
-// ★ NFC 첫 태그 보완: foreground dispatch로 앱이 포그라운드에서 NFC 우선 수신
-override fun onResume() {
-    super.onResume()
-    enableNfcForegroundDispatch()
-}
-
-override fun onPause() {
-    super.onPause()
-    disableNfcForegroundDispatch()
-}
-
-private fun enableNfcForegroundDispatch() {
-    try {
-        val adapter = NfcAdapter.getDefaultAdapter(this) ?: return
-        val intent = Intent(this, javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        val pendingIntent = PendingIntent.getActivity(this, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
-
-        // NDEF_DISCOVERED 우선, TECH_DISCOVERED 폴백
-        val ndefFilter = android.content.IntentFilter(NfcAdapter.ACTION_NDEF_DISCOVERED).apply {
-            try { addDataScheme("cheonhong") } catch (_: Exception) {}
-        }
-        val techFilter = android.content.IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED)
-        val tagFilter = android.content.IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED)
-
-        adapter.enableForegroundDispatch(
-            this, pendingIntent,
-            arrayOf(ndefFilter, techFilter, tagFilter),
-            arrayOf(
-                arrayOf(android.nfc.tech.Ndef::class.java.name),
-                arrayOf(android.nfc.tech.NdefFormatable::class.java.name),
-                arrayOf(android.nfc.tech.NfcA::class.java.name)
-            )
-        )
-        Log.d("NFC", "✅ Foreground dispatch enabled")
-    } catch (e: Exception) {
-        Log.w("NFC", "⚠️ Foreground dispatch error: ${e.message}")
-    }
-}
-
-private fun disableNfcForegroundDispatch() {
-    try {
-        val adapter = NfcAdapter.getDefaultAdapter(this) ?: return
-        adapter.disableForegroundDispatch(this)
-    } catch (_: Exception) {}
-}
-
-private fun sendNfcToFlutter(payload: HashMap<String, Any>) {
-    val ch = nfcChannel
-    if (ch != null && flutterReadyForNfc) {
-        ch.invokeMethod("onNfcTagFromIntent", payload)
-    } else {
-        // 엔진/Flutter 준비 전이면 보류 (가장 최근 1건만 유지)
-        pendingNfcPayload = payload
-    }
-}
-
-private fun handleNfcIntent(intent: Intent?): HashMap<String, Any>? {
-    if (intent == null) return null
-
-    val action = intent.action ?: ""
-    // 1) 커스텀 스킴 VIEW (NDEF URI + AAR로 실행될 때 흔함)
-    if (action == Intent.ACTION_VIEW) {
-        val data = intent.data ?: return null
-        val role = data.getQueryParameter("role") ?: ""
-        val tagId = data.getQueryParameter("tagId") ?: ""
-        return hashMapOf(
-            "uri" to data.toString(),
-            "role" to role,
-            "tagUid" to tagId
-        )
-    }
-
-    // 2) NDEF_DISCOVERED / TECH_DISCOVERED 로 들어오는 경우
-    if (action == "android.nfc.action.NDEF_DISCOVERED" || action == "android.nfc.action.TECH_DISCOVERED" || action == "android.nfc.action.TAG_DISCOVERED") {
-        // ★ NFC 첫 태그 보완: TAG_DISCOVERED에서도 UID 추출
-        val tag = intent.getParcelableExtra<android.nfc.Tag>(NfcAdapter.EXTRA_TAG)
-        val tagUidHex = tag?.id?.joinToString("") { "%02X".format(it) } ?: ""
-
-        // 먼저 intent.data를 시도
-        val data = intent.data
-        if (data != null) {
-            val role = data.getQueryParameter("role") ?: ""
-            val tagId = data.getQueryParameter("tagId") ?: tagUidHex
-            return hashMapOf(
-                "uri" to data.toString(),
-                "role" to role,
-                "tagUid" to tagId
-            )
-        }
-
-        // fallback: EXTRA_NDEF_MESSAGES에서 URI 레코드 추출
-        try {
-            val rawMsgs = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES)
-            if (rawMsgs != null && rawMsgs.isNotEmpty()) {
-                val msg = rawMsgs[0] as NdefMessage
-                val recs = msg.records
-                if (recs.isNotEmpty()) {
-                    val maybeUri = parseUriFromNdefRecord(recs[0])
-                    if (maybeUri != null) {
-                        val role = maybeUri.getQueryParameter("role") ?: ""
-                        val tagId = maybeUri.getQueryParameter("tagId") ?: tagUidHex
-                        return hashMapOf(
-                            "uri" to maybeUri.toString(),
-                            "role" to role,
-                            "tagUid" to tagId
-                        )
-                    }
-                }
-            }
-        } catch (_: Exception) { }
-
-        // ★ NFC 첫 태그 보완: NDEF 없어도 UID만으로 전달 (UID 매칭 폴백)
-        if (tagUidHex.isNotEmpty()) {
-            Log.d("NFC", "TAG_DISCOVERED fallback: UID=$tagUidHex")
-            return hashMapOf(
-                "uri" to "",
-                "role" to "",
-                "tagUid" to tagUidHex
-            )
-        }
-    }
-
-    return null
-}
-
-// NDEF URI 레코드(RTD_URI 또는 WELL_KNOWN U)에서 Uri 파싱 (간단 버전)
-private fun parseUriFromNdefRecord(record: NdefRecord): Uri? {
-    return try {
-        // WELL_KNOWN + RTD_URI
-        val isWellKnownUri =
-            record.tnf == NdefRecord.TNF_WELL_KNOWN &&
-            record.type.contentEquals(NdefRecord.RTD_URI)
-
-        if (!isWellKnownUri) return null
-
-        val payload = record.payload ?: return null
-        if (payload.isEmpty()) return null
-
-        // NFC Forum "URI Record Type Definition"
-        // payload[0] = URI Identifier Code (prefix)
-        val prefix = when (payload[0].toInt()) {
-            0x00 -> ""
-            0x01 -> "http://www."
-            0x02 -> "https://www."
-            0x03 -> "http://"
-            0x04 -> "https://"
-            else -> ""
-        }
-        val uriStr = prefix + String(payload, 1, payload.size - 1, Charsets.UTF_8)
-        Uri.parse(uriStr)
-    } catch (_: Exception) {
-        null
-    }
-}
-
-private fun enableSilentReaderMode() {
-    val adapter = NfcAdapter.getDefaultAdapter(this) ?: return
-    if (silentReaderEnabled) return
-    silentReaderEnabled = true
-
-    val flags = NfcAdapter.FLAG_READER_NFC_A or
-            NfcAdapter.FLAG_READER_NFC_B or
-            NfcAdapter.FLAG_READER_NFC_F or
-            NfcAdapter.FLAG_READER_NFC_V or
-            NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS
-
-    adapter.enableReaderMode(
-        this,
-        { /* reader callback not used */ },
-        flags,
-        Bundle()
-    )
-}
-
-private fun disableSilentReaderMode() {
-    val adapter = NfcAdapter.getDefaultAdapter(this) ?: return
-    if (!silentReaderEnabled) return
-    silentReaderEnabled = false
-    adapter.disableReaderMode(this)
-}
-
-
     companion object {
-        const val NFC_NOTIF_CHANNEL_ID = "cheonhong_nfc"
-        const val NFC_NOTIF_ID = 3001
+        const val APP_NOTIF_CHANNEL_ID = "cheonhong_app"
+        const val APP_NOTIF_ID = 3001
     }
 
-    private fun createNfcNotificationChannel() {
+    private fun createAppNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                NFC_NOTIF_CHANNEL_ID,
-                "NFC 처리 알림",
+                APP_NOTIF_CHANNEL_ID,
+                "앱 알림",
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "NFC 태그 처리 결과 알림"
+                description = "루틴 처리 결과 알림"
                 enableVibration(false)
                 setSound(null, null)
             }
@@ -563,14 +496,14 @@ private fun disableSilentReaderMode() {
         }
     }
 
-    private fun showNfcNotification(title: String, body: String) {
+    private fun showAppNotification(title: String, body: String) {
         val intent = Intent(this, MainActivity::class.java)
         val pi = PendingIntent.getActivity(
             this, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notif = NotificationCompat.Builder(this, NFC_NOTIF_CHANNEL_ID)
+        val notif = NotificationCompat.Builder(this, APP_NOTIF_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_info_details)
             .setContentTitle(title)
             .setContentText(body)
@@ -580,7 +513,7 @@ private fun disableSilentReaderMode() {
             .build()
 
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(NFC_NOTIF_ID, notif)
+        nm.notify(APP_NOTIF_ID, notif)
     }
 
     private fun requestPostNotificationsPermission() {

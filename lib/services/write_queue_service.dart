@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
+import 'package:http/http.dart' as http;
 
 /// ═══════════════════════════════════════════════════════════
 /// FirestoreWriteQueue — 중앙 쓰기 큐
@@ -56,12 +58,13 @@ class FirestoreWriteQueue {
     _addToQueue(_WriteTask(docPath: docPath, fields: data));
   }
 
-  /// 듀얼 문서 쓰기 (study + today)
+  /// Phase D: dual-write removed. Kept for API compat, writes only doc2 (today).
+  @Deprecated('Use enqueue() directly with today doc path')
   void enqueueDualWrite(
     String docPath1, Map<String, dynamic> fields1,
     String docPath2, Map<String, dynamic> fields2,
   ) {
-    enqueue(docPath1, fields1);
+    // Phase D: study doc write removed, only today doc
     enqueue(docPath2, fields2);
   }
 
@@ -127,11 +130,72 @@ class FirestoreWriteQueue {
     debugPrint('[WriteQueue] FAILED after $maxRetries retries: ${task.docPath}');
   }
 
-  /// Pattern A: update() → set(merge:true) 폴백
+  // ── CF write endpoint ──
+  static const _cfBase =
+      'https://us-central1-cheonhong-studio.cloudfunctions.net/checkDoorManual';
+
+  /// docPath → CF doc name (today|study|iot), null if unsupported
+  static String? _toCfDoc(String docPath) {
+    final seg = docPath.split('/').last; // "today", "study", "iot"
+    if (seg == 'today' || seg == 'study' || seg == 'iot') return seg;
+    return null;
+  }
+
+  /// value → CF query-param string
+  static String _serializeValue(dynamic value) {
+    if (value == null) return 'null';
+    if (value is FieldValue) {
+      final str = value.toString();
+      // ★ FieldValue.increment → 실제 delta 값 추출 (CF에서 increment 지원 안 함 → 절대값 변환 불가, SDK fallback)
+      if (str.contains('increment')) return '__SKIP_CF__';
+      return '__DELETE__';
+    }
+    if (value == '__FIELD_DELETE__' || value == '__DELETE__') return '__DELETE__';
+    if (value is Map || value is List) return json.encode(value);
+    return value.toString(); // num, bool, String
+  }
+
+  /// CF HTTP GET write — one field at a time
+  Future<void> _cfWrite(String doc, String field, dynamic value) async {
+    final uri = Uri.parse(_cfBase).replace(queryParameters: {
+      'q': 'write',
+      'doc': doc,
+      'field': field,
+      'value': _serializeValue(value),
+    });
+    final resp = await http.get(uri).timeout(const Duration(seconds: 5));
+    if (resp.statusCode != 200) {
+      throw Exception('CF write $doc.$field → HTTP ${resp.statusCode}');
+    }
+  }
+
+  /// Primary: CF HTTP → Fallback: SDK (Pattern A: update → set(merge:true))
   Future<void> _executeWrite(_WriteTask task) async {
     // ★ __FIELD_DELETE__ 센티넬 → FieldValue.delete() 복원 (Hive 저널 복구 포함)
     final processed = _restoreSentinels(task.fields);
+    final cfDoc = _toCfDoc(task.docPath);
 
+    // ── Try CF HTTP first for supported docs ──
+    // ★ FieldValue.increment 등 CF에서 지원 안 하는 값이 있으면 SDK로 직행
+    final hasUnsupported = processed.values.any((v) => v is FieldValue);
+    if (cfDoc != null && !hasUnsupported) {
+      try {
+        // ★ AUDIT FIX: B-03 — TODO: CF에 batch write 엔드포인트 추가하여 원자적 쓰기 보장
+        // 현재는 필드 하나씩 — 중간 실패 시 부분 쓰기 가능
+        final userFields = processed.entries
+            .where((e) => e.key != 'lastModified' && e.key != 'lastDevice');
+        for (final entry in userFields) {
+          await _cfWrite(cfDoc, entry.key, entry.value);
+        }
+        debugPrint('[WriteQueue] CF OK ($cfDoc, '
+            '${processed.length - 2} fields)');
+        return;
+      } catch (e) {
+        debugPrint('[WriteQueue] CF failed ($cfDoc): $e → SDK fallback');
+      }
+    }
+
+    // ── SDK fallback (Pattern A) ──
     try {
       await _db.doc(task.docPath)
           .update(processed)

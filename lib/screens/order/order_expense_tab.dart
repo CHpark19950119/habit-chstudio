@@ -118,7 +118,7 @@ class _OrderExpenseTabState extends State<OrderExpenseTab> {
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xFF0C1222), Color(0xFF1A2744)]),
+          colors: [Color(0xFF151A2C), Color(0xFF1E2D48)]),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(color: const Color(0xFF3B82F6).withValues(alpha: 0.08),

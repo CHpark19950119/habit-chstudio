@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/iot_models.dart';
-import 'location_service.dart';
+
 import '../constants.dart';
 import 'day_service.dart';
 
@@ -189,10 +189,7 @@ class DoorSensorService extends ChangeNotifier {
     // 스트림으로 이벤트 발행
     _eventController.add(event);
 
-    // 문 열림 시 GPS 저장 (헤드위그용)
-    if (event.type == DoorState.open) {
-      _saveLastLocation();
-    }
+
 
     // DayState 기반 텔레그램 알림
     _notifyByContext(event);
@@ -208,26 +205,7 @@ class DoorSensorService extends ChangeNotifier {
     _log('문 ${event.type.name} — 알림 생략 (state=${dayState.name})');
   }
 
-  /// 문 열림 시 GPS 위치를 Firestore data/iot lastLocation에 저장
-  Future<void> _saveLastLocation() async {
-    try {
-      final pos = await LocationService().getPositionWithFallback();
-      if (pos == null) {
-        _log('GPS 실패 — lastLocation 미저장');
-        return;
-      }
-      await FirebaseFirestore.instance.doc(_iotDocPath).set({
-        'lastLocation': {
-          'latitude': pos.latitude,
-          'longitude': pos.longitude,
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-      }, SetOptions(merge: true));
-      _log('lastLocation 저장: ${pos.latitude}, ${pos.longitude}');
-    } catch (e) {
-      _log('lastLocation 저장 에러: $e');
-    }
-  }
+
 
   // ═══════════════════════════════════════════
   //  수동 테스트용 (센서 없을 때 시뮬레이션)

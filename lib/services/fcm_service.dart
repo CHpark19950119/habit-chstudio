@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../firebase_options.dart';
+import '../utils/study_date_utils.dart'; // ★ AUDIT FIX: Q-01
 import 'day_service.dart';
 
 // ═══════════════════════════════════════════════════════════
@@ -36,15 +37,8 @@ Future<void> onFcmBackgroundMessage(RemoteMessage message) async {
   }
 }
 
-// ═══════════════════════════════════════════════════════════
-//  유틸
-// ═══════════════════════════════════════════════════════════
-
-String _todayKey([DateTime? dt]) {
-  final now = dt ?? DateTime.now();
-  final d = now.hour < 4 ? now.subtract(const Duration(days: 1)) : now;
-  return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-}
+// ★ AUDIT FIX: Q-01 — 중복 구현 제거, StudyDateUtils.todayKey 재사용
+String _todayKey([DateTime? dt]) => StudyDateUtils.todayKey(dt);
 
 // ═══════════════════════════════════════════════════════════
 //  FcmService — Token Registration

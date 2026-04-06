@@ -8,6 +8,7 @@ import '../services/focus_service.dart';
 import '../models/models.dart';
 import '../theme/botanical_theme.dart';
 import '../data/plan_data.dart';
+import '../utils/study_date_utils.dart';
 import 'painters.dart';
 
 part 'calendar_day_detail.dart';
@@ -53,6 +54,9 @@ class _CalendarScreenState extends State<CalendarScreen>
   // ★ 홈데이 (외출 없는 날)
   Set<String> _monthHomeDays = {};
 
+  // ★ 특별한 날 (노는 날 등)
+  Set<String> _specialDayDates = {};
+
   late AnimationController _fadeCtrl;
   late AnimationController _waveCtrl;
 
@@ -94,32 +98,36 @@ class _CalendarScreenState extends State<CalendarScreen>
     }
   }
 
-  Future<void> _loadMonth() async {
-    if (_loadLock) { _pendingReload = true; return; } // ★ Bug #2 fix: 로딩 중이면 예약
+  Future<void> _loadMonth({bool forceServer = false}) async {
+    if (_loadLock) { _pendingReload = true; return; }
     _loadLock = true;
     _safeSetState(() => _loading = true);
-    // ★ Bug #4 fix: 캐시 무효화 제거 — 읽기 전용 화면에서 캐시 삭제는 불필요한 서버 재요청 유발
     const t = Duration(seconds: 8);
 
     try {
-      // ★ Phase C: history → archive → study fallback
+      // Phase D: history + today doc only (study doc fallback removed)
       final monthKey = DateFormat('yyyy-MM').format(_viewMonth);
-      var historyData = await _fb.getMonthHistory(monthKey).timeout(t, onTimeout: () => null);
 
-      // history 없으면 archive에서 가져오기
+      // 1. history doc (past days)
+      var historyData = await _fb.getMonthHistory(monthKey).timeout(t, onTimeout: () => null);
       if (historyData == null || (historyData['days'] as Map?)?.isEmpty != false) {
         final archiveData = await _fb.getArchive(monthKey).timeout(t, onTimeout: () => null);
         if (archiveData != null) {
-          // archive 형식 → history 형식 변환
           historyData = _archiveToHistoryFormat(archiveData, monthKey);
         }
       }
 
-      // study 문서도 로드 (today 데이터 + restDays/journals 등)
-      // ★ Bug #1 fix: onTimeout 추가 — 타임아웃 시 null 반환 (예외 대신)
-      final studyData = await _fb.getStudyData().timeout(t, onTimeout: () => null);
+      // 2. today doc (current day only)
+      final todayKey = StudyDateUtils.todayKey();
+      Map<String, dynamic>? todayDoc;
+      if (todayKey.startsWith(monthKey)) {
+        todayDoc = await _fb.getTodayDoc();
+      }
 
-      // studyTimeRecords: history → study fallback
+      // study doc (legacy read for restDays, journals, todos, homeDays)
+      final studyData = await _fb.getStudyData(forceServer: forceServer).timeout(t, onTimeout: () => null);
+
+      // studyTimeRecords: history + today doc
       try {
         _monthStudyRecords = {};
         if (historyData != null) {
@@ -128,12 +136,10 @@ class _CalendarScreenState extends State<CalendarScreen>
             final dateKey = '$monthKey-${entry.key}';
             final dayData = entry.value is Map ? Map<String, dynamic>.from(entry.value as Map) : null;
             if (dayData == null) continue;
-            // studyTimeRecords (raw) fallback
             final str = dayData['studyTimeRecords'];
             if (str is Map) {
               _monthStudyRecords[dateKey] = StudyTimeRecord.fromMap(dateKey, Map<String, dynamic>.from(str));
             } else {
-              // studyTime (Phase C format)
               final st = dayData['studyTime'];
               if (st is Map && st['total'] is num) {
                 _monthStudyRecords[dateKey] = StudyTimeRecord(
@@ -145,24 +151,20 @@ class _CalendarScreenState extends State<CalendarScreen>
             }
           }
         }
-        // study doc fallback (for recent data not yet in history)
-        if (studyData != null) {
-          final strRaw = studyData['studyTimeRecords'] as Map<String, dynamic>?;
-          if (strRaw != null) {
-            for (final entry in strRaw.entries) {
-              // ★ Bug #3 fix: 개별 항목 에러가 전체 데이터 삭제하지 않도록
-              try {
-                if (entry.key.startsWith(monthKey) && !_monthStudyRecords.containsKey(entry.key)) {
-                  _monthStudyRecords[entry.key] = StudyTimeRecord.fromMap(
-                      entry.key, Map<String, dynamic>.from(entry.value as Map));
-                }
-              } catch (_) {} // 개별 항목 스킵
-            }
+        // today doc for current day
+        if (todayDoc != null && todayKey.startsWith(monthKey)) {
+          final st = todayDoc['studyTime'];
+          if (st is Map && st['total'] is num && (st['total'] as num) > 0) {
+            _monthStudyRecords[todayKey] = StudyTimeRecord(
+              date: todayKey,
+              totalMinutes: (st['total'] as num).toInt(),
+              effectiveMinutes: (st['total'] as num).toInt(),
+            );
           }
         }
-      } catch (_) { /* history 파싱 실패해도 study fallback 데이터는 보존 */ }
+      } catch (_) {}
 
-      // focusCycles: history → study fallback
+      // focusCycles: history only (ObjectBox / Hive for current)
       try {
         _monthFocusCycles = {};
         if (historyData != null) {
@@ -177,11 +179,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                   .where((e) => e is Map)
                   .map((e) {
                     final m = Map<String, dynamic>.from(e as Map);
-                    // history format may differ from FocusCycle
-                    if (m.containsKey('id')) {
-                      return FocusCycle.fromMap(m);
-                    }
-                    // Phase C simplified session format
+                    if (m.containsKey('id')) return FocusCycle.fromMap(m);
                     return FocusCycle(
                       id: m['start']?.toString() ?? '',
                       date: dateKey,
@@ -195,29 +193,12 @@ class _CalendarScreenState extends State<CalendarScreen>
             }
           }
         }
-        // study doc fallback
-        final fcRaw = studyData?['focusCycles'] as Map<String, dynamic>?;
-        if (fcRaw != null) {
-          final year = _viewMonth.year;
-          final month = _viewMonth.month;
-          final daysInMonth = DateTime(year, month + 1, 0).day;
-          for (int d = 1; d <= daysInMonth; d++) {
-            final ds = '$year-${month.toString().padLeft(2, '0')}-${d.toString().padLeft(2, '0')}';
-            if (fcRaw[ds] != null && !_monthFocusCycles.containsKey(ds)) {
-              final dayData = fcRaw[ds] as List<dynamic>;
-              _monthFocusCycles[ds] = dayData
-                  .map((e) => FocusCycle.fromMap(e as Map<String, dynamic>))
-                  .toList();
-            }
-          }
-        }
-      } catch (_) { /* focusCycles 파싱 실패해도 기존 데이터 보존 */ }
+      } catch (_) {}
 
-      // ★ Hive 로컬 fallback: Firestore sync 실패해도 로컬 데이터 표시
+      // ObjectBox/Hive local fallback
       try {
         final hiveSessions = await FocusService().getHiveSessionsForMonth(monthKey);
         for (final entry in hiveSessions.entries) {
-          // studyTimeRecords에 없거나 0이면 Hive 데이터로 채움
           final existing = _monthStudyRecords[entry.key];
           if (existing == null || existing.effectiveMinutes == 0) {
             final sessions = entry.value;
@@ -229,7 +210,6 @@ class _CalendarScreenState extends State<CalendarScreen>
               lectureMinutes: sessions.fold(0, (s, c) => s + c.lectureMin),
             );
           }
-          // focusCycles에 없으면 Hive 데이터로 채움
           if (_monthFocusCycles[entry.key]?.isEmpty ?? true) {
             _monthFocusCycles[entry.key] = entry.value;
           }
@@ -238,6 +218,7 @@ class _CalendarScreenState extends State<CalendarScreen>
         debugPrint('[Calendar] Hive fallback error: $e');
       }
 
+      // restDays, journals (study doc legacy read)
       try {
         final raw = studyData?['restDays'] as List<dynamic>?;
         _restDays = raw?.map((e) => e.toString()).toList() ?? [];
@@ -248,39 +229,70 @@ class _CalendarScreenState extends State<CalendarScreen>
         _monthJournals = raw?.map((j) => Map<String, dynamic>.from(j as Map)).toList() ?? [];
       } catch (_) { _monthJournals = []; }
 
-      // ★ Todo 완료율
+      // Todo completion rate: history + today doc
       try {
         _monthTodoRates = {};
-        final todosRaw = studyData?['todos'];
-        if (todosRaw is Map) {
-          final monthPrefix = DateFormat('yyyy-MM').format(_viewMonth);
-          for (final e in todosRaw.entries) {
-            if (e.key.toString().startsWith(monthPrefix) && e.value is Map) {
-              final items = (e.value as Map)['items'];
-              if (items is List && items.isNotEmpty) {
-                final done = items.where((i) => i is Map && i['completed'] == true).length;
-                _monthTodoRates[e.key.toString()] = done / items.length;
-              }
+        // history todos
+        if (historyData != null) {
+          final days = historyData['days'] as Map<String, dynamic>? ?? {};
+          for (final entry in days.entries) {
+            final dateKey = '$monthKey-${entry.key}';
+            final dayData = entry.value is Map ? Map<String, dynamic>.from(entry.value as Map) : null;
+            if (dayData == null) continue;
+            final todos = dayData['todos'];
+            if (todos is List && todos.isNotEmpty) {
+              final done = todos.where((i) => i is Map && (i['done'] == true || i['completed'] == true)).length;
+              _monthTodoRates[dateKey] = done / todos.length;
             }
+          }
+        }
+        // today doc todos
+        if (todayDoc != null && todayKey.startsWith(monthKey)) {
+          final todos = todayDoc['todos'];
+          if (todos is List && todos.isNotEmpty) {
+            final done = todos.where((i) => i is Map && (i['done'] == true || i['completed'] == true)).length;
+            _monthTodoRates[todayKey] = done / todos.length;
           }
         }
       } catch (_) { _monthTodoRates = {}; }
 
-      // ★ 홈데이 (noOuting 또는 wake 있고 outing 없는 날)
+      // home days: history + today
       try {
         _monthHomeDays = {};
-        final trRaw = studyData?['timeRecords'] as Map<String, dynamic>?;
-        if (trRaw != null) {
-          final monthPrefix = DateFormat('yyyy-MM').format(_viewMonth);
-          for (final e in trRaw.entries) {
-            if (!e.key.startsWith(monthPrefix) || e.value is! Map) continue;
-            final m = Map<String, dynamic>.from(e.value as Map);
+        if (historyData != null) {
+          final days = historyData['days'] as Map<String, dynamic>? ?? {};
+          for (final entry in days.entries) {
+            final dateKey = '$monthKey-${entry.key}';
+            final dayData = entry.value is Map ? Map<String, dynamic>.from(entry.value as Map) : null;
+            if (dayData == null) continue;
+            final tr = dayData['timeRecords'];
+            if (tr is Map) {
+              final m = Map<String, dynamic>.from(tr);
+              if (m['noOuting'] == true || (m['wake'] != null && m['outing'] == null)) {
+                _monthHomeDays.add(dateKey);
+              }
+            }
+          }
+        }
+        if (todayDoc != null && todayKey.startsWith(monthKey)) {
+          final tr = todayDoc['timeRecords'];
+          if (tr is Map) {
+            final m = Map<String, dynamic>.from(tr);
             if (m['noOuting'] == true || (m['wake'] != null && m['outing'] == null)) {
-              _monthHomeDays.add(e.key);
+              _monthHomeDays.add(todayKey);
             }
           }
         }
       } catch (_) { _monthHomeDays = {}; }
+
+      // special day
+      try {
+        _specialDayDates = {};
+        if (todayDoc != null && todayDoc['specialDay'] is Map) {
+          final docDate = todayDoc['date'] as String?;
+          if (docDate != null) _specialDayDates.add(docDate);
+        }
+      } catch (_) {}
 
       try { await _loadSelectedDay(); } catch (_) { _selectedMemos = []; }
     } catch (e) {
@@ -289,10 +301,9 @@ class _CalendarScreenState extends State<CalendarScreen>
       _loadLock = false;
       _safeSetState(() => _loading = false);
       if (mounted) _fadeCtrl.forward(from: 0);
-      // ★ Bug #2 fix: 로딩 중 월 변경 요청이 있었으면 재로드
       if (_pendingReload) {
         _pendingReload = false;
-        _loadMonth();
+        _loadMonth(forceServer: true);
       }
     }
   }
@@ -364,7 +375,7 @@ class _CalendarScreenState extends State<CalendarScreen>
     _safeSetState(() {
       _viewMonth = DateTime(_viewMonth.year, _viewMonth.month + delta);
     });
-    _loadMonth();
+    _loadMonth(forceServer: true);
   }
 
   void _selectDay(DateTime day) async {
@@ -473,11 +484,11 @@ class _CalendarScreenState extends State<CalendarScreen>
             final newMonth = DateTime(now.year, now.month);
             _selectedDate = now;
             if (_viewMonth.year == newMonth.year && _viewMonth.month == newMonth.month) {
-              // 같은 월이면 전체 리로드 스킵 → 날짜 선택만
-              _selectDay(now);
+              // 같은 월이면 서버에서 리프레시
+              _loadMonth(forceServer: true);
             } else {
               _viewMonth = newMonth;
-              _loadMonth();
+              _loadMonth(forceServer: true);
             }
           },
           child: Container(
@@ -572,6 +583,7 @@ class _CalendarScreenState extends State<CalendarScreen>
     final isFuture = date.isAfter(DateTime(today.year, today.month, today.day));
     final isRestDay = _restDays.contains(dateStr);
     final isHomeDay = _monthHomeDays.contains(dateStr);
+    final isSpecialDay = _specialDayDates.contains(dateStr);
     final isSunday = dow == 0;
     // ★ Plan 마일스톤 체크
     final planDDays = StudyPlanData.ddaysForDate(dateStr);
@@ -607,6 +619,8 @@ class _CalendarScreenState extends State<CalendarScreen>
         decoration: BoxDecoration(
           color: isSelected
             ? _accent.withValues(alpha: _dk ? 0.15 : 0.08)
+            : isSpecialDay
+              ? const Color(0xFF8B5CF6).withValues(alpha: _dk ? 0.2 : 0.12)
             : isHomeDay
               ? const Color(0xFF5B7ABF).withValues(alpha: _dk ? 0.15 : 0.10)
               : _dk ? Colors.white.withValues(alpha: 0.02) : const Color(0xFFF8FAFC),
@@ -681,14 +695,23 @@ class _CalendarScreenState extends State<CalendarScreen>
                          : _textMain,
                     decoration: isRestDay ? TextDecoration.lineThrough : null,
                   )),
-                  if (hasPlanExam)
+                  if (isSpecialDay)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 2),
+                      child: Text('🎉', style: TextStyle(fontSize: 8)))
+                  else if (hasPlanExam)
                     const Padding(
                       padding: EdgeInsets.only(left: 2),
                       child: Text('🎯', style: TextStyle(fontSize: 7))),
                 ]),
                 const Spacer(),
-                // 중앙: 학습시간 또는 Plan D-Day 라벨
-                if (timeLabel.isNotEmpty)
+                // 중앙: 특별한 날 라벨
+                if (isSpecialDay && timeLabel.isEmpty)
+                  Center(child: Text('🎮 놀이', style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w800,
+                    color: const Color(0xFF8B5CF6)),
+                  ))
+                else if (timeLabel.isNotEmpty)
                   Center(child: Text(timeLabel, style: TextStyle(
                     fontSize: studyMin >= 240 ? 14 : 12,
                     fontWeight: FontWeight.w800,

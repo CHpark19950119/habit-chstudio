@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
@@ -39,7 +38,7 @@ class RoutineService extends ChangeNotifier with WidgetsBindingObserver {
   //  초기화
   // ═══════════════════════════════════════════
 
-  Future<void> initialize(MethodChannel nfcChannel) async {
+  Future<void> initialize() async {
     if (_initialized) return;
     await _restoreState();
     WidgetsBinding.instance.addObserver(this);
@@ -53,7 +52,7 @@ class RoutineService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  /// 백그라운드 FCM/Geofence가 SharedPreferences에 저장한 상태를 읽어 UI 반영
+  /// 백그라운드 FCM/OwnTracks가 SharedPreferences에 저장한 상태를 읽어 UI 반영
   Future<void> _syncStateFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();

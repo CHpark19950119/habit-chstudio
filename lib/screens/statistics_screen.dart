@@ -7,6 +7,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import '../theme/botanical_theme.dart';
 import '../models/models.dart';
 import '../services/firebase_service.dart';
+import '../utils/study_date_utils.dart';
 import 'memo_screen.dart';
 
 /// ═══════════════════════════════════════════════════════════
@@ -17,7 +18,8 @@ import 'memo_screen.dart';
 
 class StatisticsScreen extends StatefulWidget {
   final bool embedded;
-  const StatisticsScreen({super.key, this.embedded = false});
+  final int refreshTrigger;
+  const StatisticsScreen({super.key, this.embedded = false, this.refreshTrigger = 0});
   @override
   State<StatisticsScreen> createState() => _StatisticsScreenState();
 }
@@ -100,6 +102,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   @override
+  void didUpdateWidget(covariant StatisticsScreen old) {
+    super.didUpdateWidget(old);
+    if (old.refreshTrigger != widget.refreshTrigger) _load();
+  }
+
+  @override
   void dispose() {
     _enterCtrl.dispose(); _chartCtrl.dispose();
     _pulseCtrl.dispose(); _countCtrl.dispose(); _glowCtrl.dispose();
@@ -130,6 +138,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     // ★ pull-to-refresh 시 캐시 무효화 — 서버 최신 데이터 보장
     FirebaseService().invalidateStudyCache();
     final now = DateTime.now();
+    // ★ 4AM 경계 적용 — Firestore 키와 일치하도록
+    final today = StudyDateUtils.effectiveDate(now);
 
     // ── 0. Locale 안전 보장 ──
     try { DateFormat('E', 'ko').format(now); } catch (_) {
@@ -150,14 +160,14 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     // ── 1. 날짜 프레임 생성 (쉬는날 표시) ──
     final weekData = <_DayStudy>[];
     for (int i = 6; i >= 0; i--) {
-      final d = now.subtract(Duration(days: i));
+      final d = today.subtract(Duration(days: i));
       final ds = DateFormat('yyyy-MM-dd').format(d);
       weekData.add(_DayStudy(date: ds,
         label: _dayLabel(d), minutes: 0, isRestDay: restDays.contains(ds)));
     }
     final monthData = <_DayStudy>[];
     for (int i = 29; i >= 0; i--) {
-      final d = now.subtract(Duration(days: i));
+      final d = today.subtract(Duration(days: i));
       final ds = DateFormat('yyyy-MM-dd').format(d);
       monthData.add(_DayStudy(date: ds,
         label: '${d.day}', minutes: 0, isRestDay: restDays.contains(ds)));
@@ -184,7 +194,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final subMin = <String, int>{};
     try {
       for (int i = 0; i < 7; i++) {
-        final ds = DateFormat('yyyy-MM-dd').format(now.subtract(Duration(days: i)));
+        final ds = DateFormat('yyyy-MM-dd').format(today.subtract(Duration(days: i)));
         try { for (final c in await _fb.getFocusCycles(ds)) subMin[c.subject] = (subMin[c.subject] ?? 0) + c.effectiveMin; } catch (_) {}
       }
     } catch (e) { debugPrint('[Statistics] Focus cycles error: $e'); }
@@ -193,7 +203,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     List<FocusCycle> todayCycles = [];
     final hourlyEff = List.filled(24, 0);
     try {
-      final todayStr = DateFormat('yyyy-MM-dd').format(now);
+      final todayStr = StudyDateUtils.todayKey();
       todayCycles = await _fb.getFocusCycles(todayStr);
       // 세그먼트 기반 시간별 집중도 계산
       for (final cycle in todayCycles) {
@@ -223,7 +233,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final sleepPts = <_SleepPoint>[];
     try {
       for (int i = 6; i >= 0; i--) {
-        final d = now.subtract(Duration(days: i));
+        final d = today.subtract(Duration(days: i));
         final ds = DateFormat('yyyy-MM-dd').format(d);
         final rec = tr[ds];
         sleepPts.add(_SleepPoint(label: _dayLabel(d),
@@ -243,7 +253,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       final sleepList = <int>[];
 
       for (int i = 0; i < 7; i++) {
-        final ds = DateFormat('yyyy-MM-dd').format(now.subtract(Duration(days: i)));
+        final ds = DateFormat('yyyy-MM-dd').format(today.subtract(Duration(days: i)));
         final rec = tr[ds];
         if (rec == null) continue;
 
@@ -299,7 +309,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     int streak = 0;
     try {
       for (int i = 0; i < 365; i++) {
-        final ds = DateFormat('yyyy-MM-dd').format(now.subtract(Duration(days: i)));
+        final ds = DateFormat('yyyy-MM-dd').format(today.subtract(Duration(days: i)));
         if (restDays.contains(ds)) { streak++; continue; } // ★ 쉬는날은 끊김 없이 유지
         final r = str[ds];
         if (r != null && r.effectiveMinutes >= 60) streak++; else if (i > 0) break;
@@ -323,7 +333,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
     try {
       for (int i = 0; i < 7; i++) {
-        final ds = DateFormat('yyyy-MM-dd').format(now.subtract(Duration(days: i)));
+        final ds = DateFormat('yyyy-MM-dd').format(today.subtract(Duration(days: i)));
         final rec = tr[ds];
         if (rec == null) continue;
 
@@ -387,7 +397,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       _weeklyData = weekData; _monthlyData = monthData;
       _subjectMinutes = subMin;
       _sleepPattern = sleepPts.isEmpty
-        ? List.generate(7, (i) => _SleepPoint(label: _dayLabel(now.subtract(Duration(days: 6 - i)))))
+        ? List.generate(7, (i) => _SleepPoint(label: _dayLabel(today.subtract(Duration(days: 6 - i)))))
         : sleepPts;
       _totalWeekMin = weekTotal;
       _todayMin = weekData.isNotEmpty ? weekData.last.minutes : 0;
@@ -603,7 +613,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             gradient: LinearGradient(
               begin: Alignment.topLeft, end: Alignment.bottomRight,
               colors: _dk
-                ? [const Color(0xFF0F172A), const Color(0xFF1E1B4B)]
+                ? [const Color(0xFF161D30), const Color(0xFF242150)]
                 : [const Color(0xFFF8FAFC), const Color(0xFFF0F0FF)]),
             border: Border.all(color: _dk
               ? const Color(0xFF6366F1).withValues(alpha: 0.15)
@@ -785,7 +795,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: _dk ? [const Color(0xFF1A1E2E), const Color(0xFF141826)]
+          colors: _dk ? [const Color(0xFF1E2234), const Color(0xFF1A1E30)]
                       : [const Color(0xFFEEF0FA), const Color(0xFFF5F3FF)]),
         border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.08))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -974,7 +984,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(24),
-      color: _dk ? const Color(0xFF0F172A) : const Color(0xFFF0F4F8),
+      color: _dk ? const Color(0xFF161D30) : const Color(0xFFF0F4F8),
       border: Border.all(color: _dk
         ? Color.lerp(const Color(0xFF334155), const Color(0xFF38BDF8), _pulseCtrl.value * 0.15)!
         : const Color(0xFFCBD5E1)),
@@ -1216,7 +1226,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         gradient: LinearGradient(
           begin: Alignment.topLeft, end: Alignment.bottomRight,
           colors: _dk
-            ? [const Color(0xFF141E30), const Color(0xFF1A1E2E)]
+            ? [const Color(0xFF1A2436), const Color(0xFF1E2234)]
             : [const Color(0xFFF5F3FF), const Color(0xFFF0F9FF)]),
         border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: _dk ? 0.12 : 0.06)),
       ),
@@ -1806,7 +1816,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         gradient: LinearGradient(
           begin: Alignment.topLeft, end: Alignment.bottomRight,
           colors: _dk
-            ? [const Color(0xFF0F172A), const Color(0xFF1E1B4B)]
+            ? [const Color(0xFF161D30), const Color(0xFF242150)]
             : [const Color(0xFFF0F9FF), const Color(0xFFF5F3FF)]),
         border: Border.all(
           color: _dk
@@ -1957,7 +1967,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: _dk ? [const Color(0xFF1A1E2E), const Color(0xFF141826)]
+          colors: _dk ? [const Color(0xFF1E2234), const Color(0xFF1A1E30)]
                       : [const Color(0xFFF5F3FF), const Color(0xFFEEF0FA)]),
         border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.08))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -2144,7 +2154,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: _dk ? [const Color(0xFF1A2E26), const Color(0xFF142420)]
+          colors: _dk ? [const Color(0xFF1E3430), const Color(0xFF1A2C28)]
                       : [const Color(0xFFE8F5E9), const Color(0xFFF1F8E9)]),
         border: Border.all(color: BotanicalColors.primary.withValues(alpha: 0.08))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

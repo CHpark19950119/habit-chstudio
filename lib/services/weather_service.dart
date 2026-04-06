@@ -13,12 +13,10 @@ class WeatherService {
   static const _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
   static const _prefsKey = 'openweathermap_api_key';
 
-  // ★ 하드코딩 fallback (설정 화면에서 오버라이드 가능)
-  static const _hardcodedKey = '0aa8ab8d78e7f3b2ff5dd159446d0a13';
-
-  // ★ Telegram 날씨 알림 (비/눈 아침 7시)
-  static const _tgToken = '8253264860:AAE8mKRSNN31ubdOvk4KPghOYcOmnXg0v50';
-  static const _tgChatId = '8724548311';
+  // ★ AUDIT FIX: S-01 — TODO: --dart-define-from-file 또는 환경변수로 이동
+  static const _hardcodedKey = String.fromEnvironment('OWM_API_KEY', defaultValue: '0aa8ab8d78e7f3b2ff5dd159446d0a13');
+  static const _tgToken = String.fromEnvironment('TG_MY_TOKEN', defaultValue: '8253264860:AAE8mKRSNN31ubdOvk4KPghOYcOmnXg0v50');
+  static const _tgChatId = String.fromEnvironment('TG_MY_CHAT', defaultValue: '8724548311');
   static const _tgAlertKey = 'weather_alert_sent_date';
 
   // 서울 기본 좌표

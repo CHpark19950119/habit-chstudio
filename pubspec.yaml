@@ -14,13 +14,15 @@ dependencies:
   flutter_local_notifications: ^18.0.0
   timezone: ^0.10.1
   flutter_foreground_task: ^9.2.0
-  provider: ^6.1.1
+  # ★ AUDIT FIX: P-05, D-01 — provider 제거 (미사용)
+  # provider: ^6.1.1
   cupertino_icons: ^1.0.6
   google_fonts: ^8.0.2
   intl: ^0.20.2
   shared_preferences: ^2.5.4
-  geolocator: ^14.0.2
-  nfc_manager: 3.5.0
+
+  # ★ AUDIT FIX: P-05, D-01 — nfc_manager 제거 (NFC 시스템 삭제됨)
+  # nfc_manager: 3.5.0
   http: ^1.6.0
   home_widget: ^0.7.0
   lottie: ^3.1.0
@@ -28,7 +30,8 @@ dependencies:
   flame: ^1.21.0
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  sensors_plus: ^6.1.1
+  # ★ AUDIT FIX: P-05, D-01 — sensors_plus 제거 (미사용)
+  # sensors_plus: ^6.1.1
   path_provider: ^2.1.1
   app_links: ^7.0.0
   objectbox: ^5.3.1

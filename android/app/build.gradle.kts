@@ -59,9 +59,8 @@ android {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-    // BixbyNotificationListener에서 직접 사용
+    // AppNotificationListener에서 직접 사용 (Tuya wake + screen ON)
     implementation("com.google.firebase:firebase-firestore-ktx:25.1.2")
-    implementation("com.google.android.gms:play-services-location:21.3.0")
 }
 
 flutter {

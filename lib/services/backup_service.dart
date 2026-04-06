@@ -320,7 +320,7 @@ class BackupService {
     return backupDir;
   }
 
-  /// 핵심 Firestore 문서들 수집 (today, study, creature, 이번 달 history)
+  /// 핵심 Firestore 문서들 수집 (today, study, 이번 달 history)
   Future<Map<String, dynamic>> _fetchCoreDocs() async {
     final docs = <String, dynamic>{};
     final now = DateTime.now();

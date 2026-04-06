@@ -1,12 +1,14 @@
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
+import '../utils/map_utils.dart'; // ★ AUDIT FIX: P-03
 
 /// ═══════════════════════════════════════════════════════════
 /// 로컬 퍼스트 캐시 — Hive 기반
 /// 앱 시작 시 즉시 읽기 (0ms), Firebase는 백그라운드 갱신
+/// ★ AUDIT FIX: P-04 — TODO: 장기적으로 Hive를 제거하고 ObjectBox + SharedPreferences로 통합
 /// ═══════════════════════════════════════════════════════════
 class LocalCacheService {
   static final LocalCacheService _instance = LocalCacheService._();
@@ -131,47 +133,11 @@ class LocalCacheService {
     return v;
   }
 
-  // === 부분 업데이트 (write 후 로컬 즉시 갱신용) ===
+  // ★ AUDIT FIX: P-03, B-01 — MapUtils.setNestedValue로 통합, FieldValue.increment 파싱 제거
   Future<void> updateStudyField(String field, dynamic value) async {
     final data = getStudyData() ?? {};
-    _setNestedValue(data, field, value);
+    MapUtils.setNestedValue(data, field, value);
     await saveStudyData(data);
-  }
-
-  void _setNestedValue(Map<String, dynamic> map, String dotPath, dynamic value) {
-    // FieldValue.increment → 로컬 캐시에서 실제 증감 적용
-    if (value is FieldValue) {
-      final str = value.toString();
-      final match = RegExp(r'increment:\s*([-\d.]+)').firstMatch(str);
-      if (match != null) {
-        final delta = num.tryParse(match.group(1)!) ?? 0;
-        dynamic current = map;
-        for (final part in dotPath.split('.')) {
-          if (current is Map && current.containsKey(part)) {
-            current = current[part];
-          } else {
-            current = 0;
-            break;
-          }
-        }
-        final existing = current is num ? current : 0;
-        _setNestedValue(map, dotPath, existing + delta);
-      }
-      return;
-    }
-    final parts = dotPath.split('.');
-    if (parts.length == 1) {
-      map[parts.first] = value;
-      return;
-    }
-    Map<String, dynamic> current = map;
-    for (int i = 0; i < parts.length - 1; i++) {
-      if (current[parts[i]] is! Map) {
-        current[parts[i]] = <String, dynamic>{};
-      }
-      current = current[parts[i]] as Map<String, dynamic>;
-    }
-    current[parts.last] = value;
   }
 
   // === 캐시 나이 확인 ===
@@ -190,7 +156,7 @@ class LocalCacheService {
     return age != null && age.inMinutes < 30;
   }
 
-  // === 쓰기 보호: write 후 5초간 스트림/백그라운드 갱신 차단 ===
+  // === Write protection: block stream/background refresh after write ===
   int _lastWriteTime = 0;
 
   void markWrite() {
@@ -199,7 +165,8 @@ class LocalCacheService {
   }
 
   bool isWriteProtected() {
-    return DateTime.now().millisecondsSinceEpoch - _lastWriteTime < 10000;
+    // Phase D: reduced from 10s to 5s (single source of truth = fewer races)
+    return DateTime.now().millisecondsSinceEpoch - _lastWriteTime < 5000;
   }
 
   // === Order / Todos 전용 캐시 ===

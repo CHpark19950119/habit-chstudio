@@ -8,7 +8,7 @@ import 'routine_service.dart';
 import 'day_service.dart' show DayState;
 import 'firebase_service.dart';
 
-/// NFC Action — UI 표시용 (movement에서 발생하는 이벤트)
+/// Movement Action — UI 표시용 (movement에서 발생하는 이벤트)
 class MovementAction {
   final String action;
   final String emoji;
@@ -16,7 +16,7 @@ class MovementAction {
   MovementAction(this.action, this.emoji, this.message);
 }
 
-/// MovementService — 이동/체류 감지, Bixby movement
+/// MovementService — 이동/체류 감지, iot.movement Firestore 리스너
 class MovementService extends ChangeNotifier {
   static final MovementService _instance = MovementService._internal();
   factory MovementService() => _instance;
@@ -107,7 +107,7 @@ class MovementService extends ChangeNotifier {
   }
 
   // ═══════════════════════════════════════════
-  //  Bixby movement 실시간 감지
+  //  iot.movement 실시간 감지 (OwnTracks webhook 기반)
   // ═══════════════════════════════════════════
 
   void _startMovementListener() {
@@ -196,26 +196,29 @@ class MovementService extends ChangeNotifier {
       final now = DateTime.now();
       final timeStr = DateFormat('HH:mm').format(now);
 
-      final source = movement['source'] as String? ?? '';
-
-      if (type == 'out' && !pending && routine.state != DayState.outing
-          && !source.startsWith('geofence')) {
-        _log('Bixby → 외출 확정 ($leftLocal) — UI만 반영');
+      if (type == 'out' && !pending && routine.state != DayState.outing) {
+        _log('Movement → 외출 확정 ($leftLocal)');
         _outingTime = leftLocal ?? timeStr;
         _returnTime = null;
         routine.forceState(DayState.outing);
         onAction?.call('outing_start', '🚪', '외출 ${leftLocal ?? timeStr}');
+        // timeRecords 동기화
+        FirebaseService().updateTodayField(
+            'timeRecords.outing', leftLocal ?? timeStr);
       } else if (type == 'home' && routine.state == DayState.outing) {
-        _log('Bixby → 귀가 — UI만 반영');
+        _log('Movement → 귀가');
         _returnTime = returnLocal ?? timeStr;
         routine.forceState(DayState.returned);
         onAction?.call('outing_end', '🏠', '귀가 ${returnLocal ?? timeStr}');
+        // timeRecords 동기화
+        FirebaseService().updateTodayField(
+            'timeRecords.returnHome', returnLocal ?? timeStr);
       } else if (pending && routine.state != DayState.outing) {
-        _log('Bixby → 외출 pending ($leftLocal) — 대기');
+        _log('Movement → 외출 pending ($leftLocal) — 대기');
         onAction?.call('outing_pending', '🚶', '외출 감지 ${leftLocal ?? timeStr} — 확인 중');
         notifyListeners();
       } else if (type == 'cancelled') {
-        _log('Bixby → 외출 취소 (빠른 복귀)');
+        _log('Movement → 외출 취소 (빠른 복귀)');
         onAction?.call('outing_cancelled', '✅', '복귀 — 외출 취소');
         notifyListeners();
       }

@@ -8,14 +8,14 @@ extension FirebaseHistoryOps on FirebaseService {
   // ── Today doc (Phase C) ──
 
   Future<Map<String, dynamic>?> getTodayDoc() async {
-    if (_todayCache2 != null && _todayCacheTime2 != null &&
-        DateTime.now().difference(_todayCacheTime2!) < const Duration(minutes: 2)) {
-      return _todayCache2;
+    if (_todayCache != null && _todayCacheTime != null &&
+        DateTime.now().difference(_todayCacheTime!) < const Duration(minutes: 2)) {
+      return _todayCache;
     }
-    final result = await _cachedDocGet('today', _todayDoc2);
+    final result = await _cachedDocGet('today', _todayDocPath);
     if (result != null) {
-      _todayCache2 = result;
-      _todayCacheTime2 = DateTime.now();
+      _todayCache = result;
+      _todayCacheTime = DateTime.now();
     }
     return result;
   }
@@ -51,83 +51,43 @@ extension FirebaseHistoryOps on FirebaseService {
     return null;
   }
 
-  Future<void> updateTodayField(String field, dynamic value) async {
+  // ★ AUDIT FIX: B-01 — localDelta로 명시적 증감, FieldValue toString 파싱 제거
+  Future<void> updateTodayField(String field, dynamic value, {num? localDelta}) async {
     LocalCacheService().markWrite();
-    _todayCache2 ??= {};
-    _setNestedValue(_todayCache2!, field, value);
-    _todayCacheTime2 = DateTime.now();
+    _todayCache ??= {};
+    MapUtils.setNestedValue(_todayCache!, field, value, localDelta: localDelta);
+    _todayCacheTime = DateTime.now();
     final localData = LocalCacheService().getGeneric('today') ?? {};
-    _setNestedValue(localData, field, value);
+    MapUtils.setNestedValue(localData, field, value, localDelta: localDelta);
     await LocalCacheService().saveGeneric('today', localData);
-    FirestoreWriteQueue().enqueue(_todayDoc2, {field: value});
+    FirestoreWriteQueue().enqueue(_todayDocPath, {field: value});
   }
 
   Future<void> _setTodayDoc(Map<String, dynamic> data) async {
     LocalCacheService().markWrite();
-    _todayCache2 = data;
-    _todayCacheTime2 = DateTime.now();
+    _todayCache = data;
+    _todayCacheTime = DateTime.now();
     await LocalCacheService().saveGeneric('today', data);
+    // ★ CF HTTP 경유 쓰기 (각 필드별) + SDK fallback
     try {
-      await _db.doc(_todayDoc2).set(data).timeout(const Duration(seconds: 10));
+      final uri = Uri.parse('https://us-central1-cheonhong-studio.cloudfunctions.net/checkDoorManual')
+          .replace(queryParameters: {'q': 'write', 'doc': 'today', 'field': '__SET__', 'value': json.encode(data)});
+      final resp = await http.get(uri).timeout(const Duration(seconds: 8));
+      if (resp.statusCode == 200) {
+        debugPrint('[FB] setTodayDoc via CF OK');
+        return;
+      }
     } catch (e) {
-      debugPrint('[FB] setTodayDoc fail: $e');
+      debugPrint('[FB] setTodayDoc CF fail: $e — SDK fallback');
+    }
+    try {
+      await _db.doc(_todayDocPath).set(data).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('[FB] setTodayDoc SDK fail: $e');
     }
   }
 
-  void _setNestedValue(Map<String, dynamic> map, String dotPath, dynamic value) {
-    // FieldValue.increment → 로컬 캐시에서 실제 증감 적용
-    if (value is FieldValue) {
-      final str = value.toString();
-      final match = RegExp(r'increment:\s*([-\d.]+)').firstMatch(str);
-      if (match != null) {
-        final delta = num.tryParse(match.group(1)!) ?? 0;
-        // 기존 값을 따라가며 읽기
-        final parts = dotPath.split('.');
-        dynamic current = map;
-        for (final part in parts) {
-          if (current is Map && current.containsKey(part)) {
-            current = current[part];
-          } else {
-            current = 0;
-            break;
-          }
-        }
-        final existing = current is num ? current : 0;
-        // 재귀 호출로 실제 값 설정 (FieldValue 아닌 일반 값)
-        _setNestedValue(map, dotPath, existing + delta);
-      }
-      // FieldValue.delete 등은 로컬 캐시에서 무시
-      return;
-    }
-    final parts = dotPath.split('.');
-    if (parts.length == 1) {
-      map[parts.first] = value;
-      return;
-    }
-    // ★ 원본 맵 참조를 유지하며 in-place 수정 (Map.from 복사 금지)
-    Map<String, dynamic> current = map;
-    for (int i = 0; i < parts.length - 1; i++) {
-      final existing = current[parts[i]];
-      if (existing is Map<String, dynamic>) {
-        // 이미 올바른 타입 → 참조 그대로 사용
-        current = existing;
-      } else if (existing is Map) {
-        // 타입이 안 맞는 Map → in-place 교체 후 참조 유지
-        final typed = <String, dynamic>{};
-        for (final e in existing.entries) {
-          typed[e.key.toString()] = e.value;
-        }
-        current[parts[i]] = typed;
-        current = typed;
-      } else {
-        // Map이 아님 → 새로 생성
-        final fresh = <String, dynamic>{};
-        current[parts[i]] = fresh;
-        current = fresh;
-      }
-    }
-    current[parts.last] = value;
-  }
+  // ★ AUDIT FIX: P-03, B-01 — MapUtils.setNestedValue로 통합 (import는 part-of이므로 firebase_service.dart에서 처리)
 
   // ── History (monthly) ──
 
@@ -362,15 +322,7 @@ extension FirebaseHistoryOps on FirebaseService {
   Future<Map<String, dynamic>?> getArchive(String yearMonth) async {
     final cached = LocalCacheService().getGeneric('archive_$yearMonth');
     if (cached != null && cached.isNotEmpty) return cached;
-    try {
-      final cacheDoc = await _db.doc('users/$kUid/archive/$yearMonth')
-          .get(const GetOptions(source: Source.cache))
-          .timeout(const Duration(seconds: 3));
-      if (cacheDoc.exists && cacheDoc.data() != null) {
-        LocalCacheService().saveGeneric('archive_$yearMonth', cacheDoc.data()!);
-        return cacheDoc.data();
-      }
-    } catch (_) {}
+    // ★ AUDIT FIX: B-08 — Source.cache 읽기 제거 (persistenceEnabled: false이므로 항상 실패)
     try {
       final doc = await _db.doc('users/$kUid/archive/$yearMonth')
           .get().timeout(const Duration(seconds: 10));
@@ -410,35 +362,42 @@ extension FirebaseHistoryOps on FirebaseService {
     return !isRest;
   }
 
-  // ── 4AM Rollover (중복 방지 포함) ──
+  // ── 4AM Rollover (Phase D: simplified, verified archiving) ──
 
   static bool _rollingOver = false;
+  static DateTime? _rolloverStartTime;
 
   Future<void> checkDayRollover() async {
     if (_rollingOver) {
-      debugPrint('[Rollover] 이미 진행 중 — 스킵');
-      return;
+      // 10-minute timeout for stuck rollover
+      if (_rolloverStartTime != null &&
+          DateTime.now().difference(_rolloverStartTime!) > const Duration(minutes: 10)) {
+        debugPrint('[Rollover] stuck > 10min, force-releasing');
+        _rollingOver = false;
+      } else {
+        debugPrint('[Rollover] already running, skip');
+        return;
+      }
     }
     _rollingOver = true;
+    _rolloverStartTime = DateTime.now();
     try {
-      // ★ stuck _rolloverInProgress 플래그 확인 (Firestore 직접 조회)
+      // Clear stuck _rolloverInProgress flag
       try {
-        final snap = await _db.doc(_todayDoc2).get()
-            .timeout(const Duration(seconds: 5));
-        final data = snap.data();
+        final data = await _cfRead('today');
         if (data != null && data['_rolloverInProgress'] == true) {
-          debugPrint('[Rollover] stuck flag 발견 — 정리');
-          await _db.doc(_todayDoc2).update({
-            '_rolloverInProgress': FieldValue.delete(),
-          }).timeout(const Duration(seconds: 5));
-          // 캐시도 무효화
-          _todayCache2 = null;
-          _todayCacheTime2 = null;
+          debugPrint('[Rollover] stuck flag found, clearing');
+          await http.get(Uri.parse('$_cfBaseUrl?q=write&doc=today&field=_rolloverInProgress&value=__DELETE__'))
+              .timeout(const Duration(seconds: 5));
+          _todayCache = null;
+          _todayCacheTime = null;
         }
       } catch (e) {
         debugPrint('[Rollover] stuck flag check error: $e');
       }
 
+      // Fresh read from server (bypass cache)
+      invalidateTodayCache();
       final todayData = await getTodayDoc();
       if (todayData == null) return;
 
@@ -449,17 +408,39 @@ extension FirebaseHistoryOps on FirebaseService {
 
       debugPrint('[Rollover] $savedDate -> $currentDate archiving...');
 
-      // ★ 아카이빙 전 today doc을 새 날짜로 먼저 마킹 (중복 방지)
-      await _db.doc(_todayDoc2).update({
-        'date': currentDate,
+      // Set rollover flag (date NOT changed yet)
+      await _db.doc(_todayDocPath).update({
         '_rolloverInProgress': true,
       }).timeout(const Duration(seconds: 5));
 
       try {
-        await appendDayToHistory(savedDate, todayData);
-        final month = savedDate.substring(0, 7);
-        _recalculateMonthSummary(month); // fire-and-forget
+        // 1. Prepare archive data (remove internal fields)
+        final archiveData = Map<String, dynamic>.from(todayData);
+        archiveData.remove('_rolloverInProgress');
+        archiveData.remove('date');
+        archiveData.remove('lastModified');
+        archiveData.remove('lastDevice');
 
+        // 2. Archive to history
+        await appendDayToHistory(savedDate, archiveData);
+
+        // 3. Verify archiving succeeded before resetting
+        final month = savedDate.substring(0, 7);
+        final day = savedDate.substring(8, 10);
+        final histDoc = await _db.doc('users/$kUid/history/$month')
+            .get().timeout(const Duration(seconds: 10));
+        final histData = histDoc.data();
+        final archived = (histData?['days'] as Map<String, dynamic>?)?[day];
+        if (archived == null) {
+          debugPrint('[Rollover] ABORT: archive verification failed, history/$month.days.$day is null');
+          return; // DO NOT reset today doc
+        }
+        debugPrint('[Rollover] archive verified: history/$month.days.$day exists');
+
+        // 4. Recalculate month summary (fire-and-forget)
+        _recalculateMonthSummary(month);
+
+        // 5. Reset today doc for new day
         final newToday = <String, dynamic>{
           'date': currentDate,
           'timeRecords': <String, dynamic>{},
@@ -472,9 +453,9 @@ extension FirebaseHistoryOps on FirebaseService {
         await _setTodayDoc(newToday);
         debugPrint('[Rollover] archiving done');
       } finally {
-        // ★ try-finally: 크래시/에러 상관없이 플래그 반드시 제거
+        // Always clear rollover flag
         try {
-          await _db.doc(_todayDoc2).update({
+          await _db.doc(_todayDocPath).update({
             '_rolloverInProgress': FieldValue.delete(),
           }).timeout(const Duration(seconds: 5));
         } catch (_) {}
@@ -483,6 +464,7 @@ extension FirebaseHistoryOps on FirebaseService {
       debugPrint('[Rollover] error: $e');
     } finally {
       _rollingOver = false;
+      _rolloverStartTime = null;
     }
   }
 }

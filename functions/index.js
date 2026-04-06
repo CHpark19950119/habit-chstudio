@@ -6,13 +6,16 @@ const axios = require("axios");
 admin.initializeApp();
 const db = admin.firestore();
 
-const UID = "sJ8Pxusw9gR0tNR44RhkIge7OiG2";
+// ★ AUDIT FIX: S-01, S-02 — 환경변수/config에서 읽기, 하드코딩 fallback
+const UID = process.env.FIREBASE_UID || "sJ8Pxusw9gR0tNR44RhkIge7OiG2";
 const TUYA_BASE = "https://openapi.tuyaus.com";
-const MY_BOT_TOKEN = "8253264860:AAE8mKRSNN31ubdOvk4KPghOYcOmnXg0v50";
-const MY_CHAT_ID = "8724548311";
-const GF_BOT_TOKEN = "8613977898:AAEuuoTVARS-a9nrDp85NWHHOYM0lRvmZmc";
-const GF_CHAT_ID = "8624466505";
-const KAKAO_REST_KEY = "8987f9dd586416344444c7a59b5f0e73";
+const MY_BOT_TOKEN = process.env.TG_MY_TOKEN || "8253264860:AAE8mKRSNN31ubdOvk4KPghOYcOmnXg0v50";
+const MY_CHAT_ID = process.env.TG_MY_CHAT || "8724548311";
+const GF_BOT_TOKEN = process.env.TG_GF_TOKEN || "8613977898:AAEuuoTVARS-a9nrDp85NWHHOYM0lRvmZmc";
+const GF_CHAT_ID = process.env.TG_GF_CHAT || "8624466505";
+const KAKAO_REST_KEY = process.env.KAKAO_REST_KEY || "8987f9dd586416344444c7a59b5f0e73";
+// ★ AUDIT FIX: S-02 — CF 인증용 시크릿 (firebase functions:config:set app.secret="YOUR_SECRET")
+const CF_SECRET = (functions.config().app || {}).secret || process.env.CF_SECRET || "";
 
 // ═══ 4AM 경계 날짜 (앱 StudyDateUtils.todayKey와 동일) ═══
 function kstStudyDate(kstNow) {
@@ -461,25 +464,31 @@ async function checkWakeAndNotify(iotDoc, firstOpenTime) {
 
   const dateStr = kstStudyDate(kstNow);
 
-  // ★ bedTime 기록 있으면 → 아직 안 일어난 것 (문 열림은 화장실 등)
-  // wake 기반: 가장 최근 bedTime이 있는 날 이후에 문이 열려야 진짜 기상
+  // Phase D: today doc + history for bedTime lookback
+  // study doc read kept as fallback for multi-day lookback
   const studyDoc2 = await db.doc("users/" + UID + "/data/study").get();
   const allTr2 = (studyDoc2.exists ? studyDoc2.data() : {}).timeRecords || {};
-  // ★ wake 기반: 가장 최근 bedTime 찾고, 그 이후에 wake가 없어야 진짜 기상
+  // Also check today doc for current day bedTime
+  const todayDocCheck = await db.doc("users/" + UID + "/data/today").get();
+  const todayDataCheck = todayDocCheck.exists ? todayDocCheck.data() : {};
+  const todayTrCheck = todayDataCheck.timeRecords || {};
+  if (todayDataCheck.date === dateStr && todayTrCheck.bedTime) {
+    allTr2[dateStr] = {...(allTr2[dateStr] || {}), bedTime: todayTrCheck.bedTime};
+  }
+  if (todayDataCheck.date === dateStr && todayTrCheck.wake) {
+    allTr2[dateStr] = {...(allTr2[dateStr] || {}), wake: todayTrCheck.wake};
+  }
   let lastBedDate = null;
   for (let i = 0; i < 4; i++) {
     const d = kstStudyDate(new Date(kstNow.getTime() - i * 24 * 60 * 60 * 1000));
     if (allTr2[d]?.bedTime) { lastBedDate = d; break; }
   }
   if (!lastBedDate) {
-    // fallback: bedTime 없어도 오늘 wake 없고 문 열렸으면 기상 허용
-    // (bedTime 연속 실패 시 wake까지 죽는 cascade 방지)
     if (allTr2[dateStr]?.wake) {
-      return null; // 이미 오늘 wake 있음
+      return null;
     }
     console.log("Wake fallback — no bedTime but allowing wake for " + dateStr);
   } else {
-    // bedTime 이후에 이미 wake가 있는 날짜가 있으면 → 이미 일어남
     for (let i = 0; i < 4; i++) {
       const d = kstStudyDate(new Date(kstNow.getTime() - i * 24 * 60 * 60 * 1000));
       if (d > lastBedDate && allTr2[d]?.wake) {
@@ -508,18 +517,10 @@ async function checkWakeAndNotify(iotDoc, firstOpenTime) {
   const isTodayDoc = todayData.date === dateStr;
   if ((isTodayDoc && todayTr.wake) || todayTr[dateStr]?.wake) return null; // 이미 기상 기록됨
 
-  // ★ FIX: today=flat, study=nested 분리 쓰기
-  const studyUpdate = {timeRecords: {}};
-  studyUpdate.timeRecords[dateStr] = {wake: timeStr};
-
+  // Phase D: today doc only (single source of truth)
   const todayRef = db.doc("users/" + UID + "/data/today");
-  await Promise.all([
-    // today doc: flat 구조 (update 실패 시 set fallback)
-    todayRef.update({"timeRecords.wake": timeStr, "date": dateStr})
-      .catch(() => todayRef.set({timeRecords: {wake: timeStr}, date: dateStr}, {merge: true})),
-    // study doc: nested 구조
-    db.doc("users/" + UID + "/data/study").set(studyUpdate, {merge: true}),
-  ]);
+  await todayRef.update({"timeRecords.wake": timeStr, "date": dateStr})
+    .catch(() => todayRef.set({timeRecords: {wake: timeStr}, date: dateStr}, {merge: true}));
 
   // 텔레그램 (양쪽 발송)
   const msg = "⏰ 자동 기상 " + timeStr;
@@ -592,15 +593,10 @@ async function checkMovementPending(iotDoc) {
     return null;
   }
 
-  // ★ FIX: today=flat, study=nested 분리 쓰기
-  const studyOutUpdate = {timeRecords: {}};
-  studyOutUpdate.timeRecords[dateStr] = {outing: outTimeStr};
+  // Phase D: today doc only
   const todayRef2 = db.doc("users/" + UID + "/data/today");
-  await Promise.all([
-    db.doc("users/" + UID + "/data/study").set(studyOutUpdate, {merge: true}),
-    todayRef2.update({"timeRecords.outing": outTimeStr, "date": dateStr})
-      .catch(() => todayRef2.set({timeRecords: {outing: outTimeStr}, date: dateStr}, {merge: true})),
-  ]);
+  await todayRef2.update({"timeRecords.outing": outTimeStr, "date": dateStr})
+    .catch(() => todayRef2.set({timeRecords: {outing: outTimeStr}, date: dateStr}, {merge: true}));
 
   // 텔레그램
   // ═══ 공부 장소 매칭 ═══
@@ -629,6 +625,7 @@ async function checkMovementPending(iotDoc) {
     "movement.pending": false,
     "movement.type": locationType,
     "movement.confirmedAt": admin.firestore.FieldValue.serverTimestamp(),
+    "movement.date": kstStudyDate(),
   };
   if (locationName) movementUpdate["movement.locationName"] = locationName;
   await db.doc("users/" + UID + "/data/iot").update(movementUpdate);
@@ -666,6 +663,7 @@ async function checkMovementPending(iotDoc) {
 //  peaceful + ≤200cm + 23~07시 + 30분 연속 → 취침 확정
 // ═══════════════════════════════════════════════════════════
 
+// ★ AUDIT FIX: CF-03 — TODO: 날짜 귀속 로직 4단계 fallback (~70줄) 간소화 검토
 async function checkSleepByPresence(iotDoc, presenceState, prevPresence, zoneDist, bedThreshold) {
   const thresh = bedThreshold || DEFAULT_BED_THRESHOLD;
   const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
@@ -686,33 +684,30 @@ async function checkSleepByPresence(iotDoc, presenceState, prevPresence, zoneDis
   }
   const requiredMin = zoneDist >= thresh ? 30 : 45; // 침대=30분, soft zone=45분
 
-  // ★ wake 기반 날짜 귀속: study doc (nested) → today doc (flat) fallback → 직전 날짜
-  const studyDoc = await db.doc("users/" + UID + "/data/study").get();
-  const studyData = studyDoc.exists ? studyDoc.data() : {};
-  const allTr = studyData.timeRecords || {};
-
-  // today doc fallback (flat 구조)
+  // Phase D: today doc is primary, study doc as legacy fallback
   const todayDoc2 = await db.doc("users/" + UID + "/data/today").get();
   const todayData2 = todayDoc2.exists ? todayDoc2.data() : {};
   const todayTr2 = todayData2.timeRecords || {};
 
+  // Legacy: study doc for multi-day lookback
+  const studyDoc = await db.doc("users/" + UID + "/data/study").get();
+  const studyData = studyDoc.exists ? studyDoc.data() : {};
+  const allTr = studyData.timeRecords || {};
+
   const sleepDateStr = kstStudyDate(kstNow);
   let targetDate = null;
 
-  // 1) study doc 날짜별 구조
-  const rec = allTr[sleepDateStr];
-  if (rec && rec.wake && !rec.bedTime) {
+  // 1) today doc (primary) — flat 구조
+  if (todayTr2.wake && !todayTr2.bedTime && todayData2.date === sleepDateStr) {
     targetDate = sleepDateStr;
   }
 
-  // 2) study doc flat 구조 fallback (레거시 호환)
-  if (!targetDate && allTr.wake && !allTr.bedTime && todayData2.date === sleepDateStr) {
-    targetDate = sleepDateStr;
-  }
-
-  // 3) today doc flat 구조 fallback
-  if (!targetDate && todayTr2.wake && !todayTr2.bedTime && todayData2.date === sleepDateStr) {
-    targetDate = sleepDateStr;
+  // 2) study doc fallback (legacy read)
+  if (!targetDate) {
+    const rec = allTr[sleepDateStr];
+    if (rec && rec.wake && !rec.bedTime) {
+      targetDate = sleepDateStr;
+    }
   }
 
   // 4) 4AM 경계 넘긴 경우: 직전 study date 1개만 확인 (cascade 방지)
@@ -773,22 +768,10 @@ async function checkSleepByPresence(iotDoc, presenceState, prevPresence, zoneDis
   // 1. 전등 OFF
   setLight(false);
 
-  // 2. bedTime 듀얼라이트 — targetDate에 기록
-  const studySleepUpdate = {timeRecords: {}};
-  studySleepUpdate.timeRecords[dateStr] = {bedTime: timeStr};
-  const studyRef = db.doc("users/" + UID + "/data/study");
+  // 2. Phase D: today doc only (single source of truth)
   const todayRef = db.doc("users/" + UID + "/data/today");
-  // ★ study doc flat 키 정리 (레거시 호환)
-  const flatCleanup = {};
-  for (const k of ["wake", "outing", "returnHome", "bedTime", "study", "studyEnd", "meal"]) {
-    flatCleanup["timeRecords." + k] = admin.firestore.FieldValue.delete();
-  }
-  await Promise.all([
-    todayRef.update({"timeRecords.bedTime": timeStr, "date": dateStr})
-      .catch(() => todayRef.set({timeRecords: {bedTime: timeStr}, date: dateStr}, {merge: true})),
-    studyRef.set(studySleepUpdate, {merge: true}),
-    studyRef.update(flatCleanup).catch(() => {}),
-  ]);
+  await todayRef.update({"timeRecords.bedTime": timeStr, "date": dateStr})
+    .catch(() => todayRef.set({timeRecords: {bedTime: timeStr}, date: dateStr}, {merge: true}));
 
   // 3. stationarySince 리셋 (재감지 방지)
   await db.doc("users/" + UID + "/data/iot").update({"presence.stationarySince": null});
@@ -819,6 +802,7 @@ async function checkSleepByPresence(iotDoc, presenceState, prevPresence, zoneDis
   return timeStr;
 }
 
+// ★ AUDIT FIX: CF-01 — TODO: 폴링 간격을 상태에 따라 동적 조절 (야간 5분, 주간 2분) 또는 Tuya Webhook 전환
 // Scheduled: every 1 minute
 exports.pollDoorSensor = functions.pubsub
   .schedule("every 1 minutes")
@@ -833,8 +817,15 @@ exports.pollDoorSensor = functions.pubsub
     return null;
   });
 
+// ★ AUDIT FIX: CF-02 — TODO: 모놀리식 15+ 분기를 기능별 함수로 분리 또는 라우터 패턴 적용
 // Manual test endpoint
 exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
+  // ★ AUDIT FIX: S-02 — secret 파라미터 검증 (설정 안 된 경우 경고만, 차단 안 함)
+  if (CF_SECRET && req.query.secret !== CF_SECRET) {
+    console.warn("Unauthorized request from " + (req.ip || "unknown"));
+    res.status(403).json({error: "unauthorized"});
+    return;
+  }
   try {
     // ?q=config&key=bedThresholdCm&value=400 → iot config 설정
     if (req.query.q === "config") {
@@ -844,6 +835,30 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       const numVal = Number(value);
       await db.doc("users/" + UID + "/data/iot").set(
         {config: {[key]: isNaN(numVal) ? value : numVal}}, {merge: true});
+
+      // ★ mmWave 재실 감지 → 귀가 자동 판정 (OwnTracks 백업)
+      // battery_manager가 mmwave_presence를 peaceful/motion으로 보내면 = 집에 있음
+      if (key === "mmwave_presence" && (value === "peaceful" || value === "motion")) {
+        const iotSnap = await db.doc("users/" + UID + "/data/iot").get();
+        const mv = (iotSnap.exists ? iotSnap.data() : {}).movement || {};
+        // 현재 외출 상태인데 mmWave가 재실 감지 → 귀가
+        if (mv.type !== "home") {
+          const date = kstStudyDate();
+          const now = new Date();
+          const timeStr = now.toLocaleTimeString("ko-KR", {timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false});
+          await Promise.all([
+            db.doc("users/" + UID + "/data/iot").update({
+              "movement.type": "home", "movement.pending": false,
+              "movement.returnedAtLocal": timeStr,
+              "movement.detectedBy": "mmwave",
+              "movement.date": date,
+            }),
+            db.doc("users/" + UID + "/data/today").update({"timeRecords.returnHome": timeStr}).catch(() => {}),
+          ]);
+          console.log("mmWave 귀가 감지: " + timeStr);
+        }
+      }
+
       res.status(200).json({ok: true, key, value: isNaN(numVal) ? value : numVal});
       return;
     }
@@ -892,17 +907,25 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
         res.status(200).json(todayDoc.exists ? todayDoc.data() : {});
         return;
       }
+      // history/YYYY-MM 지원
+      const histDateMatch = (req.query.doc || "").match(/^history\/(\d{4}-\d{2})$/);
+      if (histDateMatch) {
+        const histDoc = await db.doc("users/" + UID + "/history/" + histDateMatch[1]).get();
+        res.status(200).json(histDoc.exists ? histDoc.data() : {});
+        return;
+      }
       if (req.query.doc === "iot") {
         const iotDoc = await db.doc("users/" + UID + "/data/iot").get();
         const d = iotDoc.exists ? iotDoc.data() : {};
-        res.status(200).json({presence: d.presence, door: d.door, phone: d.phone, movement: d.movement, config: d.config});
+        res.status(200).json({presence: d.presence, door: d.door, phone: d.phone, movement: d.movement, config: d.config, agent: d.agent});
         return;
       }
       const qDate = req.query.date || kstStudyDate();
       const studyDoc = await db.doc("users/" + UID + "/data/study").get();
       const studyData = studyDoc.exists ? studyDoc.data() : {};
       const tr = (studyData.timeRecords || {})[qDate];
-      res.status(200).json({date: qDate, timeRecords: tr || null});
+      // ★ 전체 study doc 반환 (studyTimeRecords, studyTime 등 포함)
+      res.status(200).json(studyData);
       return;
     }
     // ?q=set&date=2026-03-20&field=bedTime&value=05:30 → timeRecords 수정
@@ -914,10 +937,37 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       if (!qDate || !field) { res.status(400).json({error: "date, field required"}); return; }
       const isDel = value === "__DELETE__";
       const fv = isDel ? admin.firestore.FieldValue.delete() : value;
-      await Promise.all([
-        db.doc("users/" + UID + "/data/study").update({["timeRecords." + qDate + "." + field]: fv}),
+      // Phase D: today doc only (single source of truth)
+      const fieldMap = {wakeTime: "wake", outingTime: "outing"};
+      const appField = fieldMap[field];
+      const writes = [
         db.doc("users/" + UID + "/data/today").update({["timeRecords." + field]: isDel ? admin.firestore.FieldValue.delete() : fv}).catch(() => {}),
-      ]);
+      ];
+      if (appField) {
+        writes.push(db.doc("users/" + UID + "/data/today").update({
+          ["timeRecords." + appField]: isDel ? admin.firestore.FieldValue.delete() : fv
+        }).catch(() => {}));
+      }
+      // ★ outingTime 설정 시 iot.movement도 outing으로 동기화
+      if (field === "outingTime" && !isDel) {
+        writes.push(db.doc("users/" + UID + "/data/iot").update({
+          "movement.type": "outing",
+          "movement.pending": true,
+          "movement.leftAtLocal": value,
+          "movement.leftAt": admin.firestore.FieldValue.serverTimestamp(),
+          "movement.date": kstStudyDate(),
+        }).catch(() => {}));
+      }
+      // ★ returnHome 설정 시 iot.movement를 home으로
+      if (field === "returnHome" && !isDel) {
+        writes.push(db.doc("users/" + UID + "/data/iot").update({
+          "movement.type": "home",
+          "movement.pending": false,
+          "movement.returnedAtLocal": value,
+          "movement.date": kstStudyDate(),
+        }).catch(() => {}));
+      }
+      await Promise.all(writes);
       res.status(200).json({ok: true, date: qDate, field, value: isDel ? "DELETED" : value});
       return;
     }
@@ -928,7 +978,10 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       const docName = req.query.doc || "today";
       const field = req.query.field;
       const allowed = {today: "data/today", study: "data/study", iot: "data/iot"};
-      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot"}); return; }
+      // history/YYYY-MM 지원
+      const histReadMatch = docName.match(/^history\/(\d{4}-\d{2})$/);
+      if (histReadMatch) allowed[docName] = "history/" + histReadMatch[1];
+      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot|history/YYYY-MM"}); return; }
       const snap = await db.doc("users/" + UID + "/" + allowed[docName]).get();
       if (!snap.exists) { res.status(200).json({}); return; }
       if (!field) { res.status(200).json(snap.data()); return; }
@@ -952,7 +1005,10 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       const rawValue = req.query.value;
       if (!field) { res.status(400).json({error: "field required"}); return; }
       const allowed = {today: "data/today", study: "data/study", iot: "data/iot"};
-      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot"}); return; }
+      // history/YYYY-MM 지원
+      const histMatch = docName.match(/^history\/(\d{4}-\d{2})$/);
+      if (histMatch) allowed[docName] = "history/" + histMatch[1];
+      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot|history/YYYY-MM"}); return; }
 
       // 타입 자동 변환 (__DELETE__ → FieldValue.delete())
       let parsed;
@@ -967,17 +1023,18 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       }
 
       const docRef = db.doc("users/" + UID + "/" + allowed[docName]);
+
+      // ★ __SET__ 모드: 전체 doc 덮어쓰기 (rollover용)
+      if (field === "__SET__") {
+        await docRef.set(parsed);
+        res.status(200).json({ok: true, doc: docName, mode: "set"});
+        return;
+      }
       // dot-notation → Firestore update (중첩 필드 지원)
       await docRef.update({[field]: parsed});
 
-      // ★ dual-write: today↔study 자동 동기화
-      // __DELETE__는 미러링 건너뜀 — today/study 문서 구조가 다르므로
-      // 삭제는 각 문서에 명시적으로 보내야 한다 (?q=delete 또는 doc별 개별 write)
-      if (rawValue !== "__DELETE__" && (docName === "today" || docName === "study")) {
-        const mirrorName = docName === "today" ? "study" : "today";
-        const mirrorRef = db.doc("users/" + UID + "/" + allowed[mirrorName]);
-        try { await mirrorRef.update({[field]: parsed}); } catch (_) { /* mirror doc 없으면 무시 */ }
-      }
+      // Phase D: dual-write removed. today doc is single source of truth.
+      // study doc mirror removed (2026-04-03)
 
       res.status(200).json({ok: true, doc: docName, field, value: rawValue === "__DELETE__" ? "__DELETED__" : parsed});
       return;
@@ -1023,34 +1080,15 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
         date: date,
       };
 
-      // study doc: studyTimeRecords.{date} 배열에 추가
-      const studyRef = db.doc("users/" + UID + "/data/study");
-      const studySnap = await studyRef.get();
-      const studyData = studySnap.exists ? studySnap.data() : {};
-      const str = studyData.studyTimeRecords || {};
-      const raw = str[date];
-      const dayRecords = Array.isArray(raw) ? [...raw] : [];
-      dayRecords.push(session);
-
-      // studyTime 총합 계산
-      const st = studyData.studyTime || {};
+      // Phase D: today doc only (single source of truth)
+      const todayRef = db.doc("users/" + UID + "/data/today");
+      const todaySnap = await todayRef.get();
+      const todayData2 = todaySnap.exists ? todaySnap.data() : {};
+      const st = todayData2.studyTime || {};
       const subjects = st.subjects || {};
       const newTotal = (st.total || 0) + studyMin;
       const newSubject = (subjects[subject] || 0) + studyMin;
 
-      // pendingSessions에 세션 추가 (앱이 Hive로 머지할 수 있도록)
-      const pending = studyData.pendingSessions || {};
-      const pendingDay = Array.isArray(pending[date]) ? [...pending[date]] : [];
-      pendingDay.push(session);
-
-      await studyRef.set({
-        ["pendingSessions." + date]: pendingDay,
-        "studyTime.total": newTotal,
-        ["studyTime.subjects." + subject]: newSubject,
-      }, {merge: true});
-
-      // today doc 동기화
-      const todayRef = db.doc("users/" + UID + "/data/today");
       await todayRef.set({
         "studyTime.total": newTotal,
         ["studyTime.subjects." + subject]: newSubject,
@@ -1081,16 +1119,7 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
         type: "daily",
       };
 
-      // study doc: todos.{date} 배열에 추가
-      const studyRef = db.doc("users/" + UID + "/data/study");
-      const studySnap = await studyRef.get();
-      const studyData = studySnap.exists ? studySnap.data() : {};
-      const todos = (studyData.todos || {})[date] || [];
-      todos.push(todo);
-
-      await studyRef.set({["todos." + date]: todos}, {merge: true});
-
-      // today doc 동기화
+      // Phase D: today doc only (single source of truth)
       const todayRef = db.doc("users/" + UID + "/data/today");
       const todaySnap = await todayRef.get();
       const todayData = todaySnap.exists ? todaySnap.data() : {};
@@ -1143,11 +1172,208 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       if (!field) { res.status(400).json({error: "field required"}); return; }
       const isDel = value === "__DELETE__";
       const fv = isDel ? admin.firestore.FieldValue.delete() : value;
-      await Promise.all([
-        db.doc("users/" + UID + "/data/study").update({["timeRecords." + date + "." + field]: fv}),
-        db.doc("users/" + UID + "/data/today").update({["timeRecords." + field]: isDel ? admin.firestore.FieldValue.delete() : fv}).catch(() => {}),
-      ]);
+      // Phase D: today doc only
+      await db.doc("users/" + UID + "/data/today").update({["timeRecords." + field]: isDel ? admin.firestore.FieldValue.delete() : fv}).catch(() => {});
       res.status(200).json({ok: true, date, field, value: isDel ? "DELETED" : value});
+      return;
+    }
+
+    // ═══ 알려진 학습 장소 (체류 감지용) ═══
+    const STUDY_PLACES = [
+      {name: "스카", lat: 37.5596, lng: 126.9453, radius: 150},  // 이대앞 스터디카페
+    ];
+    function haversineM(lat1, lng1, lat2, lng2) {
+      const R = 6371000;
+      const toRad = d => d * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+    function findStudyPlace(lat, lng) {
+      for (const p of STUDY_PLACES) {
+        if (haversineM(lat, lng, p.lat, p.lng) <= p.radius) return p.name;
+      }
+      return null;
+    }
+
+    // ═══ OwnTracks 위치 기반 외출/귀가 감지 ═══
+    // ?q=movement_check → cndstatus Firestore에서 isHome 읽기 → 상태 변경 시 기록
+    if (req.query.q === "movement_check") {
+      const CND_PROJECT = "cndstatus-ad114";
+      const CND_KEY = "AIzaSyCJpRU73rCVobvW5saMrInxJuLW1HHMr5E";
+      const cndUrl = `https://firestore.googleapis.com/v1/projects/${CND_PROJECT}/databases/(default)/documents/locations/cheonhong?key=${CND_KEY}`;
+      const cndResp = await fetch(cndUrl);
+      if (!cndResp.ok) { res.status(502).json({error: "cndstatus read fail"}); return; }
+      const cndDoc = await cndResp.json();
+      const f = cndDoc.fields || {};
+      const isHome = f.isHome?.booleanValue ?? true;
+      const lat = f.lat?.doubleValue;
+      const lng = f.lng?.doubleValue;
+      const battery = parseInt(f.battery?.integerValue ?? "-1");
+      const ts = f.timestamp?.timestampValue;
+
+      // 현재 movement 상태 읽기
+      const iotSnap = await db.doc("users/" + UID + "/data/iot").get();
+      const iotData = iotSnap.exists ? iotSnap.data() : {};
+      const mv = iotData.movement || {};
+      const wasHome = mv.type === "home" || !mv.type;
+      const nowHome = isHome;
+      const date = kstStudyDate();
+      const timeStr = new Date(ts || Date.now()).toLocaleTimeString("ko-KR", {timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false});
+
+      const result = {isHome, wasHome: wasHome, lat, lng, battery, timestamp: ts, changed: false};
+
+      // 외출 감지: wasHome → !nowHome
+      if (wasHome && !nowHome) {
+        await Promise.all([
+          db.doc("users/" + UID + "/data/iot").update({
+            "movement.type": "outing", "movement.pending": true,
+            "movement.leftAtLocal": timeStr,
+            "movement.leftAt": admin.firestore.FieldValue.serverTimestamp(),
+            "movement.date": date,
+          }),
+          db.doc("users/" + UID + "/data/today").update({"timeRecords.outingTime": timeStr, "timeRecords.outing": timeStr}),
+        ]);
+        result.changed = true;
+        result.action = "outing";
+        result.time = timeStr;
+      }
+
+      // 체류 감지: 외출 중 + 학습 장소 근처 → studying
+      if (!nowHome && lat && lng) {
+        const studyPlace = findStudyPlace(lat, lng);
+        if (studyPlace && mv.type === "outing") {
+          await db.doc("users/" + UID + "/data/iot").update({
+            "movement.type": "studying",
+            "movement.locationName": studyPlace,
+            "movement.studyingSince": timeStr,
+            "movement.date": date,
+          });
+          result.changed = true;
+          result.action = "studying";
+          result.place = studyPlace;
+          result.time = timeStr;
+        }
+      }
+
+      // 귀가 감지: !wasHome → nowHome
+      if (!wasHome && nowHome) {
+        await Promise.all([
+          db.doc("users/" + UID + "/data/iot").update({
+            "movement.type": "home", "movement.pending": false,
+            "movement.returnedAtLocal": timeStr,
+            "movement.date": date,
+          }),
+          db.doc("users/" + UID + "/data/today").update({"timeRecords.returnHome": timeStr}),
+        ]);
+        result.changed = true;
+        result.action = "return";
+        result.time = timeStr;
+      }
+
+      res.status(200).json(result);
+      return;
+    }
+
+    // ═══ 이동 추적 로그 ═══
+    // ?q=transit_log&place=스카&lat=37.5594&lng=126.945&vel=25&tst=1234567890&batt=80
+    // cndstatus Worker에서 매 위치 업데이트마다 호출
+    if (req.query.q === "transit_log") {
+      const place = req.query.place || null; // 현재 장소 (빈 문자열 = 이동 중)
+      const lat = parseFloat(req.query.lat || "0");
+      const lng = parseFloat(req.query.lng || "0");
+      const vel = parseInt(req.query.vel || "0", 10);
+      const tst = parseInt(req.query.tst || "0", 10);
+      const batt = parseInt(req.query.batt || "-1", 10);
+      const date = kstStudyDate();
+      const timeStr = new Date(tst * 1000).toLocaleTimeString("ko-KR", {timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false});
+      const placeName = place && place.length > 0 ? place : null;
+
+      // iot.transit 에서 현재 상태 읽기
+      const iotRef = db.doc("users/" + UID + "/data/iot");
+      const iotSnap = await iotRef.get();
+      const iot = iotSnap.exists ? iotSnap.data() : {};
+      const transit = iot.transit || {};
+      const wasTransit = transit.inTransit || false;
+      const nowTransit = !placeName; // 장소 없으면 이동 중
+
+      const result = {place: placeName, vel, time: timeStr, wasTransit, nowTransit, changed: false};
+
+      if (!wasTransit && nowTransit) {
+        // 장소 → 이동 시작
+        await iotRef.update({
+          "transit.inTransit": true,
+          "transit.startTime": timeStr,
+          "transit.startTst": tst,
+          "transit.fromPlace": transit.currentPlace || "?",
+          "transit.currentPlace": null,
+        });
+        result.changed = true;
+        result.action = "transit_start";
+        result.from = transit.currentPlace || "?";
+      } else if (wasTransit && !nowTransit) {
+        // 이동 → 장소 도착
+        const startTst = transit.startTst || tst;
+        const durationMin = Math.round((tst - startTst) / 60);
+        const segment = {
+          from: transit.fromPlace || "?",
+          to: placeName,
+          startTime: transit.startTime || timeStr,
+          endTime: timeStr,
+          durationMin: durationMin,
+          date: date,
+        };
+        // 오늘 이동 구간 리스트에 추가
+        const segments = iot.transitSegments || {};
+        const todaySegments = segments[date] || [];
+        todaySegments.push(segment);
+
+        await iotRef.update({
+          "transit.inTransit": false,
+          "transit.currentPlace": placeName,
+          "transit.lastArrival": timeStr,
+          [`transitSegments.${date}`]: todaySegments,
+        });
+
+        // today doc에도 이동시간 합계 기록
+        const totalMin = todaySegments.reduce((s, seg) => s + (seg.durationMin || 0), 0);
+        await db.doc("users/" + UID + "/data/today").update({
+          "transitTime": totalMin,
+          "transitSegments": todaySegments,
+        }).catch(() => {});
+
+        result.changed = true;
+        result.action = "transit_end";
+        result.segment = segment;
+        result.totalMin = totalMin;
+
+        // 학습 장소 도착 → movement.type = studying
+        const sp = findStudyPlace(lat, lng);
+        if (sp) {
+          const mv2 = iot.movement || {};
+          if (mv2.type === "outing" || mv2.type === "pending") {
+            await iotRef.update({
+              "movement.type": "studying",
+              "movement.locationName": sp,
+              "movement.studyingSince": timeStr,
+              "movement.date": kstStudyDate(),
+            });
+            result.studyPlace = sp;
+          }
+        }
+      } else if (!wasTransit && !nowTransit && placeName !== transit.currentPlace) {
+        // 장소 변경 (이동 없이 — GPS 드리프트 또는 인접 장소)
+        await iotRef.update({"transit.currentPlace": placeName});
+      }
+
+      // 마지막 위치 항상 업데이트
+      await iotRef.update({
+        "transit.lastLat": lat, "transit.lastLng": lng,
+        "transit.lastVel": vel, "transit.lastTime": timeStr,
+        "transit.lastBatt": batt,
+      }).catch(() => {});
+
+      res.status(200).json(result);
       return;
     }
 
@@ -1176,6 +1402,13 @@ exports.onIotWrite = functions.firestore
     const mvBefore = before.movement || {};
     const mvAfter = after.movement || {};
 
+    // ── 도어센서 → 기상 판정 (CF가 판단) ──
+    const doorBefore = before.door || {};
+    const doorAfter = after.door || {};
+    if (doorAfter.state === "open" && doorBefore.state !== "open" && doorAfter.lastChanged) {
+      await handleDoorWake(doorAfter);
+    }
+
     // ── 귀가 감지: movement.type → "home" ──
     if (mvAfter.type === "home" && mvBefore.type !== "home") {
       await handleReturnHome(mvAfter, after);
@@ -1188,6 +1421,44 @@ exports.onIotWrite = functions.firestore
       await handleGeofenceOuting(mvAfter, after);
     }
   });
+
+// ═══ 도어센서 → 기상 판정 (CF가 판단) ═══
+async function handleDoorWake(door) {
+  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const hour = kstNow.getUTCHours();
+  const dateStr = kstStudyDate(kstNow);
+  const wakeTime = door.lastEventTime || String(hour).padStart(2, "0") + ":" + String(kstNow.getUTCMinutes()).padStart(2, "0");
+
+  // 07:00~15:00만 기상 판정
+  if (hour < 7 || hour >= 15) {
+    console.log(`[DoorWake] outside wake window (${hour}h), skip`);
+    return;
+  }
+
+  // 이미 wake 있으면 스킵
+  const todayDoc = await db.doc("users/" + UID + "/data/today").get();
+  const todayData = todayDoc.exists ? todayDoc.data() : {};
+  const todayTr = todayData.timeRecords || {};
+  if (todayTr.wake) {
+    console.log(`[DoorWake] wake already recorded: ${todayTr.wake}`);
+    return;
+  }
+
+  // ★ 기상 기록 — today doc only
+  const todayRef = db.doc("users/" + UID + "/data/today");
+  await todayRef.update({"timeRecords.wake": wakeTime, "date": dateStr})
+    .catch(() => todayRef.set({timeRecords: {wake: wakeTime}, date: dateStr}, {merge: true}));
+
+  // iot.door에 기상 판정 결과 기록
+  await db.doc("users/" + UID + "/data/iot").update({
+    "door.openedToday": true,
+    "door.openedDate": dateStr,
+    "door.firstOpenTime": wakeTime,
+  }).catch(() => {});
+
+  console.log(`[DoorWake] ★ Wake recorded: ${wakeTime} (${dateStr})`);
+  await sendTelegram(`⏰ 자동 기상 ${wakeTime} (도어센서→CF판정)`, true);
+}
 
 async function handleReturnHome(movement, iotData) {
   const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
@@ -1206,15 +1477,10 @@ async function handleReturnHome(movement, iotData) {
     setLight(true);
   }
 
-  // ★ FIX: today=flat, study=nested 분리 쓰기
-  const studyReturnUpdate = {timeRecords: {}};
-  studyReturnUpdate.timeRecords[dateStr] = {returnHome: returnTime};
+  // Phase D: today doc only
   const todayRef3 = db.doc("users/" + UID + "/data/today");
-  await Promise.all([
-    todayRef3.update({"timeRecords.returnHome": returnTime, "date": dateStr})
-      .catch(() => todayRef3.set({timeRecords: {returnHome: returnTime}, date: dateStr}, {merge: true})),
-    db.doc("users/" + UID + "/data/study").set(studyReturnUpdate, {merge: true}),
-  ]);
+  await todayRef3.update({"timeRecords.returnHome": returnTime, "date": dateStr})
+    .catch(() => todayRef3.set({timeRecords: {returnHome: returnTime}, date: dateStr}, {merge: true}));
 
   // 경과시간
   const outTime = todayTr.outing || todayTr[dateStr]?.outing;
@@ -1264,15 +1530,10 @@ async function handleGeofenceOuting(movement, iotData) {
   // ═══ 전등 OFF (외출 시) ═══
   setLight(false);
 
-  // ★ FIX: today=flat, study=nested 분리 쓰기
-  const studyGeoUpdate = {timeRecords: {}};
-  studyGeoUpdate.timeRecords[dateStr] = {outing: outTime};
+  // Phase D: today doc only
   const todayRef4 = db.doc("users/" + UID + "/data/today");
-  await Promise.all([
-    todayRef4.update({"timeRecords.outing": outTime, "date": dateStr})
-      .catch(() => todayRef4.set({timeRecords: {outing: outTime}, date: dateStr}, {merge: true})),
-    db.doc("users/" + UID + "/data/study").set(studyGeoUpdate, {merge: true}),
-  ]);
+  await todayRef4.update({"timeRecords.outing": outTime, "date": dateStr})
+    .catch(() => todayRef4.set({timeRecords: {outing: outTime}, date: dateStr}, {merge: true}));
 
   const lastLoc = iotData.lastLocation || {};
   let locStr = "";
@@ -1664,10 +1925,8 @@ exports.pollGosiNotice = functions.pubsub
       const result = await pollGosiLogic();
       console.log("Gosi poll:", JSON.stringify(result));
     } catch (err) {
-      console.error("Gosi poll error:", err.message);
-      // 에러 시 텔레그램 알림
-      await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
-        {chat_id: MY_CHAT_ID, text: "⚠️ 고시 공고 크롤링 실패\n에러: " + err.message}).catch(() => {});
+      // gosi.kr 클라우드 IP 차단 — PC 크론으로 대체됨. 에러 알림 불필요.
+      console.log("Gosi poll skip (cloud IP blocked):", err.message);
     }
     return null;
   });
@@ -1845,16 +2104,15 @@ async function executeTool(name, input) {
   const dateStr = kstStudyDate();
 
   if (name === "add_todo") {
-    const studyData = await db.doc("users/" + UID + "/data/study").get();
-    const data = studyData.exists ? studyData.data() : {};
-    const todosRaw = data.todos || {};
-    const dayTodos = todosRaw[dateStr] || {date: dateStr, items: []};
-    const items = dayTodos.items || [];
+    // Phase D: today doc only
+    const todaySnap = await db.doc("users/" + UID + "/data/today").get();
+    const todayData = todaySnap.exists ? todaySnap.data() : {};
+    const items = todayData.todos || [];
 
     const newItem = {
       id: "todo_" + Date.now(),
       title: input.title,
-      completed: false,
+      done: false,
       order: items.length,
     };
     if (input.subject) newItem.subject = input.subject;
@@ -1863,15 +2121,14 @@ async function executeTool(name, input) {
     if (input.type) newItem.type = input.type;
 
     items.push(newItem);
-    await db.doc("users/" + UID + "/data/study").set(
-      {todos: {[dateStr]: {date: dateStr, items, updatedAt: new Date().toISOString()}}},
-      {merge: true});
+    await db.doc("users/" + UID + "/data/today").set({todos: items}, {merge: true});
     return "✅ 투두 추가: " + input.title;
   }
 
   if (name === "add_habit") {
-    const studyData = await db.doc("users/" + UID + "/data/study").get();
-    const data = studyData.exists ? studyData.data() : {};
+    // Phase D: today doc for orderData
+    const todaySnap = await db.doc("users/" + UID + "/data/today").get();
+    const data = todaySnap.exists ? todaySnap.data() : {};
     const orderData = data.orderData || {goals: [], habits: [], expenses: []};
     const habits = orderData.habits || [];
 
@@ -1892,7 +2149,7 @@ async function executeTool(name, input) {
     if (input.triggerTime) newHabit.triggerTime = input.triggerTime;
 
     habits.push(newHabit);
-    await db.doc("users/" + UID + "/data/study").set(
+    await db.doc("users/" + UID + "/data/today").set(
       {orderData: {...orderData, habits}}, {merge: true});
     const triggerLabel = input.autoTrigger
       ? {wake: "기상", sleep: "취침", study: "공부", outing: "외출", meal: "식사"}[input.autoTrigger] || ""
@@ -1901,8 +2158,9 @@ async function executeTool(name, input) {
   }
 
   if (name === "add_goal") {
-    const studyData = await db.doc("users/" + UID + "/data/study").get();
-    const data = studyData.exists ? studyData.data() : {};
+    // Phase D: today doc for orderData
+    const todaySnap = await db.doc("users/" + UID + "/data/today").get();
+    const data = todaySnap.exists ? todaySnap.data() : {};
     const orderData = data.orderData || {goals: [], habits: [], expenses: []};
     const goals = orderData.goals || [];
 
@@ -1923,28 +2181,25 @@ async function executeTool(name, input) {
     if (input.endDate) newGoal.endDate = input.endDate;
 
     goals.push(newGoal);
-    await db.doc("users/" + UID + "/data/study").set(
+    await db.doc("users/" + UID + "/data/today").set(
       {orderData: {...orderData, goals}}, {merge: true});
     return "✅ 목표 추가: " + input.title + " (" + input.totalUnits + (input.unitName || "강") + ")";
   }
 
   if (name === "today_summary") {
-    const [todayDoc, studyDoc] = await Promise.all([
-      db.doc("users/" + UID + "/data/today").get(),
-      db.doc("users/" + UID + "/data/study").get(),
-    ]);
-    const today = todayDoc.exists ? todayDoc.data() : {};
-    const study = studyDoc.exists ? studyDoc.data() : {};
+    // Phase D: today doc only
+    const todaySnap = await db.doc("users/" + UID + "/data/today").get();
+    const today = todaySnap.exists ? todaySnap.data() : {};
     const tr = today.timeRecords || {};
-    const str = (study.studyTimeRecords || {})[dateStr];
-    const todos = ((study.todos || {})[dateStr] || {}).items || [];
-    const doneTodos = todos.filter((t) => t.completed).length;
+    const st = today.studyTime || {};
+    const todos = today.todos || [];
+    const doneTodos = todos.filter((t) => t.done || t.completed).length;
 
     let summary = "📊 오늘 요약\n";
     if (tr.wake) summary += "☀️ 기상: " + tr.wake + "\n";
     if (tr.outing) summary += "🚶 외출: " + tr.outing + (tr.returnHome ? " → 귀가 " + tr.returnHome : " (외출 중)") + "\n";
     if (tr.study) summary += "📖 공부: " + tr.study + (tr.studyEnd ? " → " + tr.studyEnd : " (진행 중)") + "\n";
-    if (str) summary += "⏱ 순공: " + Math.floor((str.effectiveMinutes || str.totalMinutes || 0) / 60) + "h " + ((str.effectiveMinutes || str.totalMinutes || 0) % 60) + "m\n";
+    if (st.total) summary += "⏱ 순공: " + Math.floor(st.total / 60) + "h " + (st.total % 60) + "m\n";
     summary += "📋 투두: " + doneTodos + "/" + todos.length + "개 완료\n";
     if (tr.bedTime) summary += "🛏️ 취침: " + tr.bedTime;
     return summary;
@@ -1969,9 +2224,10 @@ async function executeTool(name, input) {
   }
 
   if (name === "list_todos") {
-    const studyDoc = await db.doc("users/" + UID + "/data/study").get();
-    const data = studyDoc.exists ? studyDoc.data() : {};
-    const todos = ((data.todos || {})[dateStr] || {}).items || [];
+    // Phase D: today doc only
+    const todaySnap = await db.doc("users/" + UID + "/data/today").get();
+    const data = todaySnap.exists ? todaySnap.data() : {};
+    const todos = data.todos || [];
     if (todos.length === 0) return "📋 오늘 투두 없음";
     return "📋 오늘 투두:\n" + todos.map((t, i) =>
       (t.completed ? "✅" : "⬜") + " " + t.title +
@@ -1981,17 +2237,15 @@ async function executeTool(name, input) {
   }
 
   if (name === "complete_todo") {
-    const studyDoc = await db.doc("users/" + UID + "/data/study").get();
-    const data = studyDoc.exists ? studyDoc.data() : {};
-    const dayTodos = (data.todos || {})[dateStr] || {date: dateStr, items: []};
-    const items = dayTodos.items || [];
-    const idx = items.findIndex((t) => !t.completed && t.title.includes(input.keyword));
+    // Phase D: today doc only
+    const todaySnap = await db.doc("users/" + UID + "/data/today").get();
+    const data = todaySnap.exists ? todaySnap.data() : {};
+    const items = data.todos || [];
+    const idx = items.findIndex((t) => !(t.done || t.completed) && t.title.includes(input.keyword));
     if (idx < 0) return "❌ '" + input.keyword + "' 투두 못 찾음";
-    items[idx].completed = true;
+    items[idx].done = true;
     items[idx].completedAt = new Date().toISOString();
-    await db.doc("users/" + UID + "/data/study").set(
-      {todos: {[dateStr]: {date: dateStr, items, updatedAt: new Date().toISOString()}}},
-      {merge: true});
+    await db.doc("users/" + UID + "/data/today").set({todos: items}, {merge: true});
     return "✅ 완료: " + items[idx].title;
   }
 
@@ -2105,52 +2359,48 @@ async function executeTool(name, input) {
 
   if (name === "query_date") {
     const qDate = input.date;
-    // study doc에서 해당 날짜 timeRecords 조회
-    const studyDoc = await db.doc("users/" + UID + "/data/study").get();
-    const studyData = studyDoc.exists ? studyDoc.data() : {};
-    const tr = (studyData.timeRecords || {})[qDate];
-    if (!tr) {
-      // history fallback
-      const parts = qDate.split("-");
-      const monthKey = parts[0] + "-" + parts[1];
-      const dayKey = parts[2];
-      const histDoc = await db.doc("users/" + UID + "/history/" + monthKey).get();
-      if (histDoc.exists) {
-        const days = histDoc.data().days || {};
-        const dayData = days[dayKey];
-        if (dayData && dayData.timeRecords) {
-          const htr = dayData.timeRecords;
-          let result = "📅 " + qDate + " (history)\n";
-          for (const [k, v] of Object.entries(htr)) {
-            result += "  " + k + ": " + v + "\n";
-          }
-          return result;
-        }
+    // Phase D: today doc for current date, history for past
+    if (qDate === dateStr) {
+      const todaySnap = await db.doc("users/" + UID + "/data/today").get();
+      const todayData = todaySnap.exists ? todaySnap.data() : {};
+      const tr = todayData.timeRecords || {};
+      if (Object.keys(tr).length === 0) return "📅 " + qDate + " — 데이터 없음";
+      let result = "📅 " + qDate + "\n";
+      for (const [k, v] of Object.entries(tr)) {
+        result += "  " + k + ": " + v + "\n";
       }
-      return "📅 " + qDate + " — 데이터 없음";
+      return result;
     }
-    let result = "📅 " + qDate + "\n";
-    for (const [k, v] of Object.entries(tr)) {
-      result += "  " + k + ": " + v + "\n";
+    // history fallback for past dates
+    const parts = qDate.split("-");
+    const monthKey = parts[0] + "-" + parts[1];
+    const dayKey = parts[2];
+    const histDoc = await db.doc("users/" + UID + "/history/" + monthKey).get();
+    if (histDoc.exists) {
+      const days = histDoc.data().days || {};
+      const dayData = days[dayKey];
+      if (dayData && dayData.timeRecords) {
+        const htr = dayData.timeRecords;
+        let result = "📅 " + qDate + " (history)\n";
+        for (const [k, v] of Object.entries(htr)) {
+          result += "  " + k + ": " + v + "\n";
+        }
+        return result;
+      }
     }
-    return result;
+    return "📅 " + qDate + " — 데이터 없음";
   }
 
   if (name === "fix_timerecord") {
     const val = input.value === "null" ? admin.firestore.FieldValue.delete() : input.value;
     const displayVal = input.value === "null" ? "삭제" : input.value;
 
-    // today doc (flat)
+    // Phase D: today doc only
     const todayRef = db.doc("users/" + UID + "/data/today");
     await todayRef.update({["timeRecords." + input.field]: val, "date": dateStr})
       .catch(() => todayRef.set({timeRecords: {[input.field]: input.value === "null" ? null : input.value}, date: dateStr}, {merge: true}));
 
-    // study doc (nested)
-    const studyUpdate = {timeRecords: {}};
-    studyUpdate.timeRecords[dateStr] = {[input.field]: input.value === "null" ? null : input.value};
-    await db.doc("users/" + UID + "/data/study").set(studyUpdate, {merge: true});
-
-    return "✏️ " + input.field + " → " + displayVal + " (today + study 반영)";
+    return "✏️ " + input.field + " → " + displayVal + " (today doc 반영)";
   }
 
   return "⚠️ 알 수 없는 도구: " + name;
@@ -2233,27 +2483,37 @@ exports.myBotWebhook = functions.https.onRequest(async (req, res) => {
 //  KST 08:00 실행 (어젯밤 ~ 오늘 새벽 분석)
 // ═══════════════════════════════════════════════════════════
 
+// ★ dailySensorReport 비활성화 (사용자 요청 2026-04-05)
 exports.dailySensorReport = functions.pubsub
-  .schedule("0 23 * * *")  // UTC 23:00 = KST 08:00
+  .schedule("0 23 * * *")
   .timeZone("Asia/Seoul")
-  .onRun(async () => {
+  .onRun(async () => { return null; });
     try {
       const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
       const yesterday = kstStudyDate(new Date(kstNow.getTime() - 24 * 60 * 60 * 1000));
       const today = kstStudyDate(kstNow);
 
-      // 데이터 수집
-      const [studyDoc, iotDoc, todayDoc] = await Promise.all([
-        db.doc("users/" + UID + "/data/study").get(),
+      // Phase D: today doc + history for yesterday
+      const [iotDoc, todayDoc] = await Promise.all([
         db.doc("users/" + UID + "/data/iot").get(),
         db.doc("users/" + UID + "/data/today").get(),
       ]);
 
-      const studyData = studyDoc.exists ? studyDoc.data() : {};
       const iotData = iotDoc.exists ? iotDoc.data() : {};
       const todayData = todayDoc.exists ? todayDoc.data() : {};
 
-      const yTr = (studyData.timeRecords || {})[yesterday] || {};
+      // yesterday: history fallback
+      let yTr = {};
+      try {
+        const yParts = yesterday.split("-");
+        const yMonthKey = yParts[0] + "-" + yParts[1];
+        const yDayKey = yParts[2];
+        const histDoc = await db.doc("users/" + UID + "/history/" + yMonthKey).get();
+        if (histDoc.exists) {
+          const days = histDoc.data().days || {};
+          yTr = (days[yDayKey] || {}).timeRecords || {};
+        }
+      } catch (_) {}
       const tTr = todayData.timeRecords || {};
       const presence = iotData.presence || {};
       const door = iotData.door || {};
@@ -2328,6 +2588,49 @@ exports.dailySensorReport = functions.pubsub
       console.error("dailySensorReport error:", err.message);
       await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
         {chat_id: MY_CHAT_ID, text: "⚠️ 센서 보고 에러: " + err.message}).catch(() => {});
+    }
+    return null;
+  });
+
+// ═══════════════════════════════════════════════════════════
+//  🌤️ 매일 아침 7시 날씨 예보 → 텔레그램
+// ═══════════════════════════════════════════════════════════
+
+exports.dailyWeatherForecast = functions.pubsub
+  .schedule("3 7 * * *")
+  .timeZone("Asia/Seoul")
+  .onRun(async () => {
+    try {
+      const OWM_KEY = "0aa8ab8d78e7f3b2ff5dd159446d0a13";
+      const lat = 37.3137, lon = 126.926; // 군포 금강4단지
+      const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${OWM_KEY}&units=metric&lang=kr`;
+      const r = await axios.get(url, {timeout: 10000});
+      const list = r.data.list || [];
+
+      const lines = ["🌤️ 오늘 날씨 예보 (군포)"];
+      let hasRain = false;
+
+      for (const item of list.slice(0, 8)) {
+        const dt = item.dt_txt.slice(11, 16);
+        const temp = Math.round(item.main.temp);
+        const desc = item.weather[0].description;
+        const pop = Math.round((item.pop || 0) * 100);
+        const rain = (item.rain && item.rain["3h"]) || 0;
+        if (pop >= 30 || rain > 0) hasRain = true;
+        lines.push(`${dt} ${temp}° ${desc} 💧${pop}%${rain > 0 ? ` ${rain}mm` : ""}`);
+      }
+
+      if (hasRain) {
+        lines.push("");
+        lines.push("☂️ 비 예보 있음 — 우산 챙겨!");
+      }
+
+      const msg = lines.join("\n");
+      await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
+        {chat_id: MY_CHAT_ID, text: msg}).catch(() => {});
+      console.log("Daily weather forecast sent");
+    } catch (err) {
+      console.error("dailyWeatherForecast error:", err.message);
     }
     return null;
   });
@@ -2425,9 +2728,8 @@ async function dailyRolloverLogic() {
 
   log.push("Rolling " + savedDate + " → " + todayKey);
 
-  // 2. Mark rollover in progress (prevent concurrent runs)
+  // 2. Mark rollover in progress (date NOT changed yet — Phase D safety)
   await todayRef.update({
-    date: todayKey,
     _rolloverInProgress: true,
   });
 
@@ -2447,6 +2749,16 @@ async function dailyRolloverLogic() {
       lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
     }, {merge: true});
     log.push("Archived to history/" + month + ".days." + day);
+
+    // Phase D: verify archive before resetting today doc
+    const verifySnap = await historyRef.get();
+    const verifyData = verifySnap.exists ? verifySnap.data() : {};
+    const verifyDay = (verifyData.days || {})[day];
+    if (!verifyDay) {
+      log.push("ABORT: archive verification failed — history/" + month + ".days." + day + " is null");
+      return {rolled: false, error: "archive_verification_failed", log};
+    }
+    log.push("Archive verified OK");
 
     // 4. Reset today doc — preserve orderData, reset everything else
     const newToday = {
@@ -2498,17 +2810,20 @@ async function resetIotDoc(todayKey, log) {
   const iotUpdate = {};
   let changed = false;
 
-  // Reset movement (stale outing from yesterday)
+  // Reset movement (stale outing from yesterday OR stale date)
   const movement = iotData.movement || {};
-  if (movement.type !== "home" || movement.pending) {
+  const movementDate = movement.date || "";
+  const isStaleDate = movementDate !== todayKey;
+  if (movement.type !== "home" || movement.pending || isStaleDate) {
     iotUpdate.movement = {
       type: "home",
       pending: false,
+      date: todayKey,
       resetBy: "cf_rollover",
       resetAt: admin.firestore.FieldValue.serverTimestamp(),
     };
     changed = true;
-    log.push("iot.movement reset to home");
+    log.push("iot.movement reset to home (staleDate=" + isStaleDate + " prevDate=" + movementDate + ")");
   }
 
   // Reset activity transitions for new day
@@ -2648,5 +2963,89 @@ exports.librarySeats = functions.https.onRequest(async (req, res) => {
     res.json({ok:true, summary, seats, fetchedAt: new Date().toISOString()});
   } catch(e) {
     res.status(500).json({ok:false, error: e.message});
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  고시공고 파싱 — gongmuwon.gosi.kr 시험 공고 목록
+//  ?q=fetch → 사이트 파싱 → Firestore 저장 → 새 공고 텔레그램 알림
+//  ?q=list → Firestore에서 저장된 공고 목록 반환
+// ═══════════════════════════════════════════════════════════
+exports.gosiNotice = functions.https.onRequest(async (req, res) => {
+  try {
+    const q = req.query.q || "fetch";
+
+    if (q === "list") {
+      // Firestore에서 저장된 공고 반환
+      const doc = await db.doc("users/" + UID + "/data/study").get();
+      const data = doc.exists ? doc.data() : {};
+      const notices = data.gosiNotices || [];
+      res.json({ok: true, notices, count: notices.length});
+      return;
+    }
+
+    // q === "fetch" → 사이트에서 파싱
+    const GOSI_URL = "https://gongmuwon.gosi.kr/oprut/RpaRpTestPbancLst.do";
+    const cheerio = require("cheerio");
+
+    const {data: html} = await axios.get(GOSI_URL, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "ko-KR,ko;q=0.9",
+      },
+      timeout: 10000,
+    });
+
+    const $ = cheerio.load(html);
+    const notices = [];
+
+    // 파싱 — gongmuwon.gosi.kr ul.tbody 구조
+    $("ul.tbody").each((_, ul) => {
+      const $ul = $(ul);
+      const hiddenLis = $ul.find('li[style*="display"]');
+      const noticeId = hiddenLis.eq(0).text().trim();
+      const no = $ul.find("li.num").text().trim();
+      const category = $ul.find('li[data-title="시험종류"]').text().trim();
+      const title = $ul.find("li.subj a").first().text().trim();
+      const date = $ul.find("li.datetime").text().trim();
+      if (noticeId && title) {
+        notices.push({id: noticeId, no: +no || 0, category, title, date, url: GOSI_URL});
+      }
+    });
+
+    if (notices.length === 0) {
+      res.json({ok: true, notices: [], message: "파싱 결과 없음 — 사이트 구조 변경 가능", htmlLength: html.length});
+      return;
+    }
+
+    // Firestore에서 기존 공고 읽기
+    const studyRef = db.doc("users/" + UID + "/data/study");
+    const studySnap = await studyRef.get();
+    const existingData = studySnap.exists ? studySnap.data() : {};
+    const existingNotices = existingData.gosiNotices || [];
+    const existingIds = new Set(existingNotices.map(n => n.id));
+
+    // 새 공고 필터링
+    const newNotices = notices.filter(n => !existingIds.has(n.id));
+
+    // 최신 20개만 저장
+    const merged = [...newNotices, ...existingNotices].slice(0, 20);
+    await studyRef.set({gosiNotices: merged, gosiLastFetched: new Date().toISOString()}, {merge: true});
+
+    // 새 공고가 있으면 텔레그램 알림
+    if (newNotices.length > 0) {
+      const lines = newNotices.slice(0, 5).map(n =>
+        "📋 " + n.title + "\n   " + n.category + " | " + n.date
+      );
+      const msg = "🔔 새 고시 공고 " + newNotices.length + "건\n\n" + lines.join("\n\n");
+      await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
+        {chat_id: MY_CHAT_ID, text: msg, disable_web_page_preview: true}).catch(() => {});
+    }
+
+    res.json({ok: true, total: notices.length, new: newNotices.length, notices: notices.slice(0, 10)});
+  } catch(e) {
+    console.error("gosiNotice error:", e.message);
+    res.status(500).json({ok: false, error: e.message});
   }
 });

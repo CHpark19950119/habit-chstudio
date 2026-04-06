@@ -4,16 +4,16 @@ import 'package:intl/intl.dart';
 import '../../models/order_models.dart';
 import 'order_theme.dart';
 
-/// TAB 1 — 오늘: Achievement · Habits · Goals · NFC Timeline
+/// TAB 1 — 오늘: Achievement · Habits · Goals · Routine Timeline
 class OrderTodayTab extends StatelessWidget {
   final OrderData data;
   final void Function(VoidCallback fn) onUpdate;
   final Future<void> Function() onLoad;
-  final Map<String, String> nfcActualTimes;
+  final Map<String, String> routineActualTimes;
 
   const OrderTodayTab({super.key, required this.data,
     required this.onUpdate, required this.onLoad,
-    this.nfcActualTimes = const {}});
+    this.routineActualTimes = const {}});
 
   String get _today => todayStr();
   List<OrderHabit> get _active => data.habits.where((h) => !h.archived && !h.isSettled).toList();
@@ -32,7 +32,7 @@ class OrderTodayTab extends StatelessWidget {
       _header(), const SizedBox(height: 16), _summaryCard(),
       const SizedBox(height: 16), _habitsCard(context),
       const SizedBox(height: 16), _goalsCard(),
-      const SizedBox(height: 16), _nfcTile(),
+      const SizedBox(height: 16), _routineTimeline(),
     ]));
 
   // ═══ HEADER ═══
@@ -259,13 +259,13 @@ class OrderTodayTab extends StatelessWidget {
     ));
   }
 
-  // ═══ 4. NFC TIMELINE (COLLAPSED) ═══
-  Widget _nfcTile() {
+  // ═══ 4. ROUTINE TIMELINE (COLLAPSED) ═══
+  Widget _routineTimeline() {
     final rt = data.routineTarget;
     final nowMin = DateTime.now().hour * 60 + DateTime.now().minute;
     final roles = [('기상','☀️',rt.wakeTime??'05:30','wake',OC.amber), ('외출','🚶',rt.outingTime??'07:00','outing',OC.success),
       ('공부','📚',rt.studyTime??'08:00','study',OC.race), ('수면','🌙',rt.sleepTime??'23:00','sleep',OC.marathon)];
-    final rec = nfcActualTimes.length;
+    final rec = routineActualTimes.length;
     return Container(
       decoration: BoxDecoration(color: OC.card, borderRadius: BorderRadius.circular(24),
         border: Border.all(color: OC.border.withValues(alpha: .5)),
@@ -282,7 +282,7 @@ class OrderTodayTab extends StatelessWidget {
           const SizedBox(width: 4), const Icon(Icons.expand_more_rounded, size: 20, color: OC.text3),
         ]),
         children: roles.map((r) {
-          final actual = nfcActualTimes[r.$4]; final tMin = _toMin(r.$3);
+          final actual = routineActualTimes[r.$4]; final tMin = _toMin(r.$3);
           final isRec = actual != null; final isPast = nowMin > tMin + 30;
           int off = 0; Color dc = OC.text4; String lbl = isPast ? '미기록' : '대기';
           if (isRec) { off = _toMin(actual) - tMin; dc = off.abs() <= 10 ? OC.success : off.abs() <= 30 ? OC.amber : OC.error; lbl = actual; }

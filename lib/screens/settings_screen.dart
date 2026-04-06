@@ -13,6 +13,8 @@ import '../services/routine_service.dart';
 import '../services/data_audit_service.dart';
 import '../services/write_queue_service.dart';
 import '../services/safety_net_service.dart';
+import '../services/claude_agent_service.dart';
+import '../services/gosi_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -21,13 +23,14 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _nfc = DayService();
+  final _day = DayService();
   final _wake = WakeService();
-  static const _bixbyChannel = MethodChannel('com.cheonhong.cheonhong_studio/bixby');
+  static const _notifListenerChannel = MethodChannel('com.cheonhong.cheonhong_studio/notif_listener');
   bool _loading = true;
   String _wakeMode = 'sensor';
   bool _notifListenerEnabled = false;
   bool _safetyNetEnabled = true;
+  bool _agentRunning = false;
 
   bool get _dk => Theme.of(context).brightness == Brightness.dark;
   Color get _textMain => _dk ? BotanicalColors.textMainDark : BotanicalColors.textMain;
@@ -54,11 +57,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     try {
-      await _nfc.initialize().timeout(const Duration(seconds: 5), onTimeout: () {});
+      await _day.initialize().timeout(const Duration(seconds: 5), onTimeout: () {});
       _wakeMode = _wake.mode;
       _safetyNetEnabled = SafetyNetService().enabled;
       try {
-        _notifListenerEnabled = await _bixbyChannel.invokeMethod<bool>('isNotificationListenerEnabled') ?? false;
+        _notifListenerEnabled = await _notifListenerChannel.invokeMethod<bool>('isNotificationListenerEnabled') ?? false;
+      } catch (_) {}
+      try {
+        _agentRunning = await ClaudeAgentService().isRunning();
       } catch (_) {}
     } catch (_) {
     } finally {
@@ -79,8 +85,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         : SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              // ─── NFC & 자동화 진입 ───
-              _nfcEntryCard(),
+              // ─── 자동화 ───
+              _automationCard(),
               const SizedBox(height: 16),
 
               // ─── 기상 감지 ───
@@ -91,8 +97,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _safetyNetCard(),
               const SizedBox(height: 16),
 
-              // ─── 빅스비 연동 ───
-              _bixbyCard(),
+              // ─── 알림 감지 ───
+              _notifListenerCard(),
+              const SizedBox(height: 16),
+
+              // ─── Agent ───
+              _agentCard(),
               const SizedBox(height: 16),
 
               // ─── 앱 정보 ───
@@ -101,6 +111,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               // ─── 쓰기 큐 ───
               _writeQueueCard(),
+              const SizedBox(height: 16),
+
+              // ─── 고시 공고 ───
+              _gosiNoticeCard(),
               const SizedBox(height: 16),
 
               // ─── 데이터 관리 ───
@@ -112,7 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // ═══ 자동화 카드 ═══
-  Widget _nfcEntryCard() {
+  Widget _automationCard() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BotanicalDeco.card(_dk),
@@ -160,7 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ])),
         Switch.adaptive(
           value: _safetyNetEnabled,
-          activeColor: const Color(0xFF8B5CF6),
+          activeTrackColor: const Color(0xFF8B5CF6),
           onChanged: (v) async {
             await SafetyNetService().setEnabled(v);
             _safeSetState(() => _safetyNetEnabled = v);
@@ -227,7 +241,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 emoji: '🚪', label: '문 열림 테스트',
                 color: const Color(0xFFf59e0b),
                 onTap: () async {
-                  final prevState = _nfc.state;
+                  final prevState = _day.state;
                   final routine = RoutineService();
                   routine.forceState(DayState.idle);
                   SensorWakeDetector.resetForTest();
@@ -238,7 +252,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   DoorSensorService().emitTestEvent(DoorState.open);
                   await Future.delayed(const Duration(seconds: 1));
                   if (!mounted) return;
-                  final newState = _nfc.state;
+                  final newState = _day.state;
                   final success = newState == DayState.awake;
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(success
@@ -295,8 +309,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ═══ 빅스비 연동 카드 ═══
-  Widget _bixbyCard() {
+  // ═══ 알림 감지 카드 ═══
+  Widget _notifListenerCard() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BotanicalDeco.card(_dk),
@@ -312,10 +326,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(width: 16),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('빅스비 연동', style: BotanicalTypo.body(
+            Text('알림 감지', style: BotanicalTypo.body(
               size: 15, weight: FontWeight.w700, color: _textMain)),
             const SizedBox(height: 2),
-            Text('알림 감지 → 자동 외출/귀가 (20분 확정)',
+            Text('Tuya 도어센서 기상 감지 + 화면 ON 추적',
               style: BotanicalTypo.label(size: 11, color: _textMuted)),
           ])),
           Container(
@@ -336,7 +350,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           GestureDetector(
             onTap: () async {
               try {
-                await _bixbyChannel.invokeMethod('openNotificationListenerSettings');
+                await _notifListenerChannel.invokeMethod('openNotificationListenerSettings');
               } catch (_) {}
             },
             child: Container(
@@ -358,9 +372,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
         else
           Row(children: [
             const SizedBox(width: 60),
-            Text('CHSTUDIO_OUT / CHSTUDIO_HOME 알림 감지 중',
+            Text('도어센서 알림 감지 중',
               style: BotanicalTypo.label(size: 11, color: _textMuted)),
           ]),
+      ]),
+    );
+  }
+
+  // ═══ Agent 카드 ═══
+  Widget _agentCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BotanicalDeco.card(_dk),
+      child: Row(children: [
+        Container(
+          width: 44, height: 44,
+          decoration: BoxDecoration(
+            color: const Color(0xFF6366F1).withValues(alpha: _dk ? 0.12 : 0.08),
+            borderRadius: BorderRadius.circular(14)),
+          child: const Icon(Icons.psychology_rounded, size: 24,
+            color: Color(0xFF6366F1)),
+        ),
+        const SizedBox(width: 16),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Agent', style: BotanicalTypo.body(
+            size: 15, weight: FontWeight.w700, color: _textMain)),
+          const SizedBox(height: 2),
+          Text(_agentRunning ? '앱 사용 감시 활성' : '접근성 서비스 비활성',
+            style: BotanicalTypo.label(size: 11, color: _textMuted)),
+        ])),
+        GestureDetector(
+          onTap: () async {
+            if (!_agentRunning) {
+              await ClaudeAgentService().openAccessibilitySettings();
+            }
+            // 돌아왔을 때 상태 재확인
+            await Future.delayed(const Duration(seconds: 1));
+            final running = await ClaudeAgentService().isRunning();
+            _safeSetState(() => _agentRunning = running);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: (_agentRunning
+                ? const Color(0xFF6366F1)
+                : _textMuted).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10)),
+            child: Text(_agentRunning ? 'ON' : 'OFF',
+              style: BotanicalTypo.label(size: 11, weight: FontWeight.w800,
+                color: _agentRunning ? const Color(0xFF6366F1) : _textMuted)),
+          ),
+        ),
       ]),
     );
   }
@@ -595,5 +657,97 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: const Text('초기화', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
       ],
     ));
+  }
+
+  // ═══ 고시 공고 카드 ═══
+  Widget _gosiNoticeCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BotanicalDeco.card(_dk),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.indigo.withValues(alpha: _dk ? 0.15 : 0.08),
+              borderRadius: BorderRadius.circular(10)),
+            child: Icon(Icons.campaign_rounded, size: 20,
+              color: _dk ? Colors.indigo.shade200 : Colors.indigo)),
+          const SizedBox(width: 12),
+          Expanded(child: Text('고시 공고',
+            style: BotanicalTypo.heading(size: 15, color: _textMain))),
+          GestureDetector(
+            onTap: () async {
+              _safeSetState(() {});
+              final notices = await GosiService().fetchNew();
+              if (!mounted) return;
+              _safeSetState(() {});
+              if (notices.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('파싱 결과 없음'), duration: Duration(seconds: 2)));
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('${notices.length}건 조회 완료'),
+                    duration: const Duration(seconds: 2)));
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: _accent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8)),
+              child: Text('새로고침', style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700, color: _accent))),
+          ),
+        ]),
+        const SizedBox(height: 14),
+        FutureBuilder<List<GosiNotice>>(
+          future: GosiService().getNotices(),
+          builder: (ctx, snap) {
+            if (snap.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(child: SizedBox(width: 20, height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2))));
+            }
+            final notices = snap.data ?? [];
+            if (notices.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text('공고 데이터 없음 — 새로고침 눌러서 파싱',
+                  style: TextStyle(fontSize: 12, color: _textMuted)));
+            }
+            return Column(
+              children: notices.take(5).map((n) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.withValues(alpha: _dk ? 0.12 : 0.06),
+                      borderRadius: BorderRadius.circular(4)),
+                    child: Text(n.category.isNotEmpty ? n.category : '일반',
+                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700,
+                        color: _dk ? Colors.indigo.shade200 : Colors.indigo)),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(n.title, style: TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w600, color: _textMain),
+                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 2),
+                      Text(n.date, style: TextStyle(
+                        fontSize: 10, color: _textMuted)),
+                    ],
+                  )),
+                ]),
+              )).toList(),
+            );
+          },
+        ),
+      ]),
+    );
   }
 }

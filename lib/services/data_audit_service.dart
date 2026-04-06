@@ -10,8 +10,9 @@ import 'firebase_service.dart';
 /// 1회/일 실행, 결과를 SharedPreferences에 저장
 /// ═══════════════════════════════════════════════════════════
 class DataAuditService {
-  static final DataAuditService _i = DataAuditService._();
-  factory DataAuditService() => _i;
+  // ★ AUDIT FIX: Q (naming) — _i → _instance (다른 서비스와 일관성)
+  static final DataAuditService _instance = DataAuditService._();
+  factory DataAuditService() => _instance;
   DataAuditService._();
 
   static void _log(String msg) => debugPrint('[DataAudit] $msg');
@@ -156,7 +157,7 @@ class DataAuditService {
   }
 
   // ═══════════════════════════════════════════
-  //  2. 듀얼 문서 일관성 체크
+  //  2. today doc 일관성 체크 (Phase D: dual-write 제거)
   // ═══════════════════════════════════════════
 
   Future<void> _auditDualDocSync(List<String> results) async {
@@ -164,52 +165,22 @@ class DataAuditService {
       final fb = FirebaseService();
       final todayKey = StudyDateUtils.todayKey();
 
-      final studyData = await fb.getStudyData();
       final todayData = await fb.getTodayDoc();
-      if (studyData == null || todayData == null) return;
+      if (todayData == null) {
+        results.add('WARN: today doc is null');
+        return;
+      }
 
       // today doc의 date 필드 확인
       final todayDate = todayData['date'] as String?;
       if (todayDate != null && todayDate != todayKey) {
-        results.add('WARN: today doc date=$todayDate != todayKey=$todayKey (rollover 필요?)');
+        results.add('WARN: today doc date=$todayDate != todayKey=$todayKey (rollover needed?)');
       }
 
-      // timeRecords 비교
-      final sTR = studyData['timeRecords'];
-      final tTR = todayData['timeRecords'];
-      if (sTR is Map && tTR is Map) {
-        final sMap = sTR[todayKey];
-        if (sMap is Map) {
-          final sFields = Map<String, dynamic>.from(sMap);
-          final tFields = Map<String, dynamic>.from(tTR);
-
-          for (final key in ['wake', 'study', 'studyEnd', 'outing', 'returnHome', 'bedTime']) {
-            if (sFields[key] != tFields[key]) {
-              results.add('SYNC: $key study=${sFields[key]} today=${tFields[key]}');
-
-              // 최신 기준 동기화
-              final sMod = studyData['lastModified'] as int? ?? 0;
-              final tMod = todayData['lastModified'] as int? ?? 0;
-              if (sMod >= tMod) {
-                // ★ dot-notation으로 개별 필드만 동기화 (기존 필드 보존)
-                for (final key in ['wake', 'study', 'studyEnd', 'outing', 'returnHome', 'bedTime']) {
-                  if (sFields[key] != null) {
-                    await fb.updateTodayField('timeRecords.$key', sFields[key]);
-                  }
-                }
-                results.add('  → study doc 기준으로 today 동기화 (필드별)');
-              } else {
-                final tr = TimeRecord.fromMap(todayKey, tFields);
-                await fb.updateTimeRecord(todayKey, tr);
-                results.add('  → today doc 기준으로 study 동기화');
-              }
-              break; // 한번 동기화하면 전체 복사됨
-            }
-          }
-        }
-      }
+      // Phase D: today doc is single source of truth, no dual-doc sync needed
+      results.add('OK: Phase D -- today doc is single source of truth');
     } catch (e) {
-      results.add('듀얼 문서 감사 실패: $e');
+      results.add('today doc audit error: $e');
     }
   }
 

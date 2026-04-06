@@ -15,7 +15,7 @@ import 'order/exam_analysis_screen.dart';
 /// ═══════════════════════════════════════════════════════════
 
 // ─── Colors ───
-const _cBg = Color(0xFF0F0D0A);
+const _cBg = Color(0xFF181612);
 const _cEarth = Color(0xFF3A2E1E);
 const _cDust = Color(0xFFC8B48C);
 const _cAc = Color(0xFF8B2500);
@@ -52,7 +52,7 @@ class _JourneyBgGame extends FlameGame {
 }
 
 // ─── 먼지 파티클 ───
-class _Dust extends PositionComponent with HasGameRef<_JourneyBgGame> {
+class _Dust extends PositionComponent with HasGameReference<_JourneyBgGame> {
   final Random rng;
   late double speed;
   late double opacity;
@@ -74,8 +74,8 @@ class _Dust extends PositionComponent with HasGameRef<_JourneyBgGame> {
     wobble += dt * (0.3 + rng.nextDouble() * 0.15);
     position.x += sin(wobble) * 0.35;
     if (position.y < -20) {
-      position.y = gameRef.size.y + 20;
-      position.x = rng.nextDouble() * gameRef.size.x;
+      position.y = game.size.y + 20;
+      position.x = rng.nextDouble() * game.size.x;
     }
   }
 
@@ -90,7 +90,7 @@ class _Dust extends PositionComponent with HasGameRef<_JourneyBgGame> {
 }
 
 // ─── 반딧불 ───
-class _Firefly extends PositionComponent with HasGameRef<_JourneyBgGame> {
+class _Firefly extends PositionComponent with HasGameReference<_JourneyBgGame> {
   final Random rng;
   late double phase;
   late double dx, dy;
@@ -114,7 +114,7 @@ class _Firefly extends PositionComponent with HasGameRef<_JourneyBgGame> {
     phase += dt * 1.1;
     position.x += dx * dt;
     position.y += dy * dt;
-    final s = gameRef.size;
+    final s = game.size;
     if (position.x < 0 || position.x > s.x) dx = -dx;
     if (position.y < 0 || position.y > s.y) dy = -dy;
     position.x = position.x.clamp(0, s.x);

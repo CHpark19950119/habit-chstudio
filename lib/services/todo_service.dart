@@ -9,7 +9,6 @@ import 'package:intl/intl.dart';
 import '../constants.dart';
 import '../models/plan_models.dart';
 import '../models/models.dart';
-import 'creature_service.dart';
 import '../utils/study_date_utils.dart';
 import 'firebase_service.dart';
 import 'widget_render_service.dart';
@@ -54,7 +53,7 @@ class TodoService {
     return getTodos(_todayDate());
   }
 
-  /// Todo 저장 — Optimistic: 캐시 즉시 갱신, Firestore fire-and-forget
+  /// Todo 저장 -- Optimistic: 캐시 즉시 갱신, Firestore fire-and-forget
   void saveTodos(TodoDaily todos) {
     final map = todos.toMap();
     if (map['createdAt'] == null) {
@@ -62,15 +61,10 @@ class TodoService {
     }
     map['updatedAt'] = DateTime.now().toIso8601String();
 
-    // ★ 1) 캐시 즉시 갱신 (write 보호 마킹 포함 — 스트림 덮어쓰기 방지)
+    // 1) 캐시 즉시 갱신 (write 보호 마킹 포함)
     FirebaseService().updateTodosCache(todos.date, map);
 
-    // ★ 2) WriteQueue (study doc)
-    FirestoreWriteQueue().enqueue(_todosDoc, {
-      'todos.${todos.date}': map,
-    });
-
-    // ★ 3) Phase C: today 문서에도 todos 동기화 (오늘 날짜만)
+    // 2) Phase D: today doc only (single source of truth)
     if (todos.date == _todayDate()) {
       final todayList = todos.items.map((t) => {
         'id': t.id,
@@ -81,7 +75,12 @@ class TodoService {
       FirebaseService().updateTodayField('todos', todayList);
     }
 
-    // ★ 4) 홈 위젯 갱신
+    // 3) study doc (legacy compat -- will be removed in future)
+    FirestoreWriteQueue().enqueue(_todosDoc, {
+      'todos.${todos.date}': map,
+    });
+
+    // 4) Home widget refresh
     WidgetRenderService().updateWidget().catchError((_) {});
   }
 
@@ -107,11 +106,6 @@ class TodoService {
       memo: todos.memo,
       createdAt: todos.createdAt,
     ));
-
-    // Creature reward for completing a todo
-    if (completed) {
-      try { CreatureService().addStudyReward(5); } catch (_) {}
-    }
 
     // ★ 진행도 자동 반영: goalId가 있는 투두 완료 시 ProgressGoal 업데이트
     if (completed) {

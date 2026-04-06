@@ -176,7 +176,7 @@ class _InsightScreenState extends State<InsightScreen>
   @override
   Widget build(BuildContext context) {
     _dk = Theme.of(context).brightness == Brightness.dark;
-    final bg = _dk ? const Color(0xFF0d1f16) : const Color(0xFFFCF9F3);
+    final bg = _dk ? const Color(0xFF152820) : const Color(0xFFFCF9F3);
     final textMain = _dk ? Colors.white : const Color(0xFF1e293b);
     final textSub = _dk ? Colors.white54 : Colors.grey;
 

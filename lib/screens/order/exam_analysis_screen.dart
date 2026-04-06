@@ -13,9 +13,9 @@ import '../../models/roadmap_models.dart';
 /// ═══════════════════════════════════════════════════════════
 
 // ─── Colors ───
-const _bg = Color(0xFF0C0A12);
-const _surface = Color(0xFF16131F);
-const _border = Color(0xFF2A2538);
+const _bg = Color(0xFF15131C);
+const _surface = Color(0xFF1E1B28);
+const _border = Color(0xFF332E42);
 const _tx = Color(0xFFE0DAD0);
 const _txSub = Color(0xFF9990A8);
 const _txMuted = Color(0xFF6A6278);
@@ -48,7 +48,7 @@ class _ExamBgGame extends FlameGame {
 }
 
 // ─── 떠다니는 먼지 ───
-class _Mote extends PositionComponent with HasGameRef<_ExamBgGame> {
+class _Mote extends PositionComponent with HasGameReference<_ExamBgGame> {
   final Random rng;
   late double speed, opacity, wobble, radius;
 
@@ -67,8 +67,8 @@ class _Mote extends PositionComponent with HasGameRef<_ExamBgGame> {
     wobble += dt * 0.4;
     position.x += sin(wobble) * 0.3;
     if (position.y < -10) {
-      position.y = gameRef.size.y + 10;
-      position.x = rng.nextDouble() * gameRef.size.x;
+      position.y = game.size.y + 10;
+      position.x = rng.nextDouble() * game.size.x;
     }
   }
 
@@ -80,7 +80,7 @@ class _Mote extends PositionComponent with HasGameRef<_ExamBgGame> {
 }
 
 // ─── 빛줄기 ───
-class _Ray extends PositionComponent with HasGameRef<_ExamBgGame> {
+class _Ray extends PositionComponent with HasGameReference<_ExamBgGame> {
   final Random rng;
   late double phase, length, angle, baseOp;
 

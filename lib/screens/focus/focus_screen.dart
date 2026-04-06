@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,7 +20,7 @@ class _FocusScreenState extends State<FocusScreen>
   bool get _dk => Theme.of(context).brightness == Brightness.dark;
 
   // theme-aware colors — no hardcoding
-  Color get _bg => _dk ? const Color(0xFF111015) : const Color(0xFFF6F4F0);
+  Color get _bg => _dk ? const Color(0xFF18161E) : const Color(0xFFF6F4F0);
   Color get _t1 => _dk ? const Color(0xFFF2ECE4) : const Color(0xFF1A1714);
   Color get _t2 => _dk ? const Color(0xFFB8A898) : const Color(0xFF5C5048);
   Color get _t3 => _dk ? const Color(0xFF7A6E62) : const Color(0xFF9A8E82);
@@ -51,6 +50,11 @@ class _FocusScreenState extends State<FocusScreen>
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   static const _focusCh = MethodChannel('com.cheonhong.cheonhong_studio/focus_mode');
+
+  void _goToDashboard() {
+    _exitImmersive();
+    if (mounted && Navigator.canPop(context)) Navigator.pop(context);
+  }
 
   void _minimizeToHome() {
     _exitImmersive();
@@ -83,8 +87,9 @@ class _FocusScreenState extends State<FocusScreen>
 
   @override
   Widget build(BuildContext context) {
+    // ★ AUDIT FIX: P-01 — timerTick + _fs 양쪽 listen (매초 리빌드는 이 화면만)
     return ListenableBuilder(
-      listenable: _fs,
+      listenable: Listenable.merge([_fs, _fs.timerTick]),
       builder: (context, _) {
         if (_fs.isRunning) return _immersiveView();
         // Session ended — pop back to home
@@ -112,7 +117,7 @@ class _FocusScreenState extends State<FocusScreen>
       canPop: isRest,
       onPopInvokedWithResult: (didPop, _) { if (!didPop) _confirmEnd(); },
       child: Scaffold(
-        backgroundColor: const Color(0xFF08080C),
+        backgroundColor: const Color(0xFF121018),
         body: Stack(children: [
           // ambient glow
           Positioned(
@@ -209,7 +214,7 @@ class _FocusScreenState extends State<FocusScreen>
               ),
             ),
 
-            // ── center ring ──
+            // ── center hourglass ──
             Expanded(child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
               AnimatedBuilder(
                 animation: _pulseCtrl,
@@ -221,20 +226,30 @@ class _FocusScreenState extends State<FocusScreen>
                 },
               ),
               const SizedBox(height: 18),
-              SizedBox(width: 240, height: 240, child: Stack(alignment: Alignment.center, children: [
+              SizedBox(width: 220, height: 300, child: Stack(alignment: Alignment.center, children: [
+                // ambient glow behind hourglass
                 if (!isRest) AnimatedBuilder(
                   animation: _pulseCtrl,
-                  builder: (_, __) => Container(width: 240, height: 240,
+                  builder: (_, __) => Container(width: 200, height: 200,
                     decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [
-                      BoxShadow(color: sc.withValues(alpha: 0.07 + _pulseCtrl.value * 0.05),
-                        blurRadius: 44, spreadRadius: 12),
+                      BoxShadow(color: sc.withValues(alpha: 0.06 + _pulseCtrl.value * 0.04),
+                        blurRadius: 50, spreadRadius: 15),
                     ])),
                 ),
-                CustomPaint(size: const Size(240, 240),
-                  painter: _RingPainter(progress: st.cycleProgress, color: dc)),
+                AnimatedBuilder(
+                  animation: _pulseCtrl,
+                  builder: (_, __) => CustomPaint(
+                    size: const Size(220, 300),
+                    painter: _HourglassPainter(
+                      progress: st.cycleProgress,
+                      color: dc,
+                      pulse: _pulseCtrl.value,
+                    ),
+                  ),
+                ),
                 Column(mainAxisSize: MainAxisSize.min, children: [
                   Text(st.mainTimerFormatted, style: const TextStyle(
-                    fontSize: 48, fontWeight: FontWeight.w200, color: Colors.white,
+                    fontSize: 44, fontWeight: FontWeight.w200, color: Colors.white,
                     letterSpacing: -1, fontFamily: 'monospace',
                     fontFeatures: [FontFeature.tabularFigures()])),
                   const SizedBox(height: 4),
@@ -243,7 +258,8 @@ class _FocusScreenState extends State<FocusScreen>
                     fontFamily: 'monospace', fontFeatures: const [FontFeature.tabularFigures()])),
                 ]),
               ])),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              // ── cycle info + collected hourglasses ──
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -257,6 +273,20 @@ class _FocusScreenState extends State<FocusScreen>
                   fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.3),
                   fontFeatures: const [FontFeature.tabularFigures()])),
               ]),
+              if (st.cycleCount > 0) ...[
+                const SizedBox(height: 8),
+                // mini hourglasses — one per completed cycle
+                Row(mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    st.cycleCount.clamp(0, 8),
+                    (i) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      child: Icon(Icons.hourglass_bottom_rounded,
+                        size: 14, color: dc.withValues(alpha: 0.5 + i * 0.05)),
+                    ),
+                  ),
+                ),
+              ],
             ]))),
 
             // ── cycle bar ──
@@ -282,7 +312,7 @@ class _FocusScreenState extends State<FocusScreen>
                 const SizedBox(width: 6),
                 _imActionBtn(Icons.lock_rounded, const Color(0xFF8B5CF6), _lockScreen),
                 const SizedBox(width: 6),
-                _imActionBtn(Icons.home_rounded, Colors.blueAccent, _minimizeToHome),
+                _imActionBtn(Icons.dashboard_rounded, Colors.blueAccent, _goToDashboard, onLongPress: _minimizeToHome),
                 const SizedBox(width: 6),
                 _imActionBtn(Icons.stop_rounded, Colors.redAccent, _confirmEnd, size: 24),
               ]),
@@ -320,8 +350,8 @@ class _FocusScreenState extends State<FocusScreen>
   }
 
 
-  Widget _imActionBtn(IconData icon, Color c, VoidCallback onTap, {double size = 22}) {
-    return GestureDetector(onTap: onTap,
+  Widget _imActionBtn(IconData icon, Color c, VoidCallback onTap, {double size = 22, VoidCallback? onLongPress}) {
+    return GestureDetector(onTap: onTap, onLongPress: onLongPress,
       child: ClipRRect(borderRadius: BorderRadius.circular(12),
         child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
           child: Container(width: 48, height: 48,
@@ -413,27 +443,220 @@ class _FocusScreenState extends State<FocusScreen>
 
 }
 
-class _RingPainter extends CustomPainter {
+/// Hourglass timer painter — sand flows from top to bottom based on progress.
+/// [progress] 0.0 = start (all sand top), 1.0 = done (all sand bottom).
+/// [pulse] drives subtle sand-stream shimmer.
+class _HourglassPainter extends CustomPainter {
   final double progress;
   final Color color;
-  _RingPainter({required this.progress, required this.color});
+  final double pulse;
+  _HourglassPainter({required this.progress, required this.color, required this.pulse});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Rect.fromLTWH(4, 4, size.width - 8, size.height - 8);
-    final p = Paint()..style = PaintingStyle.stroke..strokeWidth = 8..strokeCap = StrokeCap.round;
-    p.color = color.withValues(alpha: 0.10);
-    canvas.drawArc(rect, -pi / 2, 2 * pi, false, p);
-    if (progress > 0) {
-      p.shader = SweepGradient(
-        colors: [color.withValues(alpha: 0.35), color],
-        transform: const GradientRotation(-pi / 2),
-      ).createShader(rect);
-      canvas.drawArc(rect, -pi / 2, 2 * pi * progress.clamp(0.0, 1.0), false, p);
+    final w = size.width;
+    final h = size.height;
+    final cx = w / 2;
+    final p = progress.clamp(0.0, 1.0);
+
+    // Dimensions
+    final glassTop = h * 0.08;
+    final glassBot = h * 0.92;
+    final neck = h * 0.50;
+    final halfW = w * 0.36;
+    final neckW = w * 0.035;
+    final capH = h * 0.025;
+
+    // ── Metal caps (top & bottom) — 3D beveled ──
+    final capRect = RRect.fromRectAndRadius(
+      Rect.fromLTRB(cx - halfW - 8, glassTop - capH, cx + halfW + 8, glassTop + capH),
+      const Radius.circular(3),
+    );
+    final capRectBot = RRect.fromRectAndRadius(
+      Rect.fromLTRB(cx - halfW - 8, glassBot - capH, cx + halfW + 8, glassBot + capH),
+      const Radius.circular(3),
+    );
+
+    // Cap gradient (metallic)
+    final capPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        colors: [
+          color.withValues(alpha: 0.5),
+          color.withValues(alpha: 0.25),
+          color.withValues(alpha: 0.4),
+        ],
+        stops: const [0.0, 0.5, 1.0],
+      ).createShader(capRect.outerRect);
+    canvas.drawRRect(capRect, capPaint);
+    canvas.drawRRect(capRectBot, capPaint);
+
+    // Cap highlight
+    canvas.drawRRect(capRect, Paint()
+      ..style = PaintingStyle.stroke ..strokeWidth = 0.8
+      ..color = Colors.white.withValues(alpha: 0.15));
+    canvas.drawRRect(capRectBot, Paint()
+      ..style = PaintingStyle.stroke ..strokeWidth = 0.8
+      ..color = Colors.white.withValues(alpha: 0.15));
+
+    // ── Glass body path ──
+    Path _glassShape() => Path()
+      ..moveTo(cx - halfW, glassTop + capH)
+      ..cubicTo(cx - halfW, neck - h * 0.08, cx - neckW, neck - h * 0.03, cx - neckW, neck)
+      ..cubicTo(cx - neckW, neck + h * 0.03, cx - halfW, neck + h * 0.08, cx - halfW, glassBot - capH)
+      ..lineTo(cx + halfW, glassBot - capH)
+      ..cubicTo(cx + halfW, neck + h * 0.08, cx + neckW, neck + h * 0.03, cx + neckW, neck)
+      ..cubicTo(cx + neckW, neck - h * 0.03, cx + halfW, neck - h * 0.08, cx + halfW, glassTop + capH)
+      ..close();
+
+    final glassPath = _glassShape();
+
+    // Glass fill — translucent with depth
+    canvas.drawPath(glassPath, Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.centerLeft, end: Alignment.centerRight,
+        colors: [
+          color.withValues(alpha: 0.06),
+          color.withValues(alpha: 0.02),
+          Colors.white.withValues(alpha: 0.04),
+          color.withValues(alpha: 0.06),
+        ],
+        stops: const [0.0, 0.3, 0.6, 1.0],
+      ).createShader(Rect.fromLTRB(cx - halfW, glassTop, cx + halfW, glassBot)));
+
+    // Glass outline
+    canvas.drawPath(glassPath, Paint()
+      ..style = PaintingStyle.stroke ..strokeWidth = 1.5
+      ..color = color.withValues(alpha: 0.18));
+
+    // ── Glass reflection (left highlight strip) ──
+    final reflPath = Path()
+      ..moveTo(cx - halfW + 8, glassTop + capH + 10)
+      ..cubicTo(cx - halfW + 8, neck - h * 0.06, cx - neckW + 6, neck - h * 0.02, cx - neckW + 5, neck)
+      ..cubicTo(cx - neckW + 6, neck + h * 0.02, cx - halfW + 8, neck + h * 0.06, cx - halfW + 8, glassBot - capH - 10);
+    canvas.drawPath(reflPath, Paint()
+      ..style = PaintingStyle.stroke ..strokeWidth = 3.0
+      ..color = Colors.white.withValues(alpha: 0.08)
+      ..strokeCap = StrokeCap.round);
+
+    // Clip to glass for sand rendering
+    canvas.save();
+    canvas.clipPath(glassPath);
+
+    // ── Top sand ──
+    final topSandFraction = 1.0 - p;
+    if (topSandFraction > 0.01) {
+      final topZone = neck - h * 0.03 - (glassTop + capH);
+      final topSandH = topZone * topSandFraction;
+      final sandTop = neck - h * 0.03 - topSandH;
+
+      // Sand surface is slightly curved
+      final topSandPath = Path()
+        ..moveTo(cx - halfW - 2, sandTop)
+        ..quadraticBezierTo(cx, sandTop + 4, cx + halfW + 2, sandTop)
+        ..lineTo(cx + halfW + 2, neck - h * 0.03)
+        ..lineTo(cx + neckW, neck)
+        ..lineTo(cx - neckW, neck)
+        ..lineTo(cx - halfW - 2, neck - h * 0.03)
+        ..close();
+
+      // Sand gradient (warm, layered)
+      canvas.drawPath(topSandPath, Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+          colors: [
+            color.withValues(alpha: 0.55),
+            color.withValues(alpha: 0.40),
+            color.withValues(alpha: 0.60),
+          ],
+          stops: const [0.0, 0.6, 1.0],
+        ).createShader(Rect.fromLTRB(cx - halfW, sandTop, cx + halfW, neck)));
+
+      // Surface highlight
+      canvas.drawPath(
+        Path()
+          ..moveTo(cx - halfW * 0.7, sandTop + 1)
+          ..quadraticBezierTo(cx, sandTop + 5, cx + halfW * 0.7, sandTop + 1),
+        Paint()..style = PaintingStyle.stroke ..strokeWidth = 1.0
+          ..color = Colors.white.withValues(alpha: 0.12));
     }
+
+    // ── Bottom sand ──
+    if (p > 0.01) {
+      final botZone = (glassBot - capH) - (neck + h * 0.03);
+      final botSandH = botZone * p;
+      final sandTopY = glassBot - capH - botSandH;
+
+      // Sand mound — dome shaped top
+      final botSandPath = Path()
+        ..moveTo(cx - halfW - 2, glassBot - capH)
+        ..lineTo(cx + halfW + 2, glassBot - capH)
+        ..lineTo(cx + halfW + 2, sandTopY + 8)
+        ..quadraticBezierTo(cx, sandTopY - 6, cx - halfW - 2, sandTopY + 8)
+        ..close();
+
+      canvas.drawPath(botSandPath, Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+          colors: [
+            color.withValues(alpha: 0.50),
+            color.withValues(alpha: 0.65),
+            color.withValues(alpha: 0.55),
+          ],
+          stops: const [0.0, 0.7, 1.0],
+        ).createShader(Rect.fromLTRB(cx - halfW, sandTopY, cx + halfW, glassBot)));
+
+      // Mound highlight
+      canvas.drawPath(
+        Path()
+          ..moveTo(cx - halfW * 0.5, sandTopY + 6)
+          ..quadraticBezierTo(cx, sandTopY - 4, cx + halfW * 0.5, sandTopY + 6),
+        Paint()..style = PaintingStyle.stroke ..strokeWidth = 1.2
+          ..color = Colors.white.withValues(alpha: 0.10));
+    }
+
+    // ── Sand stream ──
+    if (p < 0.99 && topSandFraction > 0.01) {
+      final streamTop = neck - 2;
+      final botZone = (glassBot - capH) - (neck + h * 0.03);
+      final botSandH = botZone * p;
+      final streamBot = glassBot - capH - botSandH + 4;
+
+      // Main stream
+      canvas.drawLine(
+        Offset(cx, streamTop), Offset(cx, streamBot),
+        Paint()
+          ..strokeWidth = 1.2 + pulse * 0.4
+          ..color = color.withValues(alpha: 0.45 + pulse * 0.15)
+          ..strokeCap = StrokeCap.round);
+
+      // Splash particles at bottom
+      final rng = (progress * 1000).toInt();
+      for (int i = 0; i < 6; i++) {
+        final seed = (rng + i * 31 + (pulse * 13).toInt()) % 100;
+        final spread = (seed % 11 - 5) * 1.8;
+        final drop = (seed % 8) * 2.0;
+        canvas.drawCircle(
+          Offset(cx + spread, streamBot + drop),
+          0.6 + (seed % 3) * 0.25,
+          Paint()..color = color.withValues(alpha: 0.25 + (seed % 30) / 100.0),
+        );
+      }
+    }
+
+    canvas.restore();
+
+    // ── Outer glass shine (right edge specular) ──
+    final shinePath = Path()
+      ..moveTo(cx + halfW - 6, glassTop + capH + 15)
+      ..cubicTo(cx + halfW - 6, neck - h * 0.05, cx + neckW + 4, neck - h * 0.015, cx + neckW + 3, neck);
+    canvas.drawPath(shinePath, Paint()
+      ..style = PaintingStyle.stroke ..strokeWidth = 1.5
+      ..color = Colors.white.withValues(alpha: 0.06 + pulse * 0.03)
+      ..strokeCap = StrokeCap.round);
   }
 
   @override
-  bool shouldRepaint(covariant _RingPainter old) =>
-      old.progress != progress || old.color != color;
+  bool shouldRepaint(covariant _HourglassPainter old) =>
+      old.progress != progress || old.color != color || old.pulse != pulse;
 }

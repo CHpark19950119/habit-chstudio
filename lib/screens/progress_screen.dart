@@ -390,7 +390,7 @@ class _ProgressScreenState extends State<ProgressScreen>
 
     return Scaffold(
       backgroundColor:
-          isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+          isDark ? const Color(0xFF141B2D) : const Color(0xFFF8FAFC),
       body: _loading
           ? Center(
               child: CircularProgressIndicator(
@@ -2342,7 +2342,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                         fontWeight: FontWeight.w800)),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: subject,
+                  initialValue: subject,
                   decoration: _inputDeco('과목'),
                   items: _subjectConfig.keys
                       .map((s) => DropdownMenuItem(

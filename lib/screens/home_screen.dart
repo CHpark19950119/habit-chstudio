@@ -13,7 +13,7 @@ import '../services/day_service.dart';
 import '../services/weather_service.dart';
 import '../models/models.dart';
 import 'focus/focus_screen.dart';
-// NFC screen removed — 자동화 기반으로 전환
+// NFC/Bixby 제거됨 — OwnTracks webhook 기반 자동화
 import 'settings_screen.dart';
 import 'calendar_screen.dart';
 import 'statistics_screen.dart';
@@ -44,7 +44,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _ft = FocusService();
-  final _nfc = DayService();
+  final _day = DayService();
   final _weather = WeatherService();
   Timer? _ui;
   Timer? _streamDebounce;     // ★ stream listener 디바운스
@@ -58,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _effMin = 0;
   WeatherData? _weatherData;
   bool _noOuting = false; // ★ v10: 외출 안하는 날 (수동)
+  Map<String, dynamic>? _specialDay; // ★ 특별한 날 (노는 날 등)
 
   /// 수면시간 라벨 (어제 bedTime ~ 오늘 wake)
   String? get _sleepDurationLabel {
@@ -109,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
   int _tab = 0;
   int _pendingTab = 0;
+  int _statsRefreshTrigger = 0;
   List<MealEntry> _todayMeals = []; // ★ v9: 다회 식사
   List<String> _dailyMemos = [];   // ★ 데일리 메모
   String? _mood;                   // ★ E: 오늘의 무드 이모지
@@ -119,6 +121,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<FocusCycle> _focusSessions = [];
   bool _focusRecordsLoading = false;
   bool _focusScreenOpen = false;
+  bool _focusPausedAutoEnter = false; // 사용자가 대시보드로 의도적으로 나왔을 때
 
   // ★ R2: COMPASS 대시보드 데이터
   OrderData? _orderData;
@@ -175,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     _tabFadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
 
-    _nfc.addListener(_onNfcChanged);
+    _day.addListener(_onDayChanged);
     _initDeepLinks();
     _ui = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
@@ -220,25 +223,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final tab = uri.queryParameters['tab'];
       if (tab != null) {
         final tabIndex = int.tryParse(tab) ?? 0;
-        _safeSetState(() => _tab = tabIndex);
+        _safeSetState(() {
+          _tab = tabIndex;
+          if (tabIndex == 3) _statsRefreshTrigger++;
+        });
       }
     } else if (uri.host == 'wake') {
-      _nfc.triggerAction(ActionType.wake).then((msg) {
+      _day.triggerAction(ActionType.wake).then((msg) {
         debugPrint('[DeepLink] wake → $msg');
         if (mounted && !_isLoading) _load();
       });
     } else if (uri.host == 'sleep') {
-      _nfc.triggerAction(ActionType.sleep).then((msg) {
+      _day.triggerAction(ActionType.sleep).then((msg) {
         debugPrint('[DeepLink] sleep → $msg');
         if (mounted && !_isLoading) _load();
       });
     } else if (uri.host == 'outing') {
-      _nfc.triggerAction(ActionType.outing).then((msg) {
+      _day.triggerAction(ActionType.outing).then((msg) {
         debugPrint('[DeepLink] outing → $msg');
         if (mounted && !_isLoading) _load();
       });
     } else if (uri.host == 'meal') {
-      _nfc.triggerAction(ActionType.meal).then((msg) {
+      _day.triggerAction(ActionType.meal).then((msg) {
         debugPrint('[DeepLink] meal → $msg');
         if (mounted && !_isLoading) _load();
       });
@@ -258,20 +264,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _fbSub?.cancel();
     _todaySub?.cancel();
     _streamDebounce?.cancel();
-    _nfc.removeListener(_onNfcChanged);
+    _day.removeListener(_onDayChanged);
     _staggerController.dispose();
     _tabFadeCtrl.dispose();
     super.dispose();
   }
 
-  void _onNfcChanged() {
+  void _onDayChanged() {
     if (!mounted) return;
     // ★ DayService state → UI 즉시 반영 (CF 비동기 대기 불필요)
-    if (_nfc.isOut && _nfc.outingTime != null) {
-      _outing = _nfc.outingTime;
+    if (_day.isOut && _day.outingTime != null) {
+      _outing = _day.outingTime;
       _returnHome = null;
-    } else if (_nfc.state == DayState.returned && _nfc.returnTime != null) {
-      _returnHome = _nfc.returnTime;
+    } else if (_day.state == DayState.returned && _day.returnTime != null) {
+      _returnHome = _day.returnTime;
     }
     _safeSetState(() {});
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -375,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       LocalCacheService().saveGeneric('today', data);
       final d = _studyDate();
       _parseTodayData(data, d);
-      _preserveNfcMovementTimes();
+      _preserveMovementTimes();
       _safeSetState(() {});
     }, onError: (e) {
       debugPrint('[Home] today stream error: $e');
@@ -383,7 +389,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _load({bool forceServer = false}) async {
-    // NFC 리스너는 initState에서 등록됨 (ChangeNotifier 방식)
+    // DayService 리스너는 initState에서 등록됨 (ChangeNotifier 방식)
     // ★ in-flight dedup: 이미 로딩 중이면 같은 Future 재사용
     if (_isLoading && _loadCompleter != null) {
       return _loadCompleter!.future;
@@ -474,7 +480,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         debugPrint('[Home] study 캐시 fallback 표시');
       }
     }
-    _preserveNfcMovementTimes();
+    _preserveMovementTimes();
     _safeSetState(() {});
 
     // ═══ 2단계: Firebase today 문서 갱신 (1~2KB만 읽기) ═══
@@ -492,7 +498,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       }
       // ★ DayService movement times 보존 (Firestore에 없어도 iot 기반 즉시 반영)
-      _preserveNfcMovementTimes();
+      _preserveMovementTimes();
       _safeSetState(() {});
     });
 
@@ -660,6 +666,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _dailyMemos = memos.map((e) => e.toString()).toList();
       }
     } catch (_) {}
+
+    // ★ specialDay (노는 날 등 특별한 날 표시)
+    try {
+      final sd = data['specialDay'];
+      if (sd is Map && sd.isNotEmpty) {
+        _specialDay = Map<String, dynamic>.from(sd);
+      }
+    } catch (_) {}
   }
 
   /// 독립 실행 헬퍼 — 실패해도 앱에 영향 없음
@@ -674,14 +688,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   /// DayService movement 시간이 Firestore보다 최신이면 보존
-  void _preserveNfcMovementTimes() {
-    if (_outing == null && _nfc.outingTime != null &&
-        (_nfc.isOut || _nfc.state == DayState.returned)) {
-      _outing = _nfc.outingTime;
+  void _preserveMovementTimes() {
+    if (_outing == null && _day.outingTime != null &&
+        (_day.isOut || _day.state == DayState.returned)) {
+      _outing = _day.outingTime;
     }
-    if (_returnHome == null && _nfc.returnTime != null &&
-        _nfc.state == DayState.returned) {
-      _returnHome = _nfc.returnTime;
+    if (_returnHome == null && _day.returnTime != null &&
+        _day.state == DayState.returned) {
+      _returnHome = _day.returnTime;
     }
   }
 
@@ -696,6 +710,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!mounted) return;
       _safeSetState(() {
         _tab = _pendingTab;
+        if (_pendingTab == 3) _statsRefreshTrigger++;
       });
       _tabFadeCtrl.reverse();
     });
@@ -894,8 +909,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _staggered(0, _weatherHeaderBar()),
           const SizedBox(height: 10),
 
+          // ═══ SPECIAL DAY BANNER ═══
+          if (_specialDay != null) ...[
+            _staggered(0, _specialDayBanner()),
+            const SizedBox(height: 10),
+          ],
+
           // ═══ STATUS ═══
-          _staggered(1, _nfcStatusCard()),
+          _staggered(1, _routineStatusCard()),
           const SizedBox(height: 8),
           _staggered(1, _studyTimeCard()),
           const SizedBox(height: 8),
@@ -914,6 +935,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           // ═══ LOG ═══
           _staggered(4, _locationSummaryCard()),
           const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _specialDayBanner() {
+    final label = _specialDay?['label'] as String? ?? '특별한 날';
+    final note = _specialDay?['note'] as String? ?? '';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: _dk
+            ? [const Color(0xFF1E3A5F), const Color(0xFF2D1B69)]
+            : [const Color(0xFF6366F1), const Color(0xFF8B5CF6)],
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+            blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(
+            fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white,
+            letterSpacing: 0.5)),
+          if (note.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(note, style: TextStyle(
+              fontSize: 13, color: Colors.white.withValues(alpha: 0.8))),
+          ],
         ],
       ),
     );
@@ -967,7 +1024,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         const SizedBox(height: 16),
 
         // ── 통계 화면 (세그먼트 컨트롤 포함) ──
-        const StatisticsScreen(embedded: true),
+        StatisticsScreen(embedded: true, refreshTrigger: _statsRefreshTrigger),
 
         const SizedBox(height: 40),
       ],

@@ -101,11 +101,7 @@ extension _DayActionHandlers on DayService {
         await fb.updateTimeRecord(dateStr,
             _withFields(dateStr, e, outing: timeStr, clearReturnHome: true))
             .timeout(const Duration(seconds: 5));
-        String loc = '';
-        try {
-          final pos = await LocationService().getCurrentPosition();
-          if (pos != null) loc = ' (${LocationService.formatPosition(pos)})';
-        } catch (_) {}
+        const String loc = '';
         _routine.setState(DayState.outing);
         await _routine.saveState();
         _routine.cancelReminders();

@@ -41,6 +41,8 @@ SUBS = {
     "masturbation": ["masturbation", "fingering", "GirlsFinishingTheJob"],
     "creampie": ["creampies", "BreedingMaterial"],
     "favorite": ["paag", "buttplug", "godpussy", "assholegonewild", "LabiaGW"],
+    "duo": ["JustFriendsHavingFun", "dykesgonewild", "lesbians", "girlskissing", "TwoXGoneWild"],
+    "pretty": ["godpussy", "GodAsshole", "RealGirls", "BustyPetite", "fitgirls"],
     "celeb": ["celebnsfw", "Celebhub"],
 }
 
@@ -225,41 +227,73 @@ def fetch_reddit_html(sub, period="month", limit=50):
     return results[:limit]
 
 
-def fetch_reddit_user(username, limit=50):
-    """Reddit 유저의 전체 포스트에서 이미지 수집 (갤러리 + preview 지원)"""
-    url = f"https://old.reddit.com/user/{username}/submitted/.json?sort=top&t=all&limit={limit}"
-    req = urllib.request.Request(url, headers=HEADERS)
-    try:
-        resp = urllib.request.urlopen(req, timeout=15)
-        data = json.loads(resp.read())
-    except Exception as e:
-        print(f"  u/{username}: {e}", file=sys.stderr)
-        return []
+def fetch_reddit_user(username, limit=50, gallery_all=False):
+    """Reddit 유저의 전체 포스트에서 이미지 수집 (페이지네이션 + 갤러리 전체)
 
+    Args:
+        username: Reddit 유저명
+        limit: 최대 이미지 수 (기본 50, 안전 상한)
+        gallery_all: True면 갤러리 전체 이미지, False면 첫 장만
+    """
     results = []
-    for post in data.get("data", {}).get("children", []):
-        d = post["data"]
-        img_url = d.get("url", "")
-        base = {
-            "title": d.get("title", ""),
-            "score": d.get("score", 0),
-            "author": username,
-            "sub": d.get("subreddit", ""),
-            "source": "reddit",
-            "type": "image",
-        }
+    after = ""
+    pages = min(3, (limit // 100) + 1)  # 최대 3페이지 (300포스트)
 
-        if img_url.endswith((".jpg", ".jpeg", ".png", ".gif")):
-            results.append({**base, "url": img_url})
-        elif d.get("is_gallery") and d.get("media_metadata"):
-            gallery_urls = _extract_gallery_urls(d)
-            if gallery_urls:
-                results.append({**base, "url": gallery_urls[0]})
-        elif "redgifs.com" in img_url or "imgur.com" in img_url:
-            preview_url = _extract_preview_url(d)
-            if preview_url:
-                results.append({**base, "url": preview_url})
-    return results
+    for page in range(pages):
+        url = f"https://old.reddit.com/user/{username}/submitted/.json?sort=top&t=all&limit=100"
+        if after:
+            url += f"&after={after}"
+        req = urllib.request.Request(url, headers=HEADERS)
+        try:
+            import time
+            resp = urllib.request.urlopen(req, timeout=15)
+            data = json.loads(resp.read())
+        except Exception as e:
+            print(f"  u/{username} page {page+1}: {e}", file=sys.stderr)
+            break
+
+        posts = data.get("data", {}).get("children", [])
+        if not posts:
+            break
+
+        for post in posts:
+            d = post["data"]
+            img_url = d.get("url", "")
+            base = {
+                "title": d.get("title", ""),
+                "score": d.get("score", 0),
+                "author": username,
+                "sub": d.get("subreddit", ""),
+                "source": "reddit",
+                "type": "image",
+            }
+
+            if img_url.endswith((".jpg", ".jpeg", ".png", ".gif")):
+                results.append({**base, "url": img_url})
+            elif d.get("is_gallery") and d.get("media_metadata"):
+                gallery_urls = _extract_gallery_urls(d)
+                if gallery_all:
+                    for gu in gallery_urls:
+                        results.append({**base, "url": gu})
+                elif gallery_urls:
+                    results.append({**base, "url": gallery_urls[0]})
+            elif "redgifs.com" in img_url or "imgur.com" in img_url:
+                preview_url = _extract_preview_url(d)
+                if preview_url:
+                    results.append({**base, "url": preview_url})
+
+            if len(results) >= limit:
+                break
+
+        if len(results) >= limit:
+            break
+        after = data.get("data", {}).get("after", "")
+        if not after:
+            break
+        time.sleep(2)  # rate limit 방지
+
+    print(f"  u/{username}: {len(results)} images (limit {limit})")
+    return results[:limit]
 
 
 # ═══ RedGifs (이미지 전용) ═══
@@ -431,6 +465,7 @@ def main():
     parser.add_argument("--send", action="store_true", help="텔레그램 전송")
     parser.add_argument("--download", "-d", action="store_true", help="다운로드만")
     parser.add_argument("--all", "-a", help="키워드로 모든 소스 동시 검색")
+    parser.add_argument("--gallery-all", action="store_true", help="갤러리 전체 이미지 (기본: 첫 장만)")
     parser.add_argument("--no-dedup", action="store_true", help="중복 체크 비활성화")
     args = parser.parse_args()
 
@@ -467,8 +502,8 @@ def main():
         results = fetch_xhamster(args.xhamster, args.count * 2)
 
     elif args.user:
-        print(f"u/{args.user} 포스트 수집")
-        results = fetch_reddit_user(args.user, limit=args.count * 2)
+        print(f"u/{args.user} 포스트 수집 (limit={args.count})")
+        results = fetch_reddit_user(args.user, limit=args.count, gallery_all=args.gallery_all)
 
     elif args.sub:
         print(f"r/{args.sub} 수집")

@@ -10,13 +10,12 @@ class TelegramService {
   factory TelegramService() => _instance;
   TelegramService._internal();
 
-  // ── 내 봇 (시스템/배포/알람 알림) ──
-  static const _myToken  = '8253264860:AAE8mKRSNN31ubdOvk4KPghOYcOmnXg0v50';
-  static const _myChatId = '8724548311';
-
-  // ── 애인 봇 (NFC 활동 알림) ──
-  static const _gfToken  = '8613977898:AAEuuoTVARS-a9nrDp85NWHHOYM0lRvmZmc';
-  static const _gfChatId = '8624466505';
+  // ★ AUDIT FIX: S-01 — TODO: --dart-define-from-file 또는 환경변수로 이동
+  // 빌드: flutter build apk --dart-define-from-file=.env.json
+  static const _myToken  = String.fromEnvironment('TG_MY_TOKEN', defaultValue: '8253264860:AAE8mKRSNN31ubdOvk4KPghOYcOmnXg0v50');
+  static const _myChatId = String.fromEnvironment('TG_MY_CHAT', defaultValue: '8724548311');
+  static const _gfToken  = String.fromEnvironment('TG_GF_TOKEN', defaultValue: '8613977898:AAEuuoTVARS-a9nrDp85NWHHOYM0lRvmZmc');
+  static const _gfChatId = String.fromEnvironment('TG_GF_CHAT', defaultValue: '8624466505');
 
   // ─── 나에게 (배포 알림 등) ───
   Future<void> sendToMe(String message) async {

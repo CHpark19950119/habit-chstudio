@@ -10,7 +10,6 @@ import '../models/models.dart';
 import '../models/focus_entity.dart';
 import 'objectbox_store.dart';
 import 'firebase_service.dart';
-import 'creature_service.dart';
 import '../utils/study_date_utils.dart';
 import 'widget_render_service.dart';
 
@@ -26,6 +25,7 @@ class FocusService extends ChangeNotifier {
   FocusService._internal();
 
   static const _boxName = 'focus_data';
+  Box? _cachedBox; // ★ AUDIT FIX: B-05 — Hive Box 캐시
 
   // ── 상태 ──
   bool _isRunning = false;
@@ -33,6 +33,7 @@ class FocusService extends ChangeNotifier {
   String _currentMode = 'study';
   String _currentSubject = '자료해석';
   DateTime? _sessionStart;
+  String? _pendingStudyStart; // ★ 세션 완료 시 timeRecords.study에 기록할 시작 시간
   DateTime? _segmentStart;
   int _totalStudyMin = 0;
   int _totalLectureMin = 0;
@@ -108,7 +109,12 @@ class FocusService extends ChangeNotifier {
   //  ObjectBox 세션 기록 CRUD
   // ══════════════════════════════════════════
 
-  Future<Box> _openBox() async => Hive.openBox(_boxName);
+  // ★ AUDIT FIX: B-05 — Box를 캐시하여 매번 openBox 호출 방지
+  Future<Box> _openBox() async {
+    if (_cachedBox != null && _cachedBox!.isOpen) return _cachedBox!;
+    _cachedBox = await Hive.openBox(_boxName);
+    return _cachedBox!;
+  }
 
   ObjectBoxStore get _obx => ObjectBoxStore.instance;
 
@@ -254,7 +260,8 @@ class FocusService extends ChangeNotifier {
     _totalPauseSec = 0;
     _preModeBeforePause = null;
 
-    await _recordStudyStartIfFirst();
+    // ★ study 시작 시간은 첫 세션 완료 시 기록 (실수 방지)
+    _pendingStudyStart ??= DateFormat('HH:mm').format(DateTime.now());
     await FlutterForegroundTask.startService(
       notificationTitle: _notifTitle(),
       notificationText: '시작됨',
@@ -509,6 +516,12 @@ class FocusService extends ChangeNotifier {
       debugPrint('[Focus] studyTimeRecord FAIL: $e');
     }
 
+    // 2.5. ★ 첫 세션 완료 시 timeRecords.study 기록 (시작 시간)
+    if (_pendingStudyStart != null) {
+      await _recordStudyStartIfFirst();
+      _pendingStudyStart = null;
+    }
+
     // 3. today doc subjects
     if (addedMin > 0) {
       try {
@@ -519,7 +532,8 @@ class FocusService extends ChangeNotifier {
           }
         }
         for (final entry in subjectMin.entries) {
-          await fb.updateTodayField('studyTime.subjects.${entry.key}', FieldValue.increment(entry.value));
+          // ★ AUDIT FIX: B-01 — FieldValue.increment 대신 localDelta 명시
+          await fb.updateTodayField('studyTime.subjects.${entry.key}', FieldValue.increment(entry.value), localDelta: entry.value);
         }
       } catch (e) {
         debugPrint('[Focus] today subjects FAIL: $e');
@@ -541,9 +555,6 @@ class FocusService extends ChangeNotifier {
 
     // 5. 위젯 + 보상
     WidgetRenderService().updateWidget().catchError((_) {});
-    if (addedMin > 0) {
-      try { await CreatureService().addStudyReward(addedMin); } catch (_) {}
-    }
 
     debugPrint('[Focus] sync done: ${cycle.date} +${cycle.effectiveMin}min');
 
@@ -609,11 +620,15 @@ class FocusService extends ChangeNotifier {
 
   // ── 내부 헬퍼 ──
 
+  // ★ AUDIT FIX: P-01 — UI 타이머를 별도 ValueNotifier로 분리하여 매초 전체 리빌드 방지
+  // FocusScreen에서는 timerTick을 listen, 다른 리스너는 세션 시작/종료 시에만 갱신됨
+  final ValueNotifier<int> timerTick = ValueNotifier<int>(0);
+
   void _startUiTimer() {
     _uiTimer?.cancel();
     _uiTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!_isRunning) return;
-      notifyListeners();
+      timerTick.value++;
     });
   }
 
@@ -649,14 +664,15 @@ class FocusService extends ChangeNotifier {
     return '순공 ${eff ~/ 60}h${eff % 60}m · 세션 ${sessionMin}분';
   }
 
+  /// ★ 첫 세션 완료 시 호출 — _pendingStudyStart 시간을 timeRecords.study에 기록
   Future<void> _recordStudyStartIfFirst() async {
     final dateStr = StudyDateUtils.todayKey();
-    final timeStr = DateFormat('HH:mm').format(DateTime.now());
+    final timeStr = _pendingStudyStart ?? DateFormat('HH:mm').format(DateTime.now());
     try {
       final fb = FirebaseService();
       final records = await fb.getTimeRecords();
       final existing = records[dateStr];
-      if (existing?.study != null) return;
+      if (existing?.study != null) return; // 이미 기록됨
       await fb.updateTimeRecord(dateStr, TimeRecord(date: dateStr, wake: existing?.wake, study: timeStr));
     } catch (_) {
       try {

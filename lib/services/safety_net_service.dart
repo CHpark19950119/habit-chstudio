@@ -1,6 +1,7 @@
 import 'dart:async';
 import '../constants.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,15 +10,12 @@ import '../models/iot_models.dart';
 import 'routine_service.dart';
 import '../models/models.dart' show ActionType, TimeRecord;
 import '../models/order_models.dart' show OrderData;
-import '../models/creature_mood.dart';
 import 'day_service.dart';
-import 'creature_service.dart';
 import 'door_sensor_service.dart';
 import 'meal_service.dart';
 import 'firebase_service.dart';
 import 'local_cache_service.dart';
 import '../main.dart' show navigatorKey;
-import '../widgets/creature_alert_overlay.dart';
 
 /// 안전망 체크 타입
 enum SafetyCheck {
@@ -137,16 +135,16 @@ class SafetyNetService {
 
     switch (actionId) {
       case _actionConfirmWake:
-        DayService().manualTestRole(ActionType.wake);
+        DayService().triggerAction(ActionType.wake);
         break;
       case _actionConfirmOuting:
-        DayService().manualTestRole(ActionType.outing);
+        DayService().triggerAction(ActionType.outing);
         break;
       case _actionConfirmReturn:
-        DayService().manualTestRole(ActionType.outing); // 토글 → 귀가
+        DayService().triggerAction(ActionType.outing); // 토글 → 귀가
         break;
       case _actionConfirmMeal:
-        DayService().manualTestRole(ActionType.meal);
+        DayService().triggerAction(ActionType.meal);
         break;
       case _actionLocSka:
         _recordStayLocation('스카');
@@ -163,19 +161,18 @@ class SafetyNetService {
         break;
       case _actionConfirmAutoWake:
         // 기상 기록 유지 (정상 기상)
-        CreatureService().setMood(CreatureMood.proud);
         break;
       case _actionDenyAutoWake:
         _handleAutoWakeRollback();
         break;
       case _actionStudyEndDone:
-        DayService().manualTestRole(ActionType.study); // studying 토글 → 종료
+        DayService().triggerAction(ActionType.study); // studying 토글 → 종료
         break;
       case _actionStudyEndContinue:
         // 30분 쿨다운 (자동 적용)
         break;
       case _actionConfirmLateMeal:
-        DayService().manualTestRole(ActionType.meal);
+        DayService().triggerAction(ActionType.meal);
         break;
     }
   }
@@ -189,9 +186,9 @@ class SafetyNetService {
         await prefs.remove('safety_pending_action');
         _log('consuming pending action: $pending');
         switch (pending) {
-          case 'wake': DayService().manualTestRole(ActionType.wake); break;
-          case 'outing': DayService().manualTestRole(ActionType.outing); break;
-          case 'meal': DayService().manualTestRole(ActionType.meal); break;
+          case 'wake': DayService().triggerAction(ActionType.wake); break;
+          case 'outing': DayService().triggerAction(ActionType.outing); break;
+          case 'meal': DayService().triggerAction(ActionType.meal); break;
         }
       }
     } catch (_) {}
@@ -217,6 +214,7 @@ class SafetyNetService {
   //  핵심: 5분마다 교차 검증
   // ═══════════════════════════════════════════
 
+  // ★ AUDIT FIX: P-02 — 데이터 사전 로드 (getTimeRecords/getStudyData 1회만 호출)
   Future<void> runChecks() async {
     if (!_enabled) return;
     final routine = RoutineService();
@@ -224,12 +222,13 @@ class SafetyNetService {
     final now = DateTime.now();
     final todayKey = StudyDateUtils.todayKey(now);
 
+    // ★ AUDIT FIX: P-02 — 체크 시작 시 한 번만 로드
+    final fb = FirebaseService();
+    final preloadedRecords = await fb.getTimeRecords();
+
     // ── 1. 기상 미감지 ──
     if (routine.state == DayState.idle) {
-      // ★ 실제 Firestore wake 기록 확인 — 기록 있으면 스킵
-      final fb = FirebaseService();
-      final records = await fb.getTimeRecords();
-      final todayRecord = records[todayKey];
+      final todayRecord = preloadedRecords[todayKey];
       final alreadyWoke = todayRecord?.wake != null;
 
       if (!alreadyWoke) {
@@ -249,7 +248,7 @@ class SafetyNetService {
 
     // ── 4. 식사 미기록 ──
     if (routine.state == DayState.studying && !MealService().isMealing) {
-      await _checkMealMiss(todayKey, now);
+      await _checkMealMiss(todayKey, now, preloadedRecords: preloadedRecords);
     }
 
     // ── 5. 비정상 데이터 ──
@@ -267,7 +266,7 @@ class SafetyNetService {
 
     // ── 9. 식사 리마인더 (lateMealReminder) — 기존 mealMiss 보강 ──
     if (routine.state == DayState.studying && !MealService().isMealing) {
-      await _checkLateMealReminder(todayKey, now);
+      await _checkLateMealReminder(todayKey, now, preloadedRecords: preloadedRecords);
     }
 
     // ── 10. 캐시 신선도 체크 ──
@@ -280,9 +279,10 @@ class SafetyNetService {
     await _checkTimedHabitTriggers(todayKey, now);
   }
 
-  Future<void> _checkMealMiss(String todayKey, DateTime now) async {
+  // ★ AUDIT FIX: P-02 — preloadedRecords 파라미터 추가 (사전 로드 데이터 재사용)
+  Future<void> _checkMealMiss(String todayKey, DateTime now, {Map<String, TimeRecord>? preloadedRecords}) async {
     try {
-      final records = await FirebaseService().getTimeRecords()
+      final records = preloadedRecords ?? await FirebaseService().getTimeRecords()
           .timeout(const Duration(seconds: 5));
       final tr = records[todayKey];
       if (tr == null || tr.study == null) return;
@@ -354,10 +354,8 @@ class SafetyNetService {
       final nowMin = now.hour * 60 + now.minute;
       if (nowMin - wakeMin < 180) return; // 3시간 미경과
 
-      final msg = CreatureMessages.pick(CreatureMessages.homeDayConfirm);
-      CreatureService().setMood(CreatureMessages.moodForCheck('homeDayConfirm'));
       _maybeAlert(SafetyCheck.homeDayConfirm, todayKey,
-          title: msg,
+          title: '오늘 집에 있을 거야?',
           body: '기상 ${tr.wake}부터 3시간 넘었어',
           confirmActionId: _actionConfirmHomeDay);
     } catch (_) {}
@@ -366,10 +364,8 @@ class SafetyNetService {
   /// A2. 자동 기상 사후 확인 — WakeService에서 호출
   void triggerAutoWakeConfirm() {
     final todayKey = StudyDateUtils.todayKey();
-    final msg = CreatureMessages.pick(CreatureMessages.autoWakeConfirm);
-    CreatureService().setMood(CreatureMessages.moodForCheck('autoWakeConfirm'));
     _maybeAlert(SafetyCheck.autoWakeConfirm, todayKey,
-        title: msg,
+        title: '일어난 거 맞지?',
         body: '자동 기상이 감지됐어',
         confirmActionId: _actionConfirmAutoWake,
         denyActionId: _actionDenyAutoWake,
@@ -389,10 +385,8 @@ class SafetyNetService {
       final nowMin = now.hour * 60 + now.minute;
       if (nowMin - studyMin < 240) return; // 4시간 미경과
 
-      final msg = CreatureMessages.pick(CreatureMessages.studyEndConfirm);
-      CreatureService().setMood(CreatureMessages.moodForCheck('studyEndConfirm'));
       _maybeAlert(SafetyCheck.studyEndConfirm, todayKey,
-          title: msg,
+          title: '아직 공부 중이야?',
           body: '공부 시작(${tr.study})부터 4시간 넘었어',
           confirmActionId: _actionStudyEndDone,
           denyActionId: _actionStudyEndContinue,
@@ -401,9 +395,10 @@ class SafetyNetService {
   }
 
   /// A4. 식사 리마인더 — studying + 마지막 식사/공부시작 5시간+
-  Future<void> _checkLateMealReminder(String todayKey, DateTime now) async {
+  // ★ AUDIT FIX: P-02 — preloadedRecords 파라미터 추가
+  Future<void> _checkLateMealReminder(String todayKey, DateTime now, {Map<String, TimeRecord>? preloadedRecords}) async {
     try {
-      final records = await FirebaseService().getTimeRecords()
+      final records = preloadedRecords ?? await FirebaseService().getTimeRecords()
           .timeout(const Duration(seconds: 5));
       final tr = records[todayKey];
       if (tr == null || tr.study == null) return;
@@ -424,10 +419,8 @@ class SafetyNetService {
 
       if (nowMin - baseMin < 300) return; // 5시간 미경과
 
-      final msg = CreatureMessages.pick(CreatureMessages.lateMealReminder);
-      CreatureService().setMood(CreatureMessages.moodForCheck('lateMealReminder'));
       _maybeAlert(SafetyCheck.lateMealReminder, todayKey,
-          title: msg,
+          title: '밥 먹었어?',
           body: '마지막 식사/공부시작부터 5시간 넘었어',
           confirmActionId: _actionConfirmLateMeal);
     } catch (_) {}
@@ -449,9 +442,8 @@ class SafetyNetService {
 
       final updated = tr.copyWith(noOuting: true);
       await fb.updateTimeRecord(todayKey, updated);
-      CreatureService().setMood(CreatureMood.proud);
 
-      // 홈 화면 즉시 갱신 — DayService notify → home_screen._onNfcChanged → _load()
+      // 홈 화면 즉시 갱신 — DayService notify → home_screen._onDayChanged → _load()
       DayService().notifyDataChanged();
       _log('홈데이 확인 기록 완료');
     } catch (e) {
@@ -490,58 +482,10 @@ class SafetyNetService {
     }
   }
 
-  /// B3. 듀얼 문서 동기화 체크 — 최근 5분 내 쓰기 시만
+  // ★ AUDIT FIX: B-04 — isWriteProtected 게이트 제거, 매 체크마다 실행 (10초 TTL과 5분 주기 불일치 해소)
+  // Phase D: dual-write removed. today doc is single source of truth.
   Future<void> _checkDualDocSync() async {
-    if (!LocalCacheService().isWriteProtected()) return; // 최근 쓰기 없으면 스킵
-    try {
-      final fb = FirebaseService();
-      final todayKey = StudyDateUtils.todayKey();
-
-      // study doc에서 timeRecords 읽기
-      final studyData = await fb.getStudyData();
-      if (studyData == null) return;
-      final studyTR = studyData['timeRecords'];
-      if (studyTR is! Map) return;
-      final studyRecord = studyTR[todayKey];
-      if (studyRecord == null) return;
-
-      // today doc에서 timeRecords 읽기
-      final todayData = await fb.getTodayDoc();
-      if (todayData == null) return;
-      final todayRecord = todayData['timeRecords'];
-      if (todayRecord == null) return;
-
-      // 핵심 필드 비교
-      final sMap = Map<String, dynamic>.from(studyRecord as Map);
-      final tMap = Map<String, dynamic>.from(todayRecord as Map);
-
-      bool mismatch = false;
-      for (final key in ['wake', 'study', 'studyEnd', 'outing', 'returnHome', 'bedTime']) {
-        if (sMap[key] != tMap[key]) {
-          mismatch = true;
-          _log('듀얼 문서 불일치: $key study=${sMap[key]} today=${tMap[key]}');
-        }
-      }
-
-      if (mismatch) {
-        // lastModified 기준 최신 선택
-        final sMod = studyData['lastModified'] as int? ?? 0;
-        final tMod = todayData['lastModified'] as int? ?? 0;
-
-        if (sMod >= tMod) {
-          // study doc이 최신 → today doc에 동기화
-          await fb.updateTodayField('timeRecords', sMap);
-          _log('듀얼 동기화: study → today');
-        } else {
-          // today doc이 최신 → study doc에 동기화
-          final tr = TimeRecord.fromMap(todayKey, tMap);
-          await fb.updateTimeRecord(todayKey, tr);
-          _log('듀얼 동기화: today → study');
-        }
-      }
-    } catch (e) {
-      _log('듀얼 동기화 체크 에러: $e');
-    }
+    // No-op: dual-write eliminated in Phase D
   }
 
   // ═══════════════════════════════════════════
@@ -635,9 +579,9 @@ class SafetyNetService {
     // ★ 포그라운드: 크리쳐 오버레이
     final ctx = navigatorKey.currentContext;
     if (ctx != null && WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
-      _showCreatureOverlay(ctx, check, title, body,
+      _showAlertOverlay(ctx, check, title, body,
           confirmActionId, effectiveDenyId, effectiveDenyLabel);
-      _log('Creature alert: $title — $body');
+      _log('Alert overlay: $title — $body');
       return;
     }
 
@@ -647,31 +591,43 @@ class SafetyNetService {
     _log('Notification alert: $title — $body');
   }
 
-  void _showCreatureOverlay(BuildContext ctx, SafetyCheck check,
+  void _showAlertOverlay(BuildContext ctx, SafetyCheck check,
       String title, String body, String confirmActionId,
       String denyActionId, String denyLabel) {
-    CreatureAlertOverlay.show(
+    HapticFeedback.heavyImpact();
+    showDialog(
       context: ctx,
-      title: title,
-      body: body,
-      mood: CreatureService().mood,
-      confirmLabel: confirmActionId.isNotEmpty ? '맞아' : null,
-      dismissLabel: denyLabel,
-      onConfirm: confirmActionId.isNotEmpty ? () {
-        _onNotificationAction(NotificationResponse(
-          notificationResponseType: NotificationResponseType.selectedNotificationAction,
-          actionId: confirmActionId,
-        ));
-      } : null,
-      onDismiss: () {
-        if (denyActionId != _actionDismiss) {
-          _onNotificationAction(NotificationResponse(
-            notificationResponseType: NotificationResponseType.selectedNotificationAction,
-            actionId: denyActionId,
-          ));
-        }
-        _notifPlugin.cancel(_notifIds[check]!);
-      },
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              if (denyActionId != _actionDismiss) {
+                _onNotificationAction(NotificationResponse(
+                  notificationResponseType: NotificationResponseType.selectedNotificationAction,
+                  actionId: denyActionId,
+                ));
+              }
+              _notifPlugin.cancel(_notifIds[check]!);
+            },
+            child: Text(denyLabel),
+          ),
+          if (confirmActionId.isNotEmpty)
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _onNotificationAction(NotificationResponse(
+                  notificationResponseType: NotificationResponseType.selectedNotificationAction,
+                  actionId: confirmActionId,
+                ));
+              },
+              child: const Text('맞아'),
+            ),
+        ],
+      ),
     );
   }
 

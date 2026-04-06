@@ -7,11 +7,9 @@ import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../models/order_models.dart';
 import '../utils/study_date_utils.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../constants.dart';
 import 'firebase_service.dart';
 import 'telegram_service.dart';
-import 'location_service.dart';
+
 import 'report_service.dart';
 import 'backup_service.dart';
 import 'routine_service.dart';
@@ -43,12 +41,14 @@ class DayAction {
   DayAction(this.action, this.emoji, this.message);
 }
 
-const _appChannel = MethodChannel('com.cheonhong.cheonhong_studio/nfc');
+const _appChannel = MethodChannel('com.cheonhong.cheonhong_studio/app');
 
 /// ═══════════════════════════════════════════════════
 ///  DayService — 자동화 기반 하루 루틴 관리
-///  도어센서, GPS, 빅스비, SafetyNet, 위젯으로 구동
+///  도어센서, OwnTracks, SafetyNet, 위젯으로 구동
 /// ═══════════════════════════════════════════════════
+// ★ AUDIT FIX: B-06 — Singleton ChangeNotifier는 dispose() 미호출됨 (앱 수명 = 인스턴스 수명)
+// Timer/StreamSubscription은 앱 종료 시 OS가 정리. 의도적 설계.
 class DayService extends ChangeNotifier {
   static final DayService _instance = DayService._internal();
   factory DayService() => _instance;
@@ -134,7 +134,7 @@ class DayService extends ChangeNotifier {
     _log('초기화 시작');
 
     // Sub-services 초기화
-    await _routine.initialize(_appChannel);
+    await _routine.initialize();
     await _meal.initialize();
 
     // Sub-service 변경 → DayService notifyListeners 전파
@@ -168,21 +168,18 @@ class DayService extends ChangeNotifier {
 
   /// Firestore에서 오늘 wake 기록 확인 → 상태 복원
   /// (FCM 미도달 / SharedPrefs 유실 대비 안전망)
-  /// ★ 캐시 우회 — Firestore 서버 직접 읽기
+  /// ★ CF HTTP 프록시 경유 (getTodayDoc)
   Future<void> _recoverWakeFromFirestore() async {
     try {
-      final todaySnap = await FirebaseFirestore.instance
-          .doc(kTodayDoc)
-          .get(const GetOptions(source: Source.server))
-          .timeout(const Duration(seconds: 5));
-      if (!todaySnap.exists) return;
-      final data = todaySnap.data() ?? {};
+      final data = await FirebaseService().getTodayDoc();
+      if (data == null) return;
       final tr = data['timeRecords'];
-      if (tr is Map && tr['wake'] != null) {
+      final wakeVal = tr is Map ? (tr['wake'] ?? tr['wakeTime']) : null;
+      if (wakeVal != null) {
         _routine.setState(DayState.awake);
         await _routine.saveState();
         _routine.startWakeReminder();
-        _log('Firestore 기상 복원: ${tr['wake']} → awake');
+        _log('Firestore 기상 복원: $wakeVal → awake');
       }
     } catch (e) {
       _log('기상 복원 실패 (무시): $e');
@@ -240,11 +237,7 @@ class DayService extends ChangeNotifier {
     } catch (e) { return '에러: $e'; }
   }
 
-  /// @deprecated Use triggerAction instead
-  Future<String> manualTestRole(ActionType role) => triggerAction(role);
-
-  /// @deprecated Use triggerAction instead
-  Future<void> triggerRole(ActionType role) => triggerAction(role);
+  // ★ AUDIT FIX: Q-03 — deprecated manualTestRole/triggerRole 삭제 (호출부 전부 triggerAction으로 교체됨)
 
   // ═══════════════════════════════════════════
   //  이동시간 요약 (delegate)

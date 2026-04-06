@@ -433,12 +433,13 @@ class ScenarioBranch {
 // ╚═══════════════════════════════════════════════════════════╝
 
 /// Todo 개별 항목
+// ★ AUDIT FIX: B-09 — mutable 필드를 final로 변경 (불변성 규칙 준수, copyWith 사용)
 class TodoItem {
   final String id;
   final String title;
-  bool completed;
-  String? completedAt; // ISO8601
-  int order; // 정렬 순서
+  final bool completed;
+  final String? completedAt; // ISO8601
+  final int order; // 정렬 순서
   final String? subject;        // 과목 태그: 언어/자료/상황/경제/7급전공
   final int? estimatedMinutes;  // 예상 시간 (분)
   final String? priority;       // high/medium/low
