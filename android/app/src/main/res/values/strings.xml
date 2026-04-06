@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="agent_service_desc">앱 사용 패턴 분석 및 집중 모드 지원</string>
+</resources>

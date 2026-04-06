@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ★ AUDIT FIX: S-04 — cleartext를 로컬 네트워크(192.168.x.x)만 허용, 나머지는 HTTPS 강제 -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <!-- tinytuya 로컬 IoT 제어용 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">192.168.219.101</domain>
+        <domain includeSubdomains="true">192.168.219.104</domain>
+        <domain includeSubdomains="true">192.168.219.113</domain>
+    </domain-config>
+</network-security-config>
