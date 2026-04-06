@@ -28,3 +28,4 @@ android/hs_err_pid*.log
 .vscode/
 functions/node_modules/
 functions/tuya_backup.ab
+spacing_workbook*.pdf
