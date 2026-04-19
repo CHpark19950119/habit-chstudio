@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants.dart';
 import 'package:intl/intl.dart';
-import '../utils/study_date_utils.dart';
+import '../utils/date_utils.dart';
 import 'routine_service.dart';
 import 'day_service.dart' show DayState;
 import 'firebase_service.dart';
@@ -176,7 +176,7 @@ class MovementService extends ChangeNotifier {
             notifyListeners();
           }
         } else if (type == 'home') {
-          if (routine.state != DayState.returned && routine.state != DayState.studying
+          if (routine.state != DayState.returned
               && routine.state != DayState.sleeping) {
             _log('초기 동기화 → 귀가 반영');
             routine.forceState(DayState.returned);
@@ -236,7 +236,7 @@ class MovementService extends ChangeNotifier {
       final records = await FirebaseService().getTimeRecords();
       final tr = records[_studyDate()];
       if (tr == null) return {};
-      return {'commuteTo': tr.commuteToMinutes, 'commuteFrom': tr.commuteFromMinutes, 'stayTime': tr.stayMinutes};
+      return {'outing': tr.outingMinutes};
     } catch (_) { return {}; }
   }
 

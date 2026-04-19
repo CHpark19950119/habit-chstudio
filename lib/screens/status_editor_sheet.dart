@@ -24,7 +24,7 @@ class StatusEditorSheet extends StatefulWidget {
 }
 
 class _StatusEditorSheetState extends State<StatusEditorSheet> {
-  late String? _wakeTime, _outingTime, _returnTime, _studyTime, _studyEndTime, _bedTimeEdit;
+  late String? _wakeTime, _outingTime, _returnTime, _bedTimeEdit;
   late List<_EditableMeal> _meals;
 
   @override
@@ -34,8 +34,6 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
     _wakeTime = e?.wake;
     _outingTime = e?.outing;
     _returnTime = e?.returnHome;
-    _studyTime = e?.study;
-    _studyEndTime = e?.studyEnd;
     _bedTimeEdit = e?.bedTime;
 
     // 식사 목록 초기화
@@ -138,10 +136,6 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
               (t) => _safeSetState(() => _outingTime = t), textMain, textMuted, dk),
             _timeRow('🏠', '귀가', _returnTime, const Color(0xFF3B8A6B),
               (t) => _safeSetState(() => _returnTime = t), textMain, textMuted, dk),
-            _timeRow('📚', '공부시작', _studyTime, BotanicalColors.primary,
-              (t) => _safeSetState(() => _studyTime = t), textMain, textMuted, dk),
-            _timeRow('🏁', '공부종료', _studyEndTime, const Color(0xFF5B7ABF),
-              (t) => _safeSetState(() => _studyEndTime = t), textMain, textMuted, dk),
             _timeRow('🌙', '수면시작', _bedTimeEdit, const Color(0xFF6B5DAF),
               (t) => _safeSetState(() => _bedTimeEdit = t), textMain, textMuted, dk),
 
@@ -651,13 +645,10 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
     final record = TimeRecord(
       date: widget.existing?.date ?? '',
       wake: _wakeTime,
-      study: _studyTime,
-      studyEnd: _studyEndTime,
       outing: _outingTime,
       returnHome: _returnTime,
       arrival: widget.existing?.arrival,
       bedTime: _bedTimeEdit,
-      // 레거시 호환 유지
       mealStart: mealEntries.isNotEmpty ? mealEntries.first.start : null,
       mealEnd: mealEntries.isNotEmpty ? mealEntries.first.end : null,
       meals: mealEntries,

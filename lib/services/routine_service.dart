@@ -2,8 +2,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
-import '../utils/study_date_utils.dart';
-import 'telegram_service.dart';
+import '../utils/date_utils.dart';
 import 'day_service.dart' show DayState;
 
 /// RoutineService — DayState FSM, 상태 저장/복원, 리마인더
@@ -23,7 +22,6 @@ class RoutineService extends ChangeNotifier with WidgetsBindingObserver {
   // ═══ Getters ═══
   DayState get state => _state;
   bool get isOut => _state == DayState.outing;
-  bool get isStudying => _state == DayState.studying;
 
   // ═══ 로깅 ═══
   String lastDiagnostic = '';
@@ -86,13 +84,6 @@ class RoutineService extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
-  void forceStudyState(bool value) {
-    if (value) { _state = DayState.studying; }
-    else if (_state == DayState.studying) { _state = DayState.returned; }
-    _saveState();
-    notifyListeners();
-  }
-
   /// 직접 상태 설정 (action handler용, notifyListeners 호출 안 함)
   void setState(DayState newState) {
     _state = newState;
@@ -137,11 +128,6 @@ class RoutineService extends ChangeNotifier with WidgetsBindingObserver {
 
   void startMealReminder() {
     _mealReminder?.cancel();
-    _mealReminder = Timer(const Duration(hours: 4), () {
-      if (_state == DayState.studying) {
-        TelegramService().sendNfc('🍽 공부 4시간 — 식사하세요!');
-      }
-    });
   }
 
   void cancelReminders() {

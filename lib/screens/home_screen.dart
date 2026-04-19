@@ -6,35 +6,31 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 import '../theme/botanical_theme.dart';
-import '../services/focus_service.dart';
 import '../constants.dart';
 import '../services/firebase_service.dart';
 import '../services/day_service.dart';
 import '../services/weather_service.dart';
 import '../models/models.dart';
-import 'focus/focus_screen.dart';
-// NFC/Bixby 제거됨 — OwnTracks webhook 기반 자동화
 import 'settings_screen.dart';
 import 'calendar_screen.dart';
 import 'statistics_screen.dart';
-import 'progress_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/scheduler.dart';
 import 'status_editor_sheet.dart';
 import 'order/order_screen.dart';
 import '../models/order_models.dart';
-import '../models/plan_models.dart';
+import '../models/todo_models.dart';
 import '../services/todo_service.dart';
 import '../services/local_cache_service.dart';
+import '../utils/date_utils.dart';
 import 'package:app_links/app_links.dart';
+import '../data/sleep_protocol.dart';
 
-import '../utils/study_date_utils.dart';
-
-part 'home_focus_section.dart';
 part 'home_daily_log.dart';
 part 'home_routine_card.dart';
 part 'home_order_section.dart';
 part 'home_todo_section.dart';
+part 'home_sleep_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -43,22 +39,24 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  final _ft = FocusService();
   final _day = DayService();
   final _weather = WeatherService();
   Timer? _ui;
   Timer? _streamDebounce;     // ★ stream listener 디바운스
   bool _isLoading = false;    // ★ _load() 동시 실행 방지
   bool _playedEntryAnim = false;
-  String? _wake, _studyStart, _studyEnd;
+  String? _wake;
   String? _outing, _returnHome;
   String? _bedTime;
   String? _prevBedTime; // 어제 취침 (수면시간 계산용)
   String? _mealStart, _mealEnd;
-  int _effMin = 0;
   WeatherData? _weatherData;
   bool _noOuting = false; // ★ v10: 외출 안하는 날 (수동)
   Map<String, dynamic>? _specialDay; // ★ 특별한 날 (노는 날 등)
+
+  // ★ 수면 교정 (WB 10주 위상전진 프로토콜)
+  SleepProtocol? _sleepProto;
+  Map<String, dynamic> _sleepLog = {}; // date -> {actualWake, actualSleep, tasks, ...}
 
   /// 수면시간 라벨 (어제 bedTime ~ 오늘 wake)
   String? get _sleepDurationLabel {
@@ -98,14 +96,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _toggleHomeDay() async {
     final newVal = !_noOuting;
     _safeSetState(() => _noOuting = newVal);
+    // TODO: getTimeRecords/updateTimeRecord removed — persist noOuting via new data layer
     try {
       final fb = FirebaseService();
-      final todayKey = StudyDateUtils.todayKey();
-      final records = await fb.getTimeRecords().timeout(const Duration(seconds: 5));
-      final tr = records[todayKey];
-      if (tr != null) {
-        await fb.updateTimeRecord(todayKey, tr.copyWith(noOuting: newVal));
-      }
+      await fb.updateTodayField('noOuting', newVal);
     } catch (_) {}
   }
   int _tab = 0;
@@ -115,14 +109,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<String> _dailyMemos = [];   // ★ 데일리 메모
   String? _mood;                   // ★ E: 오늘의 무드 이모지
 
-  // ★ Focus setup (home tab)
-  String _focusSubj = '자료해석';
-  String _focusMode = 'study';
-  List<FocusCycle> _focusSessions = [];
-  bool _focusRecordsLoading = false;
-  bool _focusScreenOpen = false;
-  bool _focusPausedAutoEnter = false; // 사용자가 대시보드로 의도적으로 나왔을 때
-
   // ★ R2: COMPASS 대시보드 데이터
   OrderData? _orderData;
   // ★ 오늘의 Todo
@@ -131,7 +117,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late String _todoSelectedDate;  // 날짜 네비게이션용
 
   // Todo 편집용 임시 상태
-  String? _editSubject;
   String? _editPriority;
   int? _editMinutes;
   String? _editType;
@@ -183,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _ui = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       final isOut = _outing != null && _returnHome == null;
-      if (_ft.isRunning || isOut) _safeSetState(() {});
+      if (isOut) _safeSetState(() {});
     });
   }
 
@@ -204,28 +189,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _handleDeepLink(Uri uri) {
     debugPrint('[DeepLink] $uri');
-    if (uri.host == 'focus') {
-      final subject = uri.queryParameters['subject'] ?? _focusSubj;
-      final mode = uri.queryParameters['mode'] ?? _focusMode;
-      // 포커스 시작
-      _safeSetState(() {
-        _focusSubj = subject;
-        _focusMode = mode;
-      });
-      _ft.startSession(subject: subject, mode: mode).then((_) {
-        if (mounted) {
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => const FocusScreen()));
-        }
-      });
-    } else if (uri.host == 'app') {
+    if (uri.host == 'app') {
       // 앱 제어 (탭 전환 등)
       final tab = uri.queryParameters['tab'];
       if (tab != null) {
         final tabIndex = int.tryParse(tab) ?? 0;
         _safeSetState(() {
           _tab = tabIndex;
-          if (tabIndex == 3) _statsRefreshTrigger++;
+          if (tabIndex == 2) _statsRefreshTrigger++;
         });
       }
     } else if (uri.host == 'wake') {
@@ -306,15 +277,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
         final d = _studyDate();
 
-        // ── studyTimeRecords (공부시간만 스트림 업데이트) ──
-        int? effMin;
-        try {
-          final strRaw = data['studyTimeRecords'] as Map<String, dynamic>?;
-          if (strRaw != null && strRaw[d] != null) {
-            effMin = StudyTimeRecord.fromMap(d, strRaw[d] as Map<String, dynamic>).effectiveMinutes;
-          }
-        } catch (e) { debugPrint('[Home] stream studyTimeRecords: $e'); }
-
         // ── orderData ──
         OrderData? orderData;
         try {
@@ -350,8 +312,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
         _retryDelay = 5; // ★ 스트림 데이터 수신 성공 → 백오프 리셋
         _safeSetState(() {
-          // ★ v10: timeRecords는 스트림에서 업데이트하지 않음 (플리커 방지)
-          if (effMin != null) _effMin = effMin;
           if (orderData != null && !isProtected) _orderData = orderData;
           if (todayTodos != null && !isProtected) _todayTodos = todayTodos;
           if (prevBed != null) _prevBedTime = prevBed;
@@ -513,19 +473,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final w = await _weather.getCurrentWeather();
       if (w != null) _safeSetState(() => _weatherData = w);
     });
+
+    // ═══ 4단계: 수면 프로토콜 (없으면 default 생성 후 저장) ═══
+    _tryRefresh('sleepProto', _loadSleepProtocol);
+  }
+
+  /// 수면 프로토콜 문서 로드. 없으면 default 생성 후 Firestore 기록.
+  Future<void> _loadSleepProtocol() async {
+    final docPath = 'users/$kUid/data/sleepProtocol';
+    try {
+      final snap = await FirebaseFirestore.instance
+          .doc(docPath)
+          .get()
+          .timeout(const Duration(seconds: 8));
+      if (snap.exists && snap.data() != null && snap.data()!.isNotEmpty) {
+        _safeSetState(() {
+          _sleepProto = SleepProtocol.fromMap(snap.data()!);
+        });
+        return;
+      }
+      // 문서가 없으면 default 로 생성하고 저장
+      final proto = SleepProtocol.defaultForUser();
+      _safeSetState(() => _sleepProto = proto);
+      await FirebaseFirestore.instance
+          .doc(docPath)
+          .set(proto.toMap(), SetOptions(merge: true))
+          .timeout(const Duration(seconds: 8));
+    } catch (e) {
+      debugPrint('[Home] loadSleepProtocol: $e');
+      // 최소 기본값으로라도 카드가 보이게
+      _safeSetState(() => _sleepProto ??= SleepProtocol.defaultForUser());
+    }
   }
 
   /// study 데이터 파싱 → UI 상태에 반영 (로컬/Firebase 공용)
   /// ★ timeRecords는 today doc에서만 읽음 (study doc과 충돌 방지)
   void _parseStudyData(Map<String, dynamic> data, String d) {
-
-    // studyTimeRecords
-    try {
-      final strRaw = data['studyTimeRecords'] as Map<String, dynamic>?;
-      if (strRaw != null && strRaw[d] != null) {
-        _effMin = StudyTimeRecord.fromMap(d, strRaw[d] as Map<String, dynamic>).effectiveMinutes;
-      }
-    } catch (e) { debugPrint('[Home] studyTimeRecords: $e'); }
 
     // orderData
     try {
@@ -574,11 +557,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (tr is Map && tr.isNotEmpty) {
         // today 문서는 flat 구조: timeRecords.wake, timeRecords.outing 등
         // 또는 기존 구조: timeRecords.{date}.{fields}
-        if (tr.containsKey('wake') || tr.containsKey('study') || tr.containsKey('outing') || tr.containsKey('studyStart')) {
+        if (tr.containsKey('wake') || tr.containsKey('outing')) {
           // flat 구조 (Phase C)
           _wake = tr['wake'] as String?;
-          _studyStart = tr['study'] as String? ?? tr['studyStart'] as String?;
-          _studyEnd = tr['studyEnd'] as String?;
           _outing = tr['outing'] as String?;
           _returnHome = tr['returnHome'] as String?;
           _bedTime = tr['bedTime'] as String?;
@@ -593,31 +574,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         } else if (tr.containsKey(d)) {
           // 기존 구조 (study doc 호환)
           final rec = TimeRecord.fromMap(d, Map<String, dynamic>.from(tr[d] as Map));
-          _wake = rec.wake; _studyStart = rec.study; _studyEnd = rec.studyEnd;
+          _wake = rec.wake;
           _outing = rec.outing; _returnHome = rec.returnHome; _bedTime = rec.bedTime;
           _mealStart = rec.mealStart; _mealEnd = rec.mealEnd;
           _todayMeals = rec.meals; _noOuting = rec.noOuting;
         }
       }
     } catch (e) { debugPrint('[Home] today timeRecords: $e'); }
-
-    // studyTime
-    try {
-      final st = data['studyTime'];
-      if (st is Map) {
-        _effMin = (st['total'] as num?)?.toInt() ?? 0;
-      }
-    } catch (e) { debugPrint('[Home] today studyTime: $e'); }
-
-    // fallback: studyTimeRecords (마이그레이션 직후 호환)
-    if (_effMin == 0) {
-      try {
-        final strRaw = data['studyTimeRecords'];
-        if (strRaw is Map && strRaw[d] != null) {
-          _effMin = StudyTimeRecord.fromMap(d, Map<String, dynamic>.from(strRaw[d] as Map)).effectiveMinutes;
-        }
-      } catch (_) {}
-    }
 
     // orderData
     try {
@@ -674,6 +637,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _specialDay = Map<String, dynamic>.from(sd);
       }
     } catch (_) {}
+
+    // ★ sleepLog (수면 교정 카드)
+    try {
+      final sl = data['sleepLog'];
+      if (sl is Map) {
+        _sleepLog = Map<String, dynamic>.from(sl);
+      }
+    } catch (_) {}
   }
 
   /// 독립 실행 헬퍼 — 실패해도 앱에 영향 없음
@@ -710,7 +681,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!mounted) return;
       _safeSetState(() {
         _tab = _pendingTab;
-        if (_pendingTab == 3) _statsRefreshTrigger++;
+        if (_pendingTab == 2) _statsRefreshTrigger++;
       });
       _tabFadeCtrl.reverse();
     });
@@ -735,36 +706,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // 스트림과 로드를 즉시 시작
     _startFirebaseListener();
     await _load();
-    _loadFocusRecords();
     // ★ 자동 아카이브 (7일 이전 데이터 → 월별 아카이브, UI 블로킹 없음)
     fb.autoArchive().catchError((e) {
       debugPrint('[Home] autoArchive error: $e');
     });
-    // ★ study→today studyTime 재동기화 — _load 완료 후 실행 (데이터 의존)
-    _syncStudyTimeToToday(fb);
-  }
-
-  Future<void> _syncStudyTimeToToday(FirebaseService fb) async {
-    try {
-      final todayKey = StudyDateUtils.todayKey();
-      final studyData = await fb.getStudyData();
-      if (studyData == null) return;
-      final records = studyData['studyTimeRecords'] as Map?;
-      if (records == null) return;
-      final todayRecord = records[todayKey] as Map?;
-      if (todayRecord == null) return;
-      final effectiveMin = todayRecord['effectiveMinutes'] as int? ?? 0;
-      if (effectiveMin <= 0) return;
-      // today doc 확인
-      final todayDoc = await fb.getTodayDoc();
-      final currentTotal = (todayDoc?['studyTime'] as Map?)?['total'] as int? ?? 0;
-      if (currentTotal != effectiveMin) {
-        await fb.updateTodayField('studyTime.total', effectiveMin);
-        debugPrint('[Home] studyTime sync: today=$currentTotal → study=$effectiveMin');
-      }
-    } catch (e) {
-      debugPrint('[Home] studyTime sync error: $e');
-    }
   }
 
   bool get _dk => Theme.of(context).brightness == Brightness.dark;
@@ -807,9 +752,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             children: [
               SafeArea(child: _dashboardPage()),
               SafeArea(child: _todoPage()),
-              SafeArea(child: _focusPage()),
               SafeArea(child: _recordsPage()),
-              const SafeArea(child: ProgressScreen()),
               SafeArea(child: CalendarScreen(embedded: true)),
             ],
           ),
@@ -846,10 +789,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
             _navItem(0, Icons.space_dashboard_outlined, Icons.space_dashboard_rounded, '홈'),
             _navItem(1, Icons.check_circle_outline_rounded, Icons.check_circle_rounded, 'Todo'),
-            _navItem(2, Icons.timer_outlined, Icons.timer_rounded, '포커스'),
-            _navItem(3, Icons.timeline_outlined, Icons.timeline_rounded, '기록'),
-            _navItem(4, Icons.insights_outlined, Icons.insights_rounded, '진행도'),
-            _navItem(5, Icons.calendar_today_outlined, Icons.calendar_today_rounded, '캘린더'),
+            _navItem(2, Icons.timeline_outlined, Icons.timeline_rounded, '기록'),
+            _navItem(3, Icons.calendar_today_outlined, Icons.calendar_today_rounded, '캘린더'),
           ]),
         ),
       ),
@@ -860,7 +801,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final sel = _tab == index;
     final selColor = _dk ? BotanicalColors.lanternGold : BotanicalColors.primary;
     final c = sel ? selColor : _textMuted;
-    final showLive = index == 2 && _ft.isRunning && !sel;
     return GestureDetector(
       onTap: () => _switchTab(index),
       behavior: HitTestBehavior.opaque,
@@ -872,11 +812,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               duration: const Duration(milliseconds: 200),
               child: Icon(sel ? activeIcon : icon, key: ValueKey(sel), size: 22, color: c),
             ),
-            if (showLive) Positioned(right: -3, top: -2,
-              child: Container(width: 6, height: 6,
-                decoration: BoxDecoration(
-                  color: BotanicalColors.error, shape: BoxShape.circle,
-                  border: Border.all(color: _dk ? const Color(0xFF1E293B) : Colors.white, width: 1.5)))),
           ]),
           const SizedBox(height: 2),
           Text(label, style: TextStyle(
@@ -915,15 +850,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const SizedBox(height: 10),
           ],
 
+          // ═══ SLEEP PROTOCOL (WB 10주 위상전진) ═══
+          _staggered(1, _sleepCard()),
+          const SizedBox(height: 14),
+
           // ═══ STATUS ═══
-          _staggered(1, _routineStatusCard()),
-          const SizedBox(height: 8),
-          _staggered(1, _studyTimeCard()),
-          const SizedBox(height: 8),
-          if (_ft.isRunning) ...[
-            const SizedBox(height: 8),
-            _staggered(2, _activeFocusBanner()),
-          ],
+          _staggered(2, _routineStatusCard()),
           const SizedBox(height: 14),
 
           // ═══ TODAY ═══
@@ -999,27 +931,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Text('기록', style: BotanicalTypo.heading(
               size: 26, weight: FontWeight.w800, color: _textMain)),
             const SizedBox(height: 2),
-            Text('학습 통계와 생활 기록', style: BotanicalTypo.label(
+            Text('생활 기록', style: BotanicalTypo.label(
               size: 12, color: _textMuted)),
           ]),
-          const Spacer(),
-          // 오늘 순공 미니뱃지
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: _dk
-                ? BotanicalColors.primary.withValues(alpha: 0.12)
-                : BotanicalColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.timer_outlined, size: 13,
-                color: _dk ? BotanicalColors.lanternGold : BotanicalColors.primary),
-              const SizedBox(width: 4),
-              Text('${_effMin ~/ 60}h ${_effMin % 60}m',
-                style: BotanicalTypo.label(size: 11, weight: FontWeight.w800,
-                  color: _dk ? BotanicalColors.lanternGold : BotanicalColors.primary)),
-            ]),
-          ),
         ]),
         const SizedBox(height: 16),
 
@@ -1242,151 +1156,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── 순공시간 카드 (full width) ──
 
-  Widget _studyTimeCard() {
-    final h = _effMin ~/ 60;
-    final m = _effMin % 60;
-    final pc = BotanicalColors.primary;
-    final pct = (_effMin / 480).clamp(0.0, 1.0);
-    final pctInt = (pct * 100).toInt();
-    // 8시간 목표 기준 색상 그라데이션
-    final progressColor = pct < 0.3
-        ? pc
-        : pct < 0.7
-            ? Color.lerp(pc, const Color(0xFF10B981), (pct - 0.3) / 0.4)!
-            : const Color(0xFF10B981); // emerald
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: _dk
-            ? [BotanicalColors.cardDark, const Color(0xFF1A2332)]
-            : [Colors.white, const Color(0xFFF0F4FF)]),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: pc.withValues(alpha: _dk ? 0.08 : 0.06),
-            blurRadius: 16, offset: const Offset(0, 4)),
-        ]),
-      child: Row(children: [
-        // 원형 프로그레스
-        SizedBox(width: 64, height: 64,
-          child: CustomPaint(
-            painter: _CircleProgressPainter(
-              progress: pct,
-              color: progressColor,
-              bgColor: _dk ? Colors.white.withValues(alpha: 0.06) : pc.withValues(alpha: 0.06),
-              strokeWidth: 5),
-            child: Center(child: Text('$pctInt%', style: TextStyle(
-              fontSize: 14, fontWeight: FontWeight.w800, color: progressColor,
-              fontFamily: 'monospace'))),
-          ),
-        ),
-        const SizedBox(width: 16),
-        // 숫자 + 라벨
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('순공시간', style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w600, color: _textMuted,
-            letterSpacing: 0.5)),
-          const SizedBox(height: 2),
-          RichText(text: TextSpan(children: [
-            TextSpan(text: '$h', style: TextStyle(
-              fontSize: 32, fontWeight: FontWeight.w700, color: _textMain,
-              fontFamily: 'monospace', height: 1.1)),
-            TextSpan(text: 'h ', style: TextStyle(
-              fontSize: 13, fontWeight: FontWeight.w400, color: _textMuted)),
-            TextSpan(text: '${m.toString().padLeft(2, '0')}', style: TextStyle(
-              fontSize: 22, fontWeight: FontWeight.w600, color: _textSub,
-              fontFamily: 'monospace')),
-            TextSpan(text: 'm', style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w400, color: _textMuted)),
-          ])),
-          const SizedBox(height: 4),
-          // 목표까지 남은 시간
-          Text(_effMin >= 480
-            ? '목표 달성!'
-            : '목표까지 ${(480 - _effMin) ~/ 60}h ${(480 - _effMin) % 60}m',
-            style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w500,
-              color: _effMin >= 480 ? const Color(0xFF10B981) : _textMuted)),
-        ])),
-      ]),
-    );
-  }
-
-  // ══════════════════════════════════════════
-  //  포커스 활성 배너
-  // ══════════════════════════════════════════
-
-  Widget _activeFocusBanner() {
-    final st = _ft.getCurrentState();
-    final mc = BotanicalColors.subjectColor(st.subject);
-    return GestureDetector(
-      onTap: () => _switchTab(2), // 포커스 탭으로 이동
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-            colors: [mc.withValues(alpha: _dk ? 0.18 : 0.08), mc.withValues(alpha: _dk ? 0.06 : 0.02)]),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: mc.withValues(alpha: 0.25)),
-          boxShadow: [
-            BoxShadow(color: mc.withValues(alpha: _dk ? 0.12 : 0.08), blurRadius: 12, offset: const Offset(0, 3)),
-          ]),
-        child: Row(children: [
-          Container(width: 10, height: 10,
-            decoration: BoxDecoration(color: mc, shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: mc.withValues(alpha: 0.5), blurRadius: 8, spreadRadius: 2)])),
-          const SizedBox(width: 12),
-          Text('${st.mode == 'study' ? '📖' : st.mode == 'lecture' ? '🎧' : '☕'} ${st.subject}',
-            style: BotanicalTypo.label(size: 13, weight: FontWeight.w600, color: _textMain)),
-          const Spacer(),
-          Text(st.mainTimerFormatted, style: BotanicalTypo.number(
-            size: 20, weight: FontWeight.w600, color: mc)),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: mc.withValues(alpha: _dk ? 0.15 : 0.08),
-              borderRadius: BorderRadius.circular(8)),
-            child: Text('순공 ${st.effectiveTimeFormatted}',
-              style: BotanicalTypo.label(size: 10, weight: FontWeight.w700, color: mc))),
-          const SizedBox(width: 6),
-          Icon(Icons.arrow_forward_ios_rounded, size: 12, color: _textMuted),
-        ]),
-      ),
-    );
-  }
 
 }
 
-/// 원형 프로그레스 페인터 (순공시간 카드용)
-class _CircleProgressPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-  final Color bgColor;
-  final double strokeWidth;
-  _CircleProgressPainter({required this.progress, required this.color, required this.bgColor, this.strokeWidth = 5});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width - strokeWidth) / 2;
-    canvas.drawCircle(center, radius, Paint()
-      ..style = PaintingStyle.stroke ..strokeWidth = strokeWidth ..color = bgColor);
-    if (progress > 0) {
-      final rect = Rect.fromCircle(center: center, radius: radius);
-      canvas.drawArc(rect, -1.5708, progress * 6.2832, false, Paint()
-        ..style = PaintingStyle.stroke ..strokeWidth = strokeWidth ..color = color
-        ..strokeCap = StrokeCap.round);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _CircleProgressPainter old) =>
-    old.progress != progress || old.color != color;
-}

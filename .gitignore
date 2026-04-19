@@ -29,3 +29,17 @@ android/hs_err_pid*.log
 functions/node_modules/
 functions/tuya_backup.ab
 spacing_workbook*.pdf
+
+# Runtime state
+.startup_status.json
+.battery_manager.lock
+.cafe_state.json
+.playwright-mcp/
+
+# HQ session metadata — must not push to public repo
+live_context.md
+SESSION.md
+_migration_backup/
+_icon_candidates/
+*.hprof
+conversation_archive/

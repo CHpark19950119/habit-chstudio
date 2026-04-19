@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
-import '../utils/study_date_utils.dart';
+import '../utils/date_utils.dart';
 import 'firebase_service.dart';
 
 /// ═══════════════════════════════════════════════════════════
@@ -99,7 +99,7 @@ class DataAuditService {
         }
 
         // 1c. 빈 레코드 정리 (모든 필드 null)
-        if (tr.wake == null && tr.study == null && tr.outing == null &&
+        if (tr.wake == null && tr.outing == null &&
             tr.bedTime == null && tr.meals.isEmpty) {
           keysToRemove.add(date);
           results.add('REMOVE: $date 빈 레코드');
@@ -144,8 +144,6 @@ class DataAuditService {
     final fixed = TimeRecord(
       date: tr.date,
       wake: fix(tr.wake),
-      study: fix(tr.study),
-      studyEnd: fix(tr.studyEnd),
       outing: fix(tr.outing),
       returnHome: fix(tr.returnHome),
       arrival: tr.arrival,
@@ -206,20 +204,6 @@ class DataAuditService {
             if (d.isBefore(cutoff)) {
               updates['timeRecords.$key'] = FieldValue.delete();
               results.add('CLEAN: timeRecords.$key (14일+)');
-            }
-          } catch (_) {}
-        }
-      }
-
-      // studyTimeRecords 14일 이상
-      final str = data['studyTimeRecords'];
-      if (str is Map) {
-        for (final key in str.keys) {
-          try {
-            final d = DateTime.parse(key.toString());
-            if (d.isBefore(cutoff)) {
-              updates['studyTimeRecords.$key'] = FieldValue.delete();
-              results.add('CLEAN: studyTimeRecords.$key (14일+)');
             }
           } catch (_) {}
         }

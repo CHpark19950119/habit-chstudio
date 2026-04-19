@@ -5,7 +5,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'theme/botanical_theme.dart';
-import 'services/objectbox_store.dart';
 import 'screens/splash_screen.dart';
 import 'services/fcm_service.dart';
 import 'services/firebase_service.dart';
@@ -17,7 +16,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   FirebaseMessaging.onBackgroundMessage(onFcmBackgroundMessage);
   await Hive.initFlutter();
-  await ObjectBoxStore.init();
   runApp(const CheonhongApp());
 }
 

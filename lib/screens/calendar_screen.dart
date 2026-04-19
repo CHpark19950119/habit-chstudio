@@ -1,22 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../services/firebase_service.dart';
-import '../services/focus_service.dart';
 import '../models/models.dart';
 import '../theme/botanical_theme.dart';
-import '../data/plan_data.dart';
-import '../utils/study_date_utils.dart';
-import 'painters.dart';
+import '../utils/date_utils.dart';
 
 part 'calendar_day_detail.dart';
-part 'calendar_study_widgets.dart';
 part 'calendar_sheets.dart';
 
 /// ═══════════════════════════════════════════════════════════════
-/// 캘린더 v4 — Plan 전체보기 + 저널 웹앱 연동 + 학습과제
+/// 캘린더 — 일상 기록 + 저널 + 메모
 /// ═══════════════════════════════════════════════════════════════
 
 class CalendarScreen extends StatefulWidget {
@@ -27,7 +22,7 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   final _fb = FirebaseService();
 
   late DateTime _viewMonth;
@@ -38,15 +33,8 @@ class _CalendarScreenState extends State<CalendarScreen>
 
   List<String> _selectedMemos = [];
   TimeRecord? _selectedTimeRecord;
-  StudyTimeRecord? _selectedStudyRecord;
-  List<FocusCycle> _selectedFocusCycles = [];
   List<String> _restDays = [];
-  Map<String, StudyTimeRecord> _monthStudyRecords = {};
-  Map<String, List<FocusCycle>> _monthFocusCycles = {};
   List<Map<String, dynamic>> _monthJournals = [];
-
-  // ★ 2-C: 커스텀 학습과제
-  List<String> _selectedCustomTasks = [];
 
   // ★ Todo 완료율 (날짜별)
   Map<String, double> _monthTodoRates = {};
@@ -58,7 +46,6 @@ class _CalendarScreenState extends State<CalendarScreen>
   Set<String> _specialDayDates = {};
 
   late AnimationController _fadeCtrl;
-  late AnimationController _waveCtrl;
 
   bool get _dk => Theme.of(context).brightness == Brightness.dark;
   Color get _textMain => _dk ? BotanicalColors.textMainDark : BotanicalColors.textMain;
@@ -74,14 +61,12 @@ class _CalendarScreenState extends State<CalendarScreen>
     _viewMonth = DateTime(now.year, now.month);
     _selectedDate = now;
     _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
-    _waveCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
     _loadMonth();
   }
 
   @override
   void dispose() {
     _fadeCtrl.dispose();
-    _waveCtrl.dispose();
     super.dispose();
   }
 
@@ -126,97 +111,6 @@ class _CalendarScreenState extends State<CalendarScreen>
 
       // study doc (legacy read for restDays, journals, todos, homeDays)
       final studyData = await _fb.getStudyData(forceServer: forceServer).timeout(t, onTimeout: () => null);
-
-      // studyTimeRecords: history + today doc
-      try {
-        _monthStudyRecords = {};
-        if (historyData != null) {
-          final days = historyData['days'] as Map<String, dynamic>? ?? {};
-          for (final entry in days.entries) {
-            final dateKey = '$monthKey-${entry.key}';
-            final dayData = entry.value is Map ? Map<String, dynamic>.from(entry.value as Map) : null;
-            if (dayData == null) continue;
-            final str = dayData['studyTimeRecords'];
-            if (str is Map) {
-              _monthStudyRecords[dateKey] = StudyTimeRecord.fromMap(dateKey, Map<String, dynamic>.from(str));
-            } else {
-              final st = dayData['studyTime'];
-              if (st is Map && st['total'] is num) {
-                _monthStudyRecords[dateKey] = StudyTimeRecord(
-                  date: dateKey,
-                  totalMinutes: (st['total'] as num).toInt(),
-                  effectiveMinutes: (st['total'] as num).toInt(),
-                );
-              }
-            }
-          }
-        }
-        // today doc for current day
-        if (todayDoc != null && todayKey.startsWith(monthKey)) {
-          final st = todayDoc['studyTime'];
-          if (st is Map && st['total'] is num && (st['total'] as num) > 0) {
-            _monthStudyRecords[todayKey] = StudyTimeRecord(
-              date: todayKey,
-              totalMinutes: (st['total'] as num).toInt(),
-              effectiveMinutes: (st['total'] as num).toInt(),
-            );
-          }
-        }
-      } catch (_) {}
-
-      // focusCycles: history only (ObjectBox / Hive for current)
-      try {
-        _monthFocusCycles = {};
-        if (historyData != null) {
-          final days = historyData['days'] as Map<String, dynamic>? ?? {};
-          for (final entry in days.entries) {
-            final dateKey = '$monthKey-${entry.key}';
-            final dayData = entry.value is Map ? Map<String, dynamic>.from(entry.value as Map) : null;
-            if (dayData == null) continue;
-            final fc = dayData['focusSessions'] ?? dayData['focusCycles'];
-            if (fc is List) {
-              _monthFocusCycles[dateKey] = fc
-                  .where((e) => e is Map)
-                  .map((e) {
-                    final m = Map<String, dynamic>.from(e as Map);
-                    if (m.containsKey('id')) return FocusCycle.fromMap(m);
-                    return FocusCycle(
-                      id: m['start']?.toString() ?? '',
-                      date: dateKey,
-                      startTime: m['start']?.toString() ?? '',
-                      endTime: m['end']?.toString(),
-                      subject: m['subject']?.toString() ?? '',
-                      studyMin: (m['minutes'] as num?)?.toInt() ?? 0,
-                      effectiveMin: (m['effectiveMin'] as num?)?.toInt() ?? (m['minutes'] as num?)?.toInt() ?? 0,
-                    );
-                  }).toList();
-            }
-          }
-        }
-      } catch (_) {}
-
-      // ObjectBox/Hive local fallback
-      try {
-        final hiveSessions = await FocusService().getHiveSessionsForMonth(monthKey);
-        for (final entry in hiveSessions.entries) {
-          final existing = _monthStudyRecords[entry.key];
-          if (existing == null || existing.effectiveMinutes == 0) {
-            final sessions = entry.value;
-            _monthStudyRecords[entry.key] = StudyTimeRecord(
-              date: entry.key,
-              totalMinutes: sessions.fold(0, (s, c) => s + c.studyMin + c.lectureMin),
-              effectiveMinutes: sessions.fold(0, (s, c) => s + c.effectiveMin),
-              studyMinutes: sessions.fold(0, (s, c) => s + c.studyMin),
-              lectureMinutes: sessions.fold(0, (s, c) => s + c.lectureMin),
-            );
-          }
-          if (_monthFocusCycles[entry.key]?.isEmpty ?? true) {
-            _monthFocusCycles[entry.key] = entry.value;
-          }
-        }
-      } catch (e) {
-        debugPrint('[Calendar] Hive fallback error: $e');
-      }
 
       // restDays, journals (study doc legacy read)
       try {
@@ -312,24 +206,13 @@ class _CalendarScreenState extends State<CalendarScreen>
   Map<String, dynamic> _archiveToHistoryFormat(Map<String, dynamic> archive, String month) {
     final days = <String, Map<String, dynamic>>{};
     final trMap = archive['timeRecords'] as Map?;
-    final strMap = archive['studyTimeRecords'] as Map?;
-    final fcMap = archive['focusCycles'] as Map?;
     final todosMap = archive['todos'] as Map?;
-    for (final dateKey in {...?trMap?.keys, ...?strMap?.keys, ...?fcMap?.keys, ...?todosMap?.keys}) {
+    for (final dateKey in {...?trMap?.keys, ...?todosMap?.keys}) {
       final ds = dateKey.toString();
       if (ds.length < 10 || !ds.startsWith(month)) continue;
       final day = ds.substring(8, 10);
       days.putIfAbsent(day, () => {});
       if (trMap?[dateKey] != null) days[day]!['timeRecords'] = trMap![dateKey];
-      if (strMap?[dateKey] != null) {
-        days[day]!['studyTimeRecords'] = strMap![dateKey];
-        final str = strMap[dateKey];
-        if (str is Map) {
-          final effMin = (str['effectiveMinutes'] as num?)?.toInt() ?? 0;
-          days[day]!['studyTime'] = {'total': effMin, 'subjects': {}};
-        }
-      }
-      if (fcMap?[dateKey] != null) days[day]!['focusSessions'] = fcMap![dateKey];
       if (todosMap?[dateKey] != null) {
         final td = todosMap![dateKey];
         if (td is Map) days[day]!['todos'] = td['items'] ?? [];
@@ -342,7 +225,6 @@ class _CalendarScreenState extends State<CalendarScreen>
     final ds = DateFormat('yyyy-MM-dd').format(_selectedDate);
     const t = Duration(seconds: 5);
 
-    // ★ Phase B: 분리된 문서별 읽기
     _selectedMemos = [];
     final fTimeRecords = _fb.getTimeRecords().timeout(t, onTimeout: () => <String, TimeRecord>{});
 
@@ -352,23 +234,6 @@ class _CalendarScreenState extends State<CalendarScreen>
     } catch (_) {
       _selectedTimeRecord = null;
     }
-
-    // focusCycles (focus 문서 or 캐시)
-    _selectedFocusCycles = _monthFocusCycles[ds] ?? [];
-    if (_selectedFocusCycles.isEmpty) {
-      try {
-        _selectedFocusCycles = await _fb.getFocusCycles(ds);
-      } catch (_) {}
-    }
-
-    // customTasks (plan 문서)
-    try {
-      _selectedCustomTasks = await _fb.getCustomStudyTasks(ds);
-    } catch (_) {
-      _selectedCustomTasks = [];
-    }
-
-    _selectedStudyRecord = _monthStudyRecords[ds];
   }
 
   void _changeMonth(int delta) {
@@ -437,12 +302,11 @@ class _CalendarScreenState extends State<CalendarScreen>
   }
 
   // ══════════════════════════════════════════
-  //  헤더 — D-Day 뱃지 + 오늘 버튼
+  //  헤더 — 오늘 버튼
   // ══════════════════════════════════════════
 
   Widget _buildHeader() {
     final monthLabel = DateFormat('yyyy년 M월').format(_viewMonth);
-    final nearest = StudyPlanData.nearestDDay();
 
     return Container(
       padding: EdgeInsets.fromLTRB(widget.embedded ? 16 : 8, 8, 16, 12),
@@ -498,24 +362,12 @@ class _CalendarScreenState extends State<CalendarScreen>
               borderRadius: BorderRadius.circular(8)),
             child: Text('오늘', style: TextStyle(
               fontSize: 11, fontWeight: FontWeight.w700, color: _accent)))),
-        // 가장 가까운 시험 D-Day
-        if (nearest != null && nearest.daysLeft >= 0) ...[
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [
-                nearest.color, nearest.color.withValues(alpha: 0.7)]),
-              borderRadius: BorderRadius.circular(10)),
-            child: Text(nearest.dDayLabel, style: const TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white))),
-        ],
       ]),
     );
   }
 
   // ══════════════════════════════════════════
-  //  월간 그리드 — 워터탱크 + 파도
+  //  월간 그리드
   // ══════════════════════════════════════════
 
   Widget _buildMonthGrid() {
@@ -580,35 +432,10 @@ class _CalendarScreenState extends State<CalendarScreen>
     final isToday = dateStr == todayStr;
     final isSelected = dateStr == selectedStr;
     final isPast = date.isBefore(DateTime(today.year, today.month, today.day));
-    final isFuture = date.isAfter(DateTime(today.year, today.month, today.day));
     final isRestDay = _restDays.contains(dateStr);
     final isHomeDay = _monthHomeDays.contains(dateStr);
     final isSpecialDay = _specialDayDates.contains(dateStr);
     final isSunday = dow == 0;
-    // ★ Plan 마일스톤 체크
-    final planDDays = StudyPlanData.ddaysForDate(dateStr);
-    final planMilestones = StudyPlanData.milestonesForDate(dateStr);
-    final hasPlanExam = planDDays.isNotEmpty || planMilestones.isNotEmpty;
-
-    // ★ 2-A: Plan 일일계획
-    final dailyPlan = StudyPlanData.dailyPlanForDate(dateStr);
-
-    // 학습시간 & 워터탱크
-    final studyRec = _monthStudyRecords[dateStr];
-    final studyMin = studyRec?.effectiveMinutes ?? 0;
-    const targetMin = 600;
-    final fillPct = studyMin > 0 ? (studyMin / targetMin).clamp(0.0, 0.88) : 0.0;
-
-    // 과목 컬러 (FocusCycles에서 추출)
-    final cycles = _monthFocusCycles[dateStr] ?? [];
-    final subjectMinutes = <String, int>{};
-    for (final c in cycles) {
-      subjectMinutes[c.subject] = (subjectMinutes[c.subject] ?? 0) + c.effectiveMin;
-    }
-
-    final timeLabel = studyMin > 0
-      ? (studyMin >= 60 ? '${studyMin ~/ 60}h${studyMin % 60 > 0 ? '${studyMin % 60}' : ''}' : '${studyMin}m')
-      : '';
 
     return GestureDetector(
       onTap: () => _selectDay(date),
@@ -632,156 +459,61 @@ class _CalendarScreenState extends State<CalendarScreen>
                 ? const Color(0xFF5B7ABF).withValues(alpha: 0.4)
                 : isToday
                   ? _accent.withValues(alpha: 0.3)
-                  : (hasPlanExam)
-                    ? const Color(0xFFEF4444).withValues(alpha: 0.25)
-                    : _border.withValues(alpha: 0.1),
-            width: isSelected ? 2 : isHomeDay ? 1.5 : isToday ? 1.5 : (hasPlanExam) ? 1 : 0.5),
+                  : _border.withValues(alpha: 0.1),
+            width: isSelected ? 2 : isHomeDay ? 1.5 : isToday ? 1.5 : 0.5),
           boxShadow: isSelected ? [
             BoxShadow(color: _accent.withValues(alpha: 0.1), blurRadius: 8)
           ] : null,
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(children: [
-          // ── 워터탱크 (학습시간 비례) ──
-          if (fillPct > 0 && !isFuture)
-            Positioned.fill(
-              child: AnimatedBuilder(
-                animation: _waveCtrl,
-                builder: (_, __) => CustomPaint(
-                  painter: WaterWavePainter(
-                    fillPercent: fillPct,
-                    phase: _waveCtrl.value,
-                    waterColor: const Color(0xFF38BDF8),
-                    waveColor: const Color(0xFF38BDF8),
-                  ),
-                ),
-              ),
-            )
-          // ── 빈 날 (공부 안 한 과거) — 대각 빗금 + 붉은 틴트 ──
-          else if (fillPct == 0 && isPast && !isSunday && !isRestDay)
-            Positioned.fill(
-              child: CustomPaint(painter: _EmptyDayPainter(dk: _dk)),
-            ),
-          // ── 글래스 오버레이 ──
-          Positioned.fill(child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft, end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withValues(alpha: 0.08), Colors.transparent,
-                  Colors.transparent, Colors.white.withValues(alpha: 0.03),
-                ],
-              ),
-            ),
-          )),
-          // ── 콘텐츠 ──
-          Padding(
-            padding: const EdgeInsets.all(3),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 상단: 날짜 + 시험 뱃지
-                Row(children: [
-                  Text('$day', style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: isToday || isSelected ? FontWeight.w800 : FontWeight.w600,
-                    color: (hasPlanExam) ? const Color(0xFFEF4444)
-                         : isSelected ? _accent
-                         : isToday ? _accent
-                         : isRestDay ? _textMuted
-                         : isSunday ? const Color(0xFFEF4444).withValues(alpha: isPast ? 0.4 : 0.8)
-                         : dow == 6 ? const Color(0xFF3B82F6).withValues(alpha: isPast ? 0.4 : 0.8)
-                         : isPast ? _textMuted.withValues(alpha: 0.5)
-                         : _textMain,
-                    decoration: isRestDay ? TextDecoration.lineThrough : null,
-                  )),
-                  if (isSpecialDay)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 2),
-                      child: Text('🎉', style: TextStyle(fontSize: 8)))
-                  else if (hasPlanExam)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 2),
-                      child: Text('🎯', style: TextStyle(fontSize: 7))),
+        child: Padding(
+          padding: const EdgeInsets.all(3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 상단: 날짜
+              Row(children: [
+                Text('$day', style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isToday || isSelected ? FontWeight.w800 : FontWeight.w600,
+                  color: isSelected ? _accent
+                       : isToday ? _accent
+                       : isRestDay ? _textMuted
+                       : isSunday ? const Color(0xFFEF4444).withValues(alpha: isPast ? 0.4 : 0.8)
+                       : dow == 6 ? const Color(0xFF3B82F6).withValues(alpha: isPast ? 0.4 : 0.8)
+                       : isPast ? _textMuted.withValues(alpha: 0.5)
+                       : _textMain,
+                  decoration: isRestDay ? TextDecoration.lineThrough : null,
+                )),
+                if (isSpecialDay)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 2),
+                    child: Text('🎉', style: TextStyle(fontSize: 8))),
+              ]),
+              const Spacer(),
+              // 중앙
+              if (isSpecialDay)
+                Center(child: Text('🎮 놀이', style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w800,
+                  color: const Color(0xFF8B5CF6)),
+                ))
+              else if (isSunday && !isToday && isPast)
+                Center(child: Text('OFF', style: TextStyle(
+                  fontSize: 8, fontWeight: FontWeight.w600,
+                  color: _textMuted.withValues(alpha: 0.4)))),
+              const Spacer(),
+              // 하단: Todo 완료율 인디케이터
+              if (_monthTodoRates.containsKey(dateStr))
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  _dot(_monthTodoRates[dateStr]! >= 0.8
+                    ? const Color(0xFF10B981)
+                    : _monthTodoRates[dateStr]! >= 0.5
+                      ? const Color(0xFFF59E0B)
+                      : const Color(0xFFEF4444)),
                 ]),
-                const Spacer(),
-                // 중앙: 특별한 날 라벨
-                if (isSpecialDay && timeLabel.isEmpty)
-                  Center(child: Text('🎮 놀이', style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w800,
-                    color: const Color(0xFF8B5CF6)),
-                  ))
-                else if (timeLabel.isNotEmpty)
-                  Center(child: Text(timeLabel, style: TextStyle(
-                    fontSize: studyMin >= 240 ? 14 : 12,
-                    fontWeight: FontWeight.w800,
-                    color: _dk ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF1E293B),
-                  )))
-                // ★ 2-A: Plan 일일계획 제목 표시
-                else if (dailyPlan != null && dailyPlan.title != null)
-                  Center(child: Text(
-                    dailyPlan.title!.length > 6
-                      ? '${dailyPlan.title!.substring(0, 6)}…'
-                      : dailyPlan.title!,
-                    style: TextStyle(
-                      fontSize: 8, fontWeight: FontWeight.w600,
-                      color: StudyPlanData.tagColor(dailyPlan.tag ?? 'rest').withValues(alpha: 0.8)),
-                    maxLines: 1, overflow: TextOverflow.clip))
-                else if (isFuture && planDDays.isNotEmpty)
-                  Center(child: Text(
-                    planDDays.first.dDayLabel.length > 5
-                      ? planDDays.first.dDayLabel.substring(0, 5)
-                      : planDDays.first.dDayLabel,
-                    style: TextStyle(
-                      fontSize: 9, fontWeight: FontWeight.w800,
-                      color: planDDays.first.color)))
-                else if (timeLabel.isEmpty && isSunday && !isFuture && !isToday)
-                  Center(child: Text('OFF', style: TextStyle(
-                    fontSize: 8, fontWeight: FontWeight.w600,
-                    color: _textMuted.withValues(alpha: 0.4)))),
-                const Spacer(),
-                // ★ 2-A: Plan 태그 색상 바
-                if (dailyPlan != null && dailyPlan.tag != null && timeLabel.isEmpty)
-                  Container(
-                    height: 2, width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 2),
-                    decoration: BoxDecoration(
-                      color: StudyPlanData.tagColor(dailyPlan.tag!).withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(1))),
-                // 하단: 과목 바 + 인디케이터
-                if (subjectMinutes.isNotEmpty) _buildSubjectBar(subjectMinutes),
-                if (_monthTodoRates.containsKey(dateStr))
-                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    _dot(_monthTodoRates[dateStr]! >= 0.8
-                      ? const Color(0xFF10B981)
-                      : _monthTodoRates[dateStr]! >= 0.5
-                        ? const Color(0xFFF59E0B)
-                        : const Color(0xFFEF4444)),
-                  ]),
-              ],
-            ),
+            ],
           ),
-        ]),
+        ),
       ),
-    );
-  }
-
-  Widget _buildSubjectBar(Map<String, int> subjectMinutes) {
-    if (subjectMinutes.isEmpty) return const SizedBox.shrink();
-    final total = subjectMinutes.values.fold(0, (a, b) => a + b);
-    if (total == 0) return const SizedBox.shrink();
-
-    return Container(
-      height: 3,
-      margin: const EdgeInsets.only(bottom: 2),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(2)),
-      child: Row(children: subjectMinutes.entries.map((e) {
-        final flex = (e.value / total * 100).round().clamp(1, 100);
-        return Flexible(
-          flex: flex,
-          child: Container(color: BotanicalColors.subjectColor(e.key), height: 3));
-      }).toList()),
     );
   }
 
@@ -791,32 +523,14 @@ class _CalendarScreenState extends State<CalendarScreen>
     decoration: BoxDecoration(shape: BoxShape.circle, color: c.withValues(alpha: 0.85)));
 
   // ══════════════════════════════════════════
-  //  ★ 1-C Fix: 월간 요약 — 프로그레스바 명확화
+  //  월간 요약
   // ══════════════════════════════════════════
 
   Widget _buildMonthSummary() {
-    final year = _viewMonth.year;
     final month = _viewMonth.month;
-    final daysInMonth = DateTime(year, month + 1, 0).day;
-    int totalMin = 0, studyDays = 0;
-    for (int d = 1; d <= daysInMonth; d++) {
-      final ds = '$year-${month.toString().padLeft(2, '0')}-${d.toString().padLeft(2, '0')}';
-      final sr = _monthStudyRecords[ds];
-      if (sr != null && sr.effectiveMinutes > 0) {
-        totalMin += sr.effectiveMinutes;
-        studyDays++;
-      }
-    }
-    final avgMin = studyDays > 0 ? totalMin ~/ studyDays : 0;
-    final totalH = totalMin ~/ 60;
-    final totalM = totalMin % 60;
-    final avgH = avgMin ~/ 60;
-    final avgM = avgMin % 60;
-
-    // 현재 기간 정보
-    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final currentPeriod = StudyPlanData.periodForDate(todayStr);
-    final currentSub = StudyPlanData.subPeriodForDate(todayStr);
+    final restCount = _restDays.where((d) => d.startsWith(DateFormat('yyyy-MM').format(_viewMonth))).length;
+    final homeDayCount = _monthHomeDays.length;
+    final specialCount = _specialDayDates.length;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -824,88 +538,21 @@ class _CalendarScreenState extends State<CalendarScreen>
         color: _dk ? Colors.white.withValues(alpha: 0.03) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _border.withValues(alpha: 0.15))),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          const Text('📚', style: TextStyle(fontSize: 16)),
-          const SizedBox(width: 8),
-          Text('${month}월 학습 요약', style: TextStyle(
-            fontSize: 12, fontWeight: FontWeight.w700, color: _textMain)),
-          const Spacer(),
-          _summaryChip('${totalH}h${totalM > 0 ? ' ${totalM}m' : ''}', '총'),
+      child: Row(children: [
+        const Text('📅', style: TextStyle(fontSize: 16)),
+        const SizedBox(width: 8),
+        Text('${month}월 요약', style: TextStyle(
+          fontSize: 12, fontWeight: FontWeight.w700, color: _textMain)),
+        const Spacer(),
+        _summaryChip('$homeDayCount', '집콕'),
+        const SizedBox(width: 12),
+        _summaryChip('$restCount', '쉬는날'),
+        if (specialCount > 0) ...[
           const SizedBox(width: 12),
-          _summaryChip('${avgH}h${avgM > 0 ? '${avgM}m' : ''}', '평균'),
-          const SizedBox(width: 12),
-          _summaryChip('${studyDays}일', '학습'),
-        ]),
-        // ★ 1-C Fix: 명확한 프로그레스바로 변경
-        if (currentPeriod != null) ...[
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: _dk ? Colors.white.withValues(alpha: 0.02) : const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _border.withValues(alpha: 0.1))),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Container(
-                  width: 4, height: 24,
-                  decoration: BoxDecoration(
-                    color: _accent,
-                    borderRadius: BorderRadius.circular(2))),
-                const SizedBox(width: 10),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(currentPeriod.name, style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w700, color: _textMain)),
-                  if (currentSub != null)
-                    Text(currentSub.name, style: TextStyle(
-                      fontSize: 9, fontWeight: FontWeight.w500, color: _textMuted)),
-                ])),
-              ]),
-              const SizedBox(height: 8),
-              // ★ 수평 프로그레스바 + 명확한 라벨
-              _periodProgressBar(currentPeriod, currentSub, todayStr),
-            ]),
-          ),
+          _summaryChip('$specialCount', '특별'),
         ],
       ]),
     );
-  }
-
-  /// ★ 1-C: 기간 진행률 프로그레스바 (명확한 라벨)
-  Widget _periodProgressBar(dynamic period, PlanSubPeriod? sub, String todayStr) {
-    final progress = period.progressForDate(todayStr) as double;
-    final progressPct = (progress * 100).round();
-
-    // 경과일/총일 계산
-    final start = DateTime.parse(sub?.start ?? period.start as String);
-    final end = DateTime.parse(sub?.end ?? period.end as String);
-    final today = DateTime.now();
-    final totalDays = end.difference(start).inDays + 1;
-    final elapsed = today.difference(start).inDays + 1;
-    final remaining = end.difference(today).inDays;
-    final displayName = sub?.name ?? period.name as String;
-
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Text(displayName, style: TextStyle(
-          fontSize: 9, fontWeight: FontWeight.w600, color: _accent)),
-        const Spacer(),
-        Text('$elapsed/$totalDays일 ($progressPct%)', style: TextStyle(
-          fontSize: 9, fontWeight: FontWeight.w700, color: _textSub)),
-      ]),
-      const SizedBox(height: 4),
-      ClipRRect(
-        borderRadius: BorderRadius.circular(3),
-        child: LinearProgressIndicator(
-          value: progress.clamp(0.0, 1.0),
-          backgroundColor: _dk ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade200,
-          valueColor: AlwaysStoppedAnimation(_accent),
-          minHeight: 6)),
-      const SizedBox(height: 3),
-      Text(remaining >= 0 ? '남은 $remaining일' : '${-remaining}일 경과',
-        style: TextStyle(fontSize: 8, fontWeight: FontWeight.w500, color: _textMuted)),
-    ]);
   }
 
   Widget _summaryChip(String value, String label) {
@@ -918,53 +565,26 @@ class _CalendarScreenState extends State<CalendarScreen>
     ]);
   }
 
-}
+  // ══════════════════════════════════════════
+  //  FAB — 일정/메모 추가
+  // ══════════════════════════════════════════
 
-/// 공부 안 한 과거 날짜 — 강렬한 대각 빗금 + 붉은 바닥
-class _EmptyDayPainter extends CustomPainter {
-  final bool dk;
-  const _EmptyDayPainter({required this.dk});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // 진한 배경
-    final bgPaint = Paint()
-      ..color = dk
-        ? const Color(0xFF2A0A0A).withValues(alpha: 0.7)
-        : const Color(0xFFFCE4E4);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
-
-    // 굵은 대각 빗금
-    final linePaint = Paint()
-      ..color = dk
-        ? const Color(0xFFEF4444).withValues(alpha: 0.2)
-        : const Color(0xFFEF4444).withValues(alpha: 0.15)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
-    const gap = 6.0;
-    final maxDist = size.width + size.height;
-    for (double d = 0; d < maxDist; d += gap) {
-      final x0 = d < size.height ? 0.0 : d - size.height;
-      final y0 = d < size.height ? d : size.height;
-      final x1 = d < size.width ? d : size.width;
-      final y1 = d < size.width ? 0.0 : d - size.width;
-      canvas.drawLine(Offset(x0, y0), Offset(x1, y1), linePaint);
-    }
-
-    // 바닥 붉은 그라디언트 (마른 바닥)
-    final bottomPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.bottomCenter, end: Alignment.center,
-        colors: [
-          dk ? const Color(0xFFB91C1C).withValues(alpha: 0.25)
-             : const Color(0xFFEF4444).withValues(alpha: 0.12),
-          Colors.transparent,
-        ],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bottomPaint);
+  Widget? _buildFab() {
+    return FloatingActionButton.small(
+      onPressed: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => _AddEventMemoSheet(
+            selectedDate: _selectedDate,
+            onAdded: () => _loadMonth(forceServer: true)),
+        );
+      },
+      backgroundColor: _accent,
+      child: const Icon(Icons.add_rounded, color: Colors.white),
+    );
   }
 
-  @override
-  bool shouldRepaint(covariant _EmptyDayPainter old) => dk != old.dk;
 }
+

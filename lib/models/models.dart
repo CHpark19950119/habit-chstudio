@@ -1,31 +1,21 @@
 /// CHEONHONG STUDIO — Firestore 데이터 모델
-/// v8.5: NFC 4태그 토글 + 이동시간 + 수면관리
 
-import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../constants.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-// ─── 시간 기록 (기상/공부시작/외출/귀가/공부종료) ───
+// ─── 시간 기록 (기상/외출/귀가/식사/취침) ───
 class TimeRecord {
   final String date;
   final String? wake;
-  final String? study;        // 공부시작 (NFC study 태그 첫 터치)
-  final String? studyEnd;     // 공부종료 (NFC study 태그 두번째 터치)
-  final String? outing;       // 외출 (NFC outing 태그 첫 터치)
-  final String? returnHome;   // 귀가 (NFC outing 태그 두번째 터치)
+  final String? outing;       // 외출
+  final String? returnHome;   // 귀가
   final String? arrival;      // GPS 도착 감지
-  final String? bedTime;      // 수면시간 (NFC sleep 태그)
+  final String? bedTime;      // 수면시간
   final String? mealStart;   // [레거시] 단일 식사 — 하위호환용
   final String? mealEnd;     // [레거시] 단일 식사 — 하위호환용
-  final List<MealEntry> meals; // ★ v9: 다회 식사 기록
-  final bool noOuting; // ★ v10: 외출 안하는 날 (재택)
+  final List<MealEntry> meals; // 다회 식사 기록
+  final bool noOuting; // 외출 안하는 날 (재택)
 
   TimeRecord({
     required this.date,
     this.wake,
-    this.study,
-    this.studyEnd,
     this.outing,
     this.returnHome,
     this.arrival,
@@ -57,8 +47,6 @@ class TimeRecord {
     return TimeRecord(
       date: date,
       wake: map['wake'] as String?,
-      study: map['study'] as String?,
-      studyEnd: map['studyEnd'] as String?,
       outing: map['outing'] as String?,
       returnHome: map['returnHome'] as String?,
       arrival: map['arrival'] as String?,
@@ -73,16 +61,12 @@ class TimeRecord {
   Map<String, dynamic> toMap() {
     final m = <String, dynamic>{};
     if (wake != null) m['wake'] = wake;
-    if (study != null) m['study'] = study;
-    if (studyEnd != null) m['studyEnd'] = studyEnd;
     if (outing != null) m['outing'] = outing;
     if (returnHome != null) m['returnHome'] = returnHome;
     if (arrival != null) m['arrival'] = arrival;
     if (bedTime != null) m['bedTime'] = bedTime;
-    // ★ 레거시 필드도 유지 (웹앱 호환)
     if (mealStart != null) m['mealStart'] = mealStart;
     if (mealEnd != null) m['mealEnd'] = mealEnd;
-    // ★ 신규 다회 식사
     if (meals.isNotEmpty) {
       m['meals'] = meals.map((e) => e.toMap()).toList();
     }
@@ -118,19 +102,17 @@ class TimeRecord {
 
   /// meals 보존 복사 헬퍼
   TimeRecord copyWith({
-    String? wake, String? study, String? studyEnd,
+    String? wake,
     String? outing, String? returnHome, String? arrival,
     String? bedTime, String? mealStart, String? mealEnd,
     List<MealEntry>? meals, bool? noOuting,
-    bool clearWake = false, bool clearStudy = false, bool clearStudyEnd = false,
+    bool clearWake = false,
     bool clearOuting = false, bool clearReturnHome = false,
     bool clearBedTime = false,
   }) {
     return TimeRecord(
       date: date,
       wake: clearWake ? null : (wake ?? this.wake),
-      study: clearStudy ? null : (study ?? this.study),
-      studyEnd: clearStudyEnd ? null : (studyEnd ?? this.studyEnd),
       outing: clearOuting ? null : (outing ?? this.outing),
       returnHome: clearReturnHome ? null : (returnHome ?? this.returnHome),
       arrival: arrival ?? this.arrival,
@@ -167,31 +149,16 @@ class TimeRecord {
 
     // 1. HH:mm 포맷 체크
     if (!_isValidTime(tr.wake)) errors.add('wake 포맷 이상: ${tr.wake}');
-    if (!_isValidTime(tr.study)) errors.add('study 포맷 이상: ${tr.study}');
-    if (!_isValidTime(tr.studyEnd)) errors.add('studyEnd 포맷 이상: ${tr.studyEnd}');
     if (!_isValidTime(tr.outing)) errors.add('outing 포맷 이상: ${tr.outing}');
     if (!_isValidTime(tr.returnHome)) errors.add('returnHome 포맷 이상: ${tr.returnHome}');
     if (!_isValidTime(tr.bedTime)) errors.add('bedTime 포맷 이상: ${tr.bedTime}');
 
-    // 2. 논리 순서 체크 (wake < study < studyEnd < bedTime)
-    //    자정 넘김을 감안하여 12시간 이내 차이만 역전으로 판단
+    // 2. 논리 순서 체크 (자정 넘김 감안)
     final wakeM = _toMinutes(tr.wake);
-    final studyM = _toMinutes(tr.study);
-    final studyEndM = _toMinutes(tr.studyEnd);
     final bedTimeM = _toMinutes(tr.bedTime);
     final outingM = _toMinutes(tr.outing);
     final returnM = _toMinutes(tr.returnHome);
 
-    if (wakeM != null && studyM != null) {
-      int diff = studyM - wakeM;
-      if (diff < 0) diff += 1440;
-      if (diff > 720) errors.add('study($studyM) < wake($wakeM)');
-    }
-    if (studyM != null && studyEndM != null) {
-      int diff = studyEndM - studyM;
-      if (diff < 0) diff += 1440;
-      if (diff > 720) errors.add('studyEnd < study');
-    }
     if (outingM != null && returnM != null) {
       int diff = returnM - outingM;
       if (diff < 0) diff += 1440;
@@ -202,34 +169,16 @@ class TimeRecord {
       if (diff < 0) diff += 1440;
       if (diff > 720) errors.add('outing < wake');
     }
-    if (studyEndM != null && bedTimeM != null) {
-      int diff = bedTimeM - studyEndM;
+    if (wakeM != null && bedTimeM != null) {
+      int diff = bedTimeM - wakeM;
       if (diff < 0) diff += 1440;
-      if (diff > 720) errors.add('bedTime < studyEnd');
+      if (diff > 720) errors.add('bedTime < wake');
     }
 
     return TimeRecordValidation(
       isValid: errors.isEmpty,
       errors: errors,
     );
-  }
-
-  /// 등교 이동시간 (분): 공부시작 - 외출
-  int? get commuteToMinutes {
-    if (outing == null || study == null) return null;
-    return _timeDiffMin(outing!, study!);
-  }
-
-  /// 하교 이동시간 (분): 귀가 - 공부종료
-  int? get commuteFromMinutes {
-    if (studyEnd == null || returnHome == null) return null;
-    return _timeDiffMin(studyEnd!, returnHome!);
-  }
-
-  /// 학교 체류시간 (분): 공부종료 - 공부시작
-  int? get stayMinutes {
-    if (study == null || studyEnd == null) return null;
-    return _timeDiffMin(study!, studyEnd!);
   }
 
   /// 총 외출시간 (분): 귀가 - 외출
@@ -317,137 +266,6 @@ class MealEntry {
   }
 
   MealEntry withEnd(String endTime) => MealEntry(start: start, end: endTime, type: type);
-}
-
-// ─── 학습시간 기록 (일별) ───
-class StudyTimeRecord {
-  final String date;
-  final int totalMinutes;
-  final int studyMinutes;
-  final int lectureMinutes;
-  final int effectiveMinutes;
-  final bool finalized;
-
-  StudyTimeRecord({
-    required this.date,
-    this.totalMinutes = 0,
-    this.studyMinutes = 0,
-    this.lectureMinutes = 0,
-    this.effectiveMinutes = 0,
-    this.finalized = false,
-  });
-
-  factory StudyTimeRecord.fromMap(String date, Map<String, dynamic> map) {
-    return StudyTimeRecord(
-      date: date,
-      totalMinutes: map['totalMinutes'] ?? map['minutes'] ?? 0,
-      studyMinutes: map['studyMinutes'] ?? 0,
-      lectureMinutes: map['lectureMinutes'] ?? 0,
-      effectiveMinutes: map['effectiveMinutes'] ?? map['minutes'] ?? 0,
-      finalized: map['_finalized'] ?? false,
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-        'totalMinutes': totalMinutes,
-        'studyMinutes': studyMinutes,
-        'lectureMinutes': lectureMinutes,
-        'effectiveMinutes': effectiveMinutes,
-        '_finalized': finalized,
-      };
-}
-
-// ─── 포커스 세션 세그먼트 ───
-class FocusSegment {
-  final String startTime;
-  final String endTime;
-  final String subject;
-  final String mode;
-  final int durationMin;
-
-  FocusSegment({
-    required this.startTime,
-    required this.endTime,
-    required this.subject,
-    required this.mode,
-    required this.durationMin,
-  });
-
-  factory FocusSegment.fromMap(Map<String, dynamic> map) {
-    return FocusSegment(
-      startTime: map['startTime'] ?? '',
-      endTime: map['endTime'] ?? '',
-      subject: map['subject'] ?? '',
-      mode: map['mode'] ?? 'study',
-      durationMin: map['durationMin'] ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-        'startTime': startTime,
-        'endTime': endTime,
-        'subject': subject,
-        'mode': mode,
-        'durationMin': durationMin,
-      };
-}
-
-// ─── 포커스 사이클 ───
-class FocusCycle {
-  final String id;
-  final String date;
-  final String startTime;
-  final String? endTime;
-  final String subject;
-  final List<FocusSegment> segments;
-  final int studyMin;
-  final int lectureMin;
-  final int effectiveMin;
-  final int restMin;
-
-  FocusCycle({
-    required this.id,
-    required this.date,
-    required this.startTime,
-    this.endTime,
-    required this.subject,
-    this.segments = const [],
-    this.studyMin = 0,
-    this.lectureMin = 0,
-    this.effectiveMin = 0,
-    this.restMin = 0,
-  });
-
-  factory FocusCycle.fromMap(Map<String, dynamic> map) {
-    return FocusCycle(
-      id: map['id'] ?? '',
-      date: map['date'] ?? '',
-      startTime: map['startTime'] ?? '',
-      endTime: map['endTime'],
-      subject: map['subject'] ?? '',
-      segments: (map['segments'] as List<dynamic>?)
-              ?.map((s) => FocusSegment.fromMap(s as Map<String, dynamic>))
-              .toList() ??
-          [],
-      studyMin: map['studyMin'] ?? 0,
-      lectureMin: map['lectureMin'] ?? 0,
-      effectiveMin: map['effectiveMin'] ?? 0,
-      restMin: map['restMin'] ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'date': date,
-        'startTime': startTime,
-        'endTime': endTime,
-        'subject': subject,
-        'segments': segments.map((s) => s.toMap()).toList(),
-        'studyMin': studyMin,
-        'lectureMin': lectureMin,
-        'effectiveMin': effectiveMin,
-        'restMin': restMin,
-      };
 }
 
 // ─── 위치 기록 ───
@@ -560,257 +378,11 @@ class BehaviorTimelineEntry {
       };
 }
 
-// ─── 과목 설정 ───
-class SubjectConfig {
-  static const Map<String, SubjectInfo> _factoryDefaults = {
-    // 1차 PSAT
-    '자료해석': SubjectInfo('자료해석', '📊', 0xFF4A8A60),
-    '언어논리': SubjectInfo('언어논리', '📝', 0xFF5B6ABF),
-    '상황판단': SubjectInfo('상황판단', '🧩', 0xFFD4893B),
-    // 2차 전공
-    '경제학': SubjectInfo('경제학', '💰', 0xFF2D7D9A),
-    '국제법': SubjectInfo('국제법', '⚖️', 0xFF7A5195),
-    '국제정치학': SubjectInfo('국제정치학', '🌏', 0xFF3B7A57),
-    // 기타
-    '기타': SubjectInfo('기타', '📚', 0xFF6366F1),
-  };
-
-  // ── 시험 라운드 분류 ──
-  static const round1Subjects = {'자료해석', '언어논리', '상황판단'};
-  static const round2Subjects = {'경제학', '국제법', '국제정치학'};
-  static const sharedSubjects = {'헌법', '영어'};
-
-  static String examRound(String subject) {
-    if (round1Subjects.contains(subject)) return '1차';
-    if (round2Subjects.contains(subject)) return '2차';
-    return '공통';
-  }
-
-  static Map<String, SubjectInfo> _subjects = {};
-  static bool _loaded = false;
-
-  static Map<String, SubjectInfo> get subjects {
-    if (!_loaded) return _factoryDefaults;
-    return Map.unmodifiable(_subjects);
-  }
-
-  /// 첫 실행 시 기본값, 이후엔 저장된 목록 사용
-  static Future<void> load() async {
-    try {
-      final p = await SharedPreferences.getInstance();
-      final raw = p.getString('subject_list_v2');
-      if (raw != null) {
-        final list = List<dynamic>.from(jsonDecode(raw));
-        _subjects = {};
-        for (final item in list) {
-          final m = Map<String, dynamic>.from(item);
-          final name = m['name'] ?? '';
-          if (name.isEmpty) continue;
-          _subjects[name] = SubjectInfo(name, m['emoji'] ?? '📚', m['color'] ?? 0xFF6366F1);
-        }
-      } else {
-        // 최초 실행 — 기본값 복사
-        _subjects = Map.from(_factoryDefaults);
-        await _save();
-      }
-    } catch (_) {
-      _subjects = Map.from(_factoryDefaults);
-    }
-    // 기본값에 있는데 목록에 없는 과목 자동 추가
-    for (final entry in _factoryDefaults.entries) {
-      _subjects.putIfAbsent(entry.key, () => entry.value);
-    }
-    await _save();
-    _loaded = true;
-  }
-
-  static Future<void> addSubject(String name, String emoji, int colorValue) async {
-    _subjects[name] = SubjectInfo(name, emoji, colorValue);
-    await _save();
-  }
-
-  static Future<void> removeSubject(String name) async {
-    _subjects.remove(name);
-    await _save();
-  }
-
-  static Future<void> updateSubject(String oldName, String newName, String emoji, int colorValue) async {
-    if (oldName != newName) _subjects.remove(oldName);
-    _subjects[newName] = SubjectInfo(newName, emoji, colorValue);
-    await _save();
-  }
-
-  /// 기본 과목 전체 복원
-  static Future<void> resetToDefaults() async {
-    _subjects = Map.from(_factoryDefaults);
-    await _save();
-  }
-
-  static Future<void> _save() async {
-    try {
-      final p = await SharedPreferences.getInstance();
-      final list = _subjects.values.map((s) => {
-        'name': s.name, 'emoji': s.emoji, 'color': s.colorValue,
-      }).toList();
-      await p.setString('subject_list_v2', jsonEncode(list));
-    } catch (_) {}
-    _syncToFirestore();
-  }
-
-  /// Firestore에 과목 목록 동기화 (비동기, 에러 무시)
-  static Future<void> _syncToFirestore() async {
-    try {
-      final list = _subjects.values.map((s) => {
-        'name': s.name, 'emoji': s.emoji, 'color': s.colorValue,
-      }).toList();
-      await FirebaseFirestore.instance
-        .doc(kMetaDoc)
-        .set({'subjects': list}, SetOptions(merge: true));
-    } catch (_) {}
-  }
-
-  /// Firestore에서 과목 목록 동기화 (다른 기기 대비)
-  static Future<void> syncFromFirestore() async {
-    try {
-      final snap = await FirebaseFirestore.instance
-        .doc(kMetaDoc)
-        .get(const GetOptions(source: Source.server))
-        .timeout(const Duration(seconds: 5));
-      final data = snap.data();
-      if (data == null || data['subjects'] == null) return;
-      final list = List<dynamic>.from(data['subjects']);
-      final newSubjects = <String, SubjectInfo>{};
-      for (final item in list) {
-        final m = Map<String, dynamic>.from(item as Map);
-        final name = m['name'] ?? '';
-        if (name.isEmpty) continue;
-        newSubjects[name] = SubjectInfo(name, m['emoji'] ?? '📚', m['color'] ?? 0xFF6366F1);
-      }
-      if (newSubjects.isNotEmpty) {
-        _subjects = newSubjects;
-        _loaded = true;
-        final p = await SharedPreferences.getInstance();
-        final saveList = _subjects.values.map((s) => {
-          'name': s.name, 'emoji': s.emoji, 'color': s.colorValue,
-        }).toList();
-        await p.setString('subject_list_v2', jsonEncode(saveList));
-      }
-    } catch (_) {}
-  }
-}
-
-class SubjectInfo {
-  final String name;
-  final String emoji;
-  final int colorValue;
-  const SubjectInfo(this.name, this.emoji, this.colorValue);
-}
-
 // ══════════════════════════════════════════
-//  v8.5: NFC 태그 모델 (4태그 토글 시스템)
+//  액션 타입 (wake/outing/meal/sleep)
 // ══════════════════════════════════════════
 
-/// 액션 타입
-enum ActionType { wake, outing, study, sleep, meal }
-
-class NfcTagConfig {
-  final String id;
-  final String name;
-  final ActionType role;
-  final String? nfcId;
-  final String? placeName;
-  final String createdAt;
-
-  NfcTagConfig({
-    required this.id,
-    required this.name,
-    required this.role,
-    this.nfcId,
-    this.placeName,
-    required this.createdAt,
-  });
-
-  factory NfcTagConfig.fromMap(Map<String, dynamic> map) {
-    return NfcTagConfig(
-      id: map['id'] ?? '',
-      name: map['name'] ?? '',
-      role: ActionType.values.firstWhere(
-        (r) => r.name == (map['role'] ?? 'wake'),
-        orElse: () => ActionType.wake,
-      ),
-      nfcId: map['nfcId'],
-      placeName: map['placeName'] as String?,
-      createdAt: map['createdAt'] ?? '',
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'name': name,
-        'role': role.name,
-        'nfcId': nfcId,
-        if (placeName != null) 'placeName': placeName,
-        'createdAt': createdAt,
-      };
-
-  String get emoji {
-    switch (role) {
-      case ActionType.wake: return '🚿';
-      case ActionType.outing: return '🚪';
-      case ActionType.study: return '📚';
-      case ActionType.sleep: return '🛏️';
-      case ActionType.meal: return '🍽️';
-    }
-  }
-
-  String get roleLabel {
-    switch (role) {
-      case ActionType.wake: return '기상 인증';
-      case ActionType.outing: return '외출 ↔ 귀가 (토글)';
-      case ActionType.study: return '공부 시작 / 재개 / 종료';
-      case ActionType.sleep: return '수면시작';
-      case ActionType.meal: return '식사시작 ↔ 식사종료 (토글)';
-    }
-  }
-
-  static String roleDescription(ActionType role) {
-    switch (role) {
-      case ActionType.wake: return '욕실 NFC → 기상시간 기록';
-      case ActionType.outing: return '현관 NFC → 외출/귀가 토글';
-      case ActionType.study: return '독서대 NFC → 공부시작/재개/종료';
-      case ActionType.sleep: return '침대 NFC → 취침시간 기록';
-      case ActionType.meal: return '식탁 NFC → 식사시작/종료 토글';
-    }
-  }
-}
-
-/// NFC 스캔 이벤트 기록
-class NfcEvent {
-  final String id;
-  final String date;
-  final String timestamp;
-  final ActionType role;
-  final String tagName;
-  final String? action; // 토글: 'start'/'end' 구분
-
-  NfcEvent({
-    required this.id,
-    required this.date,
-    required this.timestamp,
-    required this.role,
-    required this.tagName,
-    this.action,
-  });
-
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'date': date,
-        'timestamp': timestamp,
-        'role': role.name,
-        'tagName': tagName,
-        'action': action,
-      };
-}
+enum ActionType { wake, outing, sleep, meal }
 
 // ══════════════════════════════════════════
 //  날씨 데이터 (#44)
@@ -959,229 +531,8 @@ class Memo {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 3순위: 학습 진행도 모델 (웹앱 progressGoals 호환)
+// Phase C 제거: ProgressGoal/ProgressLog/CompletionRecord → cheonhong_study 로 이관
 // ═══════════════════════════════════════════════════════════
-
-class ProgressGoal {
-  final String id;
-  final String subject;
-  final String title;
-  final int totalUnits;
-  final String unitName; // '강' or 'p'
-  final String goalType; // 'lecture' or 'textbook'
-  final int startPage;
-  final int endPage;
-  int currentUnit;
-  bool completed;
-  String? startDate;
-  String? endDate;
-  List<ProgressLog> dailyLogs;
-  List<CompletionRecord> completionHistory;
-  String? lastLogDate;
-  String? completedAt;
-  int? completedRound;
-  String? groupId;
-  String? groupName;
-  final String createdAt;
-
-  ProgressGoal({
-    required this.id,
-    required this.subject,
-    required this.title,
-    required this.totalUnits,
-    this.unitName = '강',
-    this.goalType = 'lecture',
-    this.startPage = 0,
-    this.endPage = 0,
-    this.currentUnit = 0,
-    this.completed = false,
-    this.startDate,
-    this.endDate,
-    List<ProgressLog>? dailyLogs,
-    List<CompletionRecord>? completionHistory,
-    this.lastLogDate,
-    this.completedAt,
-    this.completedRound,
-    this.groupId,
-    this.groupName,
-    String? createdAt,
-  })  : dailyLogs = dailyLogs ?? [],
-        completionHistory = completionHistory ?? [],
-        createdAt = createdAt ?? DateTime.now().toIso8601String();
-
-  double get progressPercent =>
-      totalUnits > 0 ? (currentUnit / totalUnits * 100).clamp(0, 100) : 0;
-
-  bool get isOverdue =>
-      endDate != null &&
-      !completed &&
-      DateTime.tryParse(endDate!)?.isBefore(DateTime.now()) == true;
-
-  int get overdueDays {
-    if (!isOverdue || endDate == null) return 0;
-    return DateTime.now().difference(DateTime.parse(endDate!)).inDays;
-  }
-
-  int get totalStudyMinutes =>
-      dailyLogs.fold(0, (sum, log) => sum + (log.studyMinutes ?? 0));
-
-  String get totalStudyFormatted {
-    final h = totalStudyMinutes ~/ 60;
-    final m = totalStudyMinutes % 60;
-    if (h > 0 && m > 0) return '${h}h ${m}m';
-    if (h > 0) return '${h}h';
-    return '${m}m';
-  }
-
-  factory ProgressGoal.fromMap(Map<String, dynamic> m) {
-    return ProgressGoal(
-      id: m['id'] ?? 'goal_${DateTime.now().millisecondsSinceEpoch}',
-      subject: m['subject'] ?? '기타',
-      title: m['title'] ?? '',
-      totalUnits: (m['totalUnits'] as num?)?.toInt() ?? 0,
-      unitName: m['unitName'] ?? '강',
-      goalType: m['goalType'] ?? 'lecture',
-      startPage: (m['startPage'] as num?)?.toInt() ?? 0,
-      endPage: (m['endPage'] as num?)?.toInt() ?? 0,
-      currentUnit: (m['currentUnit'] as num?)?.toInt() ?? 0,
-      completed: m['completed'] ?? false,
-      startDate: m['startDate'] as String?,
-      endDate: m['endDate'] as String?,
-      dailyLogs: (m['dailyLogs'] as List<dynamic>?)
-              ?.map((e) =>
-                  ProgressLog.fromMap(Map<String, dynamic>.from(e as Map)))
-              .toList() ??
-          [],
-      completionHistory: (m['completionHistory'] as List<dynamic>?)
-              ?.map((e) => CompletionRecord.fromMap(
-                  Map<String, dynamic>.from(e as Map)))
-              .toList() ??
-          [],
-      lastLogDate: m['lastLogDate'] as String?,
-      completedAt: m['completedAt'] as String?,
-      completedRound: (m['completedRound'] as num?)?.toInt(),
-      groupId: m['groupId'] as String?,
-      groupName: m['groupName'] as String?,
-      createdAt: m['createdAt'] as String?,
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'subject': subject,
-        'title': title,
-        'totalUnits': totalUnits,
-        'unitName': unitName,
-        'goalType': goalType,
-        'startPage': startPage,
-        'endPage': endPage,
-        'currentUnit': currentUnit,
-        'completed': completed,
-        if (startDate != null) 'startDate': startDate,
-        if (endDate != null) 'endDate': endDate,
-        'dailyLogs': dailyLogs.map((l) => l.toMap()).toList(),
-        'completionHistory':
-            completionHistory.map((c) => c.toMap()).toList(),
-        if (lastLogDate != null) 'lastLogDate': lastLogDate,
-        if (completedAt != null) 'completedAt': completedAt,
-        if (completedRound != null) 'completedRound': completedRound,
-        if (groupId != null) 'groupId': groupId,
-        if (groupName != null) 'groupName': groupName,
-        'createdAt': createdAt,
-      };
-
-  static String subjectEmoji(String subject) {
-    switch (subject) {
-      case '자료해석': return '📊';
-      case '언어논리': return '📝';
-      case '상황판단': return '🧩';
-      case '헌법': return '⚖️';
-      case '영어': return '🌐';
-      default: return '📚';
-    }
-  }
-
-  static const subjectColors = {
-    '자료해석': 0xFF34547A,
-    '언어논리': 0xFF8B575C,
-    '상황판단': 0xFF2D5A4C,
-    '헌법': 0xFF10B981,
-    '영어': 0xFF0EA5E9,
-  };
-}
-
-class ProgressLog {
-  final String date;
-  final int from;
-  final int to;
-  final int? studyMinutes;
-  final String? loggedAt;
-
-  ProgressLog({
-    required this.date,
-    required this.from,
-    required this.to,
-    this.studyMinutes,
-    this.loggedAt,
-  });
-
-  factory ProgressLog.fromMap(Map<String, dynamic> m) => ProgressLog(
-        date: m['date'] ?? '',
-        from: (m['from'] as num?)?.toInt() ?? 0,
-        to: (m['to'] as num?)?.toInt() ?? 0,
-        studyMinutes: (m['studyMinutes'] as num?)?.toInt(),
-        loggedAt: m['loggedAt'] as String?,
-      );
-
-  Map<String, dynamic> toMap() => {
-        'date': date,
-        'from': from,
-        'to': to,
-        if (studyMinutes != null) 'studyMinutes': studyMinutes,
-        if (loggedAt != null) 'loggedAt': loggedAt,
-      };
-}
-
-class CompletionRecord {
-  final int round;
-  final String completedAt;
-  final String? startDate;
-  final String? endDate;
-  final int totalLogs;
-  final int totalStudyMinutes;
-  final int finalUnit;
-
-  CompletionRecord({
-    required this.round,
-    required this.completedAt,
-    this.startDate,
-    this.endDate,
-    this.totalLogs = 0,
-    this.totalStudyMinutes = 0,
-    this.finalUnit = 0,
-  });
-
-  factory CompletionRecord.fromMap(Map<String, dynamic> m) =>
-      CompletionRecord(
-        round: (m['round'] as num?)?.toInt() ?? 1,
-        completedAt: m['completedAt'] ?? '',
-        startDate: m['startDate'] as String?,
-        endDate: m['endDate'] as String?,
-        totalLogs: (m['totalLogs'] as num?)?.toInt() ?? 0,
-        totalStudyMinutes: (m['totalStudyMinutes'] as num?)?.toInt() ?? 0,
-        finalUnit: (m['finalUnit'] as num?)?.toInt() ?? 0,
-      );
-
-  Map<String, dynamic> toMap() => {
-        'round': round,
-        'completedAt': completedAt,
-        if (startDate != null) 'startDate': startDate,
-        if (endDate != null) 'endDate': endDate,
-        'totalLogs': totalLogs,
-        'totalStudyMinutes': totalStudyMinutes,
-        'finalUnit': finalUnit,
-      };
-}
 
 // ═══════════════════════════════════════════
 //  데일리 일기 (DailyDiary)

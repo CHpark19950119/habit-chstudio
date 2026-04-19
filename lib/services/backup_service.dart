@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../utils/study_date_utils.dart';
+import '../utils/date_utils.dart';
 import 'firebase_service.dart';
 import 'telegram_service.dart';
 

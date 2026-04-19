@@ -2,14 +2,12 @@ part of 'day_service.dart';
 
 /// TimeRecord helper — 기존 필드 보존, 지정된 필드만 오버라이드
 TimeRecord _withFields(String date, TimeRecord? e, {
-  String? wake, String? study, String? studyEnd,
+  String? wake,
   String? outing, String? returnHome, String? bedTime,
   List<MealEntry>? meals, bool clearReturnHome = false,
 }) => TimeRecord(
   date: date,
   wake: wake ?? e?.wake,
-  study: study ?? e?.study,
-  studyEnd: studyEnd ?? e?.studyEnd,
   outing: outing ?? e?.outing,
   returnHome: clearReturnHome ? null : (returnHome ?? e?.returnHome),
   arrival: e?.arrival,
@@ -118,70 +116,6 @@ extension _DayActionHandlers on DayService {
     }
   }
 
-  // ═══ 공부 (study) ═══
-
-  Future<void> _handleStudy(String dateStr, String timeStr) async {
-    _log('공부: state=${_routine.state.name}');
-    try {
-      final fb = FirebaseService();
-      final records = await fb.getTimeRecords().timeout(const Duration(seconds: 5));
-      final e = records[dateStr];
-      final tgTime = DateFormat('HH:mm').format(DateTime.now());
-
-      // Case 1: 외출 중 → 귀가 + 공부 재개
-      if (_routine.state == DayState.outing) {
-        await fb.updateTimeRecord(dateStr, _withFields(dateStr, e, returnHome: timeStr))
-            .timeout(const Duration(seconds: 5));
-        String dur = '외출';
-        if (e?.outing != null) {
-          final m = _timeDiffMin(e!.outing!, timeStr);
-          if (m > 0) dur = '외출 ${_fmtMin(m)}';
-        }
-        _routine.setState(DayState.studying);
-        await _routine.saveState();
-        _routine.startMealReminder();
-        _notifyNative(title: '공부 재개', body: '귀가 → 공부 ($dur)');
-        _emitAction('study_resume', '📚', '공부 재개 ($dur)');
-        _triggerWidgetUpdate();
-        return;
-      }
-
-      // Case 2: 공부 중 → 종료
-      if (_routine.state == DayState.studying) {
-        final meals = _meal.closePendingMeals(timeStr, List<MealEntry>.from(e?.meals ?? []));
-        await fb.updateTimeRecord(dateStr,
-            _withFields(dateStr, e, studyEnd: timeStr, meals: meals.isNotEmpty ? meals : null))
-            .timeout(const Duration(seconds: 5));
-        String dur = '';
-        if (e?.study != null) {
-          final net = _calcNetStudy(e!, timeStr);
-          if (net > 0) dur = ' (순공 ${_fmtMin(net)})';
-        }
-        _routine.setState(DayState.returned);
-        await _routine.saveState();
-        _routine.cancelReminders();
-        _notifyNative(title: '공부 종료', body: '공부 종료 $tgTime$dur');
-        _emitAction('study_end', '📚', '공부종료 $tgTime$dur');
-        return;
-      }
-
-      // Case 3: 새 공부 시작
-      await fb.updateTimeRecord(dateStr, _withFields(dateStr, e, study: timeStr))
-          .timeout(const Duration(seconds: 5));
-      _routine.setState(DayState.studying);
-      await _routine.saveState();
-      _routine.startMealReminder();
-      _notifyNative(title: '공부 시작', body: '공부 시작 $tgTime');
-      _emitAction('study_start', '📚', '공부시작 $tgTime');
-      _triggerWidgetUpdate();
-
-      // 습관 자동 트리거 (study)
-      _autoTriggerHabits('study', dateStr);
-    } catch (e) {
-      _log('Study 에러: $e');
-    }
-  }
-
   // ═══ 식사 (meal) ═══
 
   Future<void> _handleMeal(String dateStr, String timeStr) async {
@@ -250,13 +184,8 @@ extension _DayActionHandlers on DayService {
 
       meals = _meal.closePendingMeals(timeStr, meals);
 
-      String? studyEnd;
-      if (_routine.state == DayState.studying && e?.study != null && e?.studyEnd == null) {
-        studyEnd = timeStr;
-      }
-
       await fb.updateTimeRecord(dateStr,
-          _withFields(dateStr, e, studyEnd: studyEnd, bedTime: timeStr, meals: meals))
+          _withFields(dateStr, e, bedTime: timeStr, meals: meals))
           .timeout(const Duration(seconds: 5));
 
       _routine.setState(DayState.sleeping);
@@ -307,14 +236,6 @@ extension _DayActionHandlers on DayService {
   }
 
   String _fmtMin(int m) => m >= 60 ? '${m ~/ 60}h ${m % 60}m' : '${m}m';
-
-  int _calcNetStudy(TimeRecord tr, String end) {
-    if (tr.study == null) return 0;
-    final total = _timeDiffMin(tr.study!, end);
-    int meal = 0;
-    for (final m in tr.meals) { if (m.durationMin != null) meal += m.durationMin!; }
-    return (total - meal).clamp(0, 1440);
-  }
 
   /// 습관 자동 트리거 — wake/sleep 이벤트 시 매칭 습관 자동 완료
   /// 이벤트 기반 습관 자동 트리거 (triggerTime 없는 즉시 트리거만)

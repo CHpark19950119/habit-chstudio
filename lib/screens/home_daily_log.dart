@@ -19,7 +19,6 @@ extension _HomeDailyLog on _HomeScreenState {
     final events = <({String time, String type})>[];
     if (_wake != null) events.add((time: _wake!, type: 'wake'));
     if (_outing != null) events.add((time: _outing!, type: 'outing'));
-    if (_studyStart != null) events.add((time: _studyStart!, type: 'studyStart'));
     // ★ v9: 다회 식사 이벤트 (meals가 있으면 레거시 무시)
     if (_todayMeals.isNotEmpty) {
       for (int i = 0; i < _todayMeals.length; i++) {
@@ -31,17 +30,6 @@ extension _HomeDailyLog on _HomeScreenState {
       if (_mealStart != null) events.add((time: _mealStart!, type: 'mealStart'));
       if (_mealEnd != null) events.add((time: _mealEnd!, type: 'mealEnd'));
     }
-    // ★ v11: 포커스 세션 이벤트 주입 (공부 vs 휴식 세분화)
-    for (int i = 0; i < _focusSessions.length; i++) {
-      final fc = _focusSessions[i];
-      if (fc.startTime.isNotEmpty) {
-        events.add((time: _isoToHhmm(fc.startTime), type: 'focus_${i}_start'));
-      }
-      if (fc.endTime != null && fc.endTime!.isNotEmpty) {
-        events.add((time: _isoToHhmm(fc.endTime!), type: 'focus_${i}_end'));
-      }
-    }
-    if (_studyEnd != null) events.add((time: _studyEnd!, type: 'studyEnd'));
     if (_returnHome != null) events.add((time: _returnHome!, type: 'returnHome'));
     if (_bedTime != null) events.add((time: _bedTime!, type: 'bedTime'));
 
@@ -113,10 +101,9 @@ extension _HomeDailyLog on _HomeScreenState {
         case 'wake':
           if (nextType == 'outing') { label = _isHomeDay ? '재택' : '준비'; }
           else if (nextType.isEmpty) {
-            // 마지막 세그먼트 (현재까지) → 홈데이 우선, NFC 상태 기반
+            // 마지막 세그먼트 (현재까지) → 홈데이 우선, 상태 기반
             if (_isHomeDay) { label = '재택'; }
             else if (_day.isOut) { label = '이동'; }
-            else if (_day.isStudying) { label = '휴식'; }
             else { label = '자유'; }
           } else if (nextType == 'studyStart' || nextType.startsWith('focus_')) {
             label = _isHomeDay ? '재택' : '준비';
@@ -579,10 +566,12 @@ extension _HomeDailyLog on _HomeScreenState {
   //  ★ E: 순공 미니 링 + 통계
   // ══════════════════════════════════════════
   Widget _compactStatsRow() {
-    final goalMin = 8 * 60; // 8시간 목표
-    final pct = (_effMin / goalMin).clamp(0.0, 1.0);
-    final effH = _effMin ~/ 60;
-    final effM = _effMin % 60;
+    // TODO: study time tracking removed — show placeholder until new system
+    const goalMin = 8 * 60; // 8시간 목표
+    const effMin = 0;
+    final pct = (effMin / goalMin).clamp(0.0, 1.0);
+    const effH = 0;
+    const effM = 0;
     final effStr = effH > 0
       ? '${effH}h${effM > 0 ? " ${effM}m" : ""}'
       : '${effM}m';
@@ -728,11 +717,8 @@ extension _HomeDailyLog on _HomeScreenState {
   // ══════════════════════════════════════════
   Widget _oneLinerSummary() {
     final wakeStr = _wake ?? '--:--';
-    final effH = _effMin ~/ 60;
-    final effM = _effMin % 60;
-    final effStr = effH > 0
-      ? '${effH}h${effM > 0 ? "${effM}m" : ""}'
-      : '${effM}m';
+    // TODO: study time tracking removed — show placeholder
+    const effStr = '0m';
 
     // D-Day 계산 (목표일이 있으면 사용, 없으면 비표시)
     String dDayStr = '';
@@ -783,40 +769,25 @@ extension _HomeDailyLog on _HomeScreenState {
     final newTime = '${picked.hour.toString().padLeft(2, '0')}:'
         '${picked.minute.toString().padLeft(2, '0')}';
 
-    final d = _studyDate();
-    final fb = FirebaseService();
-    final records = await fb.getTimeRecords();
-    final e = records[d];
-
-    String? wake = e?.wake, study = e?.study, studyEnd = e?.studyEnd;
-    String? outing = e?.outing, returnHome = e?.returnHome, bedTime = e?.bedTime;
+    // TODO: getTimeRecords/updateTimeRecord removed with firebase_study_part.dart
+    // Segment time editing needs reimplementation with new data layer
     final evt = seg.startEvent!;
     switch (evt) {
-      case 'wake': wake = newTime; break;
-      case 'outing': outing = newTime; break;
-      case 'studyStart': study = newTime; break;
-      case 'studyEnd': studyEnd = newTime; break;
-      case 'returnHome': returnHome = newTime; break;
-      case 'bedTime': bedTime = newTime; break;
+      case 'wake':
+      case 'outing':
+      case 'returnHome':
+      case 'bedTime':
+        break;
       default: return;
     }
 
-    final updated = TimeRecord(
-      date: d, wake: wake, study: study, studyEnd: studyEnd,
-      outing: outing, returnHome: returnHome,
-      arrival: e?.arrival, bedTime: bedTime,
-      mealStart: e?.mealStart, mealEnd: e?.mealEnd,
-      meals: e?.meals, noOuting: e?.noOuting ?? false,
-    );
-    await fb.updateTimeRecord(d, updated);
-
     _safeSetState(() {
-      _wake = updated.wake;
-      _studyStart = updated.study;
-      _studyEnd = updated.studyEnd;
-      _outing = updated.outing;
-      _returnHome = updated.returnHome;
-      _bedTime = updated.bedTime;
+      switch (evt) {
+        case 'wake': _wake = newTime; break;
+        case 'outing': _outing = newTime; break;
+        case 'returnHome': _returnHome = newTime; break;
+        case 'bedTime': _bedTime = newTime; break;
+      }
     });
 
     if (mounted) {

@@ -20,7 +20,7 @@ import android.Manifest
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.app.NotificationCompat
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.util.Calendar
@@ -28,7 +28,7 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.util.Log
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
 
     private val FOCUS_CHANNEL = "com.cheonhong.cheonhong_studio/focus_mode"
     private val USAGE_CHANNEL = "com.cheonhong.cheonhong_studio/usage_stats"

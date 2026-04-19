@@ -7,9 +7,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import '../constants.dart';
-import '../models/plan_models.dart';
-import '../models/models.dart';
-import '../utils/study_date_utils.dart';
+import '../models/todo_models.dart';
+import '../utils/date_utils.dart';
 import 'firebase_service.dart';
 import 'widget_render_service.dart';
 import 'write_queue_service.dart';
@@ -107,65 +106,6 @@ class TodoService {
       createdAt: todos.createdAt,
     ));
 
-    // ★ 진행도 자동 반영: goalId가 있는 투두 완료 시 ProgressGoal 업데이트
-    if (completed) {
-      final item = items.firstWhere((t) => t.id == id);
-      if (item.goalId != null) {
-        _advanceGoalProgress(item.goalId!, item.goalUnits ?? 1, date);
-      }
-    }
-  }
-
-  /// goalId로 연결된 ProgressGoal의 currentUnit을 증가시킴
-  Future<void> _advanceGoalProgress(String goalId, int units, String date) async {
-    try {
-      final goals = await FirebaseService().getProgressGoals();
-      final idx = goals.indexWhere((g) => g.id == goalId);
-      if (idx < 0) return;
-
-      final goal = goals[idx];
-      if (goal.completed) return; // 이미 완료된 목표
-
-      final newUnit = (goal.currentUnit + units).clamp(0, goal.totalUnits);
-      final now = DateTime.now();
-
-      // dailyLog 추가
-      final log = ProgressLog(
-        date: date,
-        from: goal.currentUnit,
-        to: newUnit,
-        loggedAt: now.toIso8601String(),
-      );
-
-      final updatedGoal = ProgressGoal(
-        id: goal.id,
-        subject: goal.subject,
-        title: goal.title,
-        totalUnits: goal.totalUnits,
-        unitName: goal.unitName,
-        goalType: goal.goalType,
-        startPage: goal.startPage,
-        endPage: goal.endPage,
-        currentUnit: newUnit,
-        completed: newUnit >= goal.totalUnits,
-        startDate: goal.startDate,
-        endDate: goal.endDate,
-        dailyLogs: [...goal.dailyLogs, log],
-        completionHistory: goal.completionHistory,
-        lastLogDate: date,
-        completedAt: newUnit >= goal.totalUnits ? now.toIso8601String() : goal.completedAt,
-        completedRound: goal.completedRound,
-        groupId: goal.groupId,
-        groupName: goal.groupName,
-        createdAt: goal.createdAt,
-      );
-
-      goals[idx] = updatedGoal;
-      await FirebaseService().saveProgressGoals(goals);
-      debugPrint('[TodoService] Goal "$goalId" advanced: ${goal.currentUnit} → $newUnit');
-    } catch (e) {
-      debugPrint('[TodoService] Goal advance error: $e');
-    }
   }
 
   /// 내일 Todo 준비 (미완료 이월 + 새 항목)

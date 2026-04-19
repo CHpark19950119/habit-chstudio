@@ -5,7 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../firebase_options.dart';
-import '../utils/study_date_utils.dart'; // ★ AUDIT FIX: Q-01
+import '../utils/date_utils.dart'; // ★ AUDIT FIX: Q-01
 import 'day_service.dart';
 
 // ═══════════════════════════════════════════════════════════
@@ -30,7 +30,7 @@ Future<void> onFcmBackgroundMessage(RemoteMessage message) async {
     await prefs.setString('nfc_state', 'outing');
     await prefs.setString('nfc_state_date', _todayKey());
   } else if (type == 'sleep') {
-    // CF mmWave 취침 감지 → DayState = sleeping
+    // CF 취침 감지 FCM → DayState = sleeping (2026-04-15 mmWave 폐기, 하이브리드 A+D 감지로 대체 설계 중)
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('nfc_state', 'sleeping');
     await prefs.setString('nfc_state_date', _todayKey());

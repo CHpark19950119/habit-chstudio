@@ -37,6 +37,9 @@ dependencies:
   objectbox: ^5.3.1
   objectbox_flutter_libs: any
 
+  # Health Connect (Samsung Health → 취침/기상 sleep session 읽기, 2026-04-19 추가)
+  health: ^13.3.1
+
 
 
 

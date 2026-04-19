@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
-import '../utils/study_date_utils.dart';
+import '../utils/date_utils.dart';
 
 /// MealService — 식사 독립 추적
 class MealService extends ChangeNotifier {

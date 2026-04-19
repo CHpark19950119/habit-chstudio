@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../models/order_models.dart';
-import '../utils/study_date_utils.dart';
+import '../utils/date_utils.dart';
 import 'firebase_service.dart';
 import 'telegram_service.dart';
 
@@ -26,7 +26,6 @@ enum DayState {
   idle,       // 아직 기상 전
   awake,      // 기상 완료
   outing,     // 외출 중
-  studying,   // 공부 중
   returned,   // 귀가 완료
   sleeping,   // 취침
 }
@@ -73,7 +72,6 @@ class DayService extends ChangeNotifier {
   // ═══ Getters ═══
   DayState get state => _routine.state;
   bool get isOut => _routine.isOut;
-  bool get isStudying => _routine.isStudying;
   bool get isMealing => _meal.isMealing;
   String? get outingTime => _movement.outingTime;
   String? get returnTime => _movement.returnTime;
@@ -112,7 +110,6 @@ class DayService extends ChangeNotifier {
   }
 
   void forceState(DayState newState) => _routine.forceState(newState);
-  void forceStudyState(bool value) => _routine.forceStudyState(value);
 
   /// 외부 서비스에서 UI 갱신 트리거 (SafetyNet 등)
   void notifyDataChanged() => notifyListeners();
@@ -221,7 +218,6 @@ class DayService extends ChangeNotifier {
     switch (type) {
       case ActionType.wake:   await _handleWake(dateStr, timeStr); break;
       case ActionType.outing: await _handleOuting(dateStr, timeStr); break;
-      case ActionType.study:  await _handleStudy(dateStr, timeStr); break;
       case ActionType.meal:   await _handleMeal(dateStr, timeStr); break;
       case ActionType.sleep:  await _handleSleep(dateStr, timeStr); break;
     }

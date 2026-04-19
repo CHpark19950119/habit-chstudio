@@ -14,7 +14,6 @@ import '../services/data_audit_service.dart';
 import '../services/write_queue_service.dart';
 import '../services/safety_net_service.dart';
 import '../services/claude_agent_service.dart';
-import '../services/gosi_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -111,10 +110,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               // ─── 쓰기 큐 ───
               _writeQueueCard(),
-              const SizedBox(height: 16),
-
-              // ─── 고시 공고 ───
-              _gosiNoticeCard(),
               const SizedBox(height: 16),
 
               // ─── 데이터 관리 ───
@@ -659,95 +654,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ));
   }
 
-  // ═══ 고시 공고 카드 ═══
-  Widget _gosiNoticeCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BotanicalDeco.card(_dk),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.indigo.withValues(alpha: _dk ? 0.15 : 0.08),
-              borderRadius: BorderRadius.circular(10)),
-            child: Icon(Icons.campaign_rounded, size: 20,
-              color: _dk ? Colors.indigo.shade200 : Colors.indigo)),
-          const SizedBox(width: 12),
-          Expanded(child: Text('고시 공고',
-            style: BotanicalTypo.heading(size: 15, color: _textMain))),
-          GestureDetector(
-            onTap: () async {
-              _safeSetState(() {});
-              final notices = await GosiService().fetchNew();
-              if (!mounted) return;
-              _safeSetState(() {});
-              if (notices.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('파싱 결과 없음'), duration: Duration(seconds: 2)));
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${notices.length}건 조회 완료'),
-                    duration: const Duration(seconds: 2)));
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: _accent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8)),
-              child: Text('새로고침', style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: _accent))),
-          ),
-        ]),
-        const SizedBox(height: 14),
-        FutureBuilder<List<GosiNotice>>(
-          future: GosiService().getNotices(),
-          builder: (ctx, snap) {
-            if (snap.connectionState == ConnectionState.waiting) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Center(child: SizedBox(width: 20, height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2))));
-            }
-            final notices = snap.data ?? [];
-            if (notices.isEmpty) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text('공고 데이터 없음 — 새로고침 눌러서 파싱',
-                  style: TextStyle(fontSize: 12, color: _textMuted)));
-            }
-            return Column(
-              children: notices.take(5).map((n) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.indigo.withValues(alpha: _dk ? 0.12 : 0.06),
-                      borderRadius: BorderRadius.circular(4)),
-                    child: Text(n.category.isNotEmpty ? n.category : '일반',
-                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700,
-                        color: _dk ? Colors.indigo.shade200 : Colors.indigo)),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(n.title, style: TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600, color: _textMain),
-                        maxLines: 2, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 2),
-                      Text(n.date, style: TextStyle(
-                        fontSize: 10, color: _textMuted)),
-                    ],
-                  )),
-                ]),
-              )).toList(),
-            );
-          },
-        ),
-      ]),
-    );
-  }
 }

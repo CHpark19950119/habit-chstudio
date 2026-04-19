@@ -9,8 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/models.dart';
 import '../models/order_models.dart';
-import '../models/plan_models.dart';
-import '../utils/study_date_utils.dart';
+import '../models/todo_models.dart';
+import '../utils/date_utils.dart';
 import 'firebase_service.dart';
 import 'telegram_service.dart';
 
@@ -34,17 +34,11 @@ class ReportService {
       // ── TimeRecord ──
       final timeRecord = _extractTimeRecord(data, dateStr);
 
-      // ── StudyTimeRecord (순공시간) ──
-      final studyTimeRecord = _extractStudyTimeRecord(data, dateStr);
-
       // ── Todo ──
       final todoDaily = await _extractTodos(data, dateStr);
 
       // ── OrderData (습관) ──
       final orderData = _extractOrderData(data);
-
-      // ── FocusCycles ──
-      final focusCycles = _extractFocusCycles(data, dateStr);
 
       // ── 리포트 조립 ──
       final buf = StringBuffer();
@@ -65,30 +59,6 @@ class ReportService {
       } else if (timeRecord?.wake != null) {
         buf.writeln('-- ACTIVITY --');
         buf.writeln('  wake   ${timeRecord!.wake}');
-        buf.writeln();
-      }
-
-      // 순공시간
-      if (timeRecord?.study != null) {
-        final studyEnd = timeRecord!.studyEnd;
-        buf.writeln('-- STUDY --');
-        buf.writeln('  start  ${timeRecord.study}');
-        if (studyEnd != null) {
-          buf.writeln('  end    $studyEnd');
-          final grossMin = _timeDiffMin(timeRecord.study!, studyEnd);
-          final mealMin = timeRecord.totalMealMinutes;
-          final netMin = grossMin != null ? (grossMin - mealMin).clamp(0, 1440) : null;
-          if (grossMin != null) {
-            buf.writeln('  gross  ${_fmtDuration(grossMin)}');
-          }
-          if (netMin != null && netMin > 0) {
-            buf.writeln('  net    ${_fmtDuration(netMin)}');
-          }
-        }
-        // studyTimeRecords의 effectiveMinutes (포커스 기반 순공)
-        if (studyTimeRecord != null && studyTimeRecord.effectiveMinutes > 0) {
-          buf.writeln('  focus  ${_fmtDuration(studyTimeRecord.effectiveMinutes)}');
-        }
         buf.writeln();
       }
 
@@ -148,20 +118,8 @@ class ReportService {
         }
       }
 
-      // 포커스 세션
-      if (focusCycles.isNotEmpty) {
-        final totalFocusMin = focusCycles.fold<int>(
-            0, (s, c) => s + c.effectiveMin);
-        buf.writeln('-- FOCUS --');
-        buf.writeln('  sessions  ${focusCycles.length}');
-        if (totalFocusMin > 0) {
-          buf.writeln('  total     ${_fmtDuration(totalFocusMin)}');
-        }
-        buf.writeln();
-      }
-
       // 격려 메시지
-      buf.writeln(_pickEncouragement(dateStr, todoDaily, studyTimeRecord));
+      buf.writeln(_pickEncouragement(dateStr, todoDaily));
       buf.writeln('========================');
 
       return buf.toString();
@@ -209,7 +167,6 @@ class ReportService {
       }
 
       // 일별 데이터 수집
-      final dailyStudyMin = <String, int>{};
       final dailyWake = <String, String>{};
       final dailyBed = <String, String>{};
       final dailyMealCount = <String, int>{};
@@ -221,25 +178,6 @@ class ReportService {
         // TimeRecord: study doc 우선, history fallback
         final tr = _extractTimeRecord(data, dateStr) ??
             _extractTimeRecordFromHistory(historyByMonth, dateStr);
-
-        // StudyTimeRecord
-        final str = _extractStudyTimeRecord(data, dateStr) ??
-            _extractStudyTimeRecordFromHistory(historyByMonth, dateStr);
-
-        // 순공시간 계산: effectiveMinutes 우선, 없으면 study~studyEnd - meals
-        int studyMin = 0;
-        if (str != null && str.effectiveMinutes > 0) {
-          studyMin = str.effectiveMinutes;
-        } else if (tr?.study != null && tr?.studyEnd != null) {
-          final gross = _timeDiffMin(tr!.study!, tr.studyEnd!);
-          final mealMin = tr.totalMealMinutes;
-          studyMin = gross != null ? (gross - mealMin).clamp(0, 1440) : 0;
-        }
-        // history의 studyTime.total fallback
-        if (studyMin == 0) {
-          studyMin = _extractStudyMinFromHistory(historyByMonth, dateStr);
-        }
-        dailyStudyMin[dateStr] = studyMin;
 
         // 기상/취침
         if (tr?.wake != null) dailyWake[dateStr] = tr!.wake!;
@@ -265,26 +203,6 @@ class ReportService {
       // OrderData (습관)
       final orderData = _extractOrderData(data);
 
-      // ── 집계 ──
-      final totalStudy = dailyStudyMin.values.fold<int>(0, (s, v) => s + v);
-      final studyDays = dailyStudyMin.values.where((v) => v > 0).length;
-      final avgStudy = studyDays > 0 ? (totalStudy / studyDays).round() : 0;
-
-      // 최다/최소 공부일
-      String? bestDay, worstDay;
-      int bestMin = 0, worstMin = 99999;
-      for (final entry in dailyStudyMin.entries) {
-        if (entry.value > bestMin) {
-          bestMin = entry.value;
-          bestDay = entry.key;
-        }
-        if (entry.value > 0 && entry.value < worstMin) {
-          worstMin = entry.value;
-          worstDay = entry.key;
-        }
-      }
-      if (worstMin == 99999) { worstMin = 0; worstDay = null; }
-
       // 기상/취침 평균
       final avgWake = _averageTime(dailyWake.values.toList());
       final avgBed = _averageTime(dailyBed.values.toList());
@@ -299,49 +217,10 @@ class ReportService {
           ? (mealMinList.fold<int>(0, (s, v) => s + v) / mealMinList.length).round()
           : 0;
 
-      // 지난주 대비 트렌드 계산
-      final prevDates = List.generate(
-          7, (i) => DateFormat('yyyy-MM-dd').format(todayDt.subtract(Duration(days: i + 7))));
-      int prevTotalStudy = 0;
-      for (final d in prevDates) {
-        final pStr = _extractStudyTimeRecord(data, d) ??
-            _extractStudyTimeRecordFromHistory(historyByMonth, d);
-        if (pStr != null && pStr.effectiveMinutes > 0) {
-          prevTotalStudy += pStr.effectiveMinutes;
-        } else {
-          prevTotalStudy += _extractStudyMinFromHistory(historyByMonth, d);
-        }
-      }
-
       // ── 리포트 조립 ──
       final buf = StringBuffer();
       buf.writeln('===== WEEKLY REPORT =====');
       buf.writeln('${dates.last} ~ ${dates.first}');
-      buf.writeln();
-
-      // 공부시간
-      buf.writeln('-- STUDY TIME --');
-      buf.writeln('  total   ${_fmtDuration(totalStudy)}');
-      buf.writeln('  avg/day ${_fmtDuration(avgStudy)}');
-      buf.writeln('  days    $studyDays/7');
-      if (bestDay != null) {
-        buf.writeln('  best    ${bestDay.substring(5)} (${_fmtDuration(bestMin)})');
-      }
-      if (worstDay != null && worstDay != bestDay) {
-        buf.writeln('  worst   ${worstDay.substring(5)} (${_fmtDuration(worstMin)})');
-      }
-      buf.writeln();
-
-      // 트렌드
-      buf.writeln('-- TREND --');
-      if (prevTotalStudy > 0) {
-        final diff = totalStudy - prevTotalStudy;
-        final pct = (diff / prevTotalStudy * 100).round();
-        final arrow = diff >= 0 ? '+' : '';
-        buf.writeln('  vs last week  $arrow${_fmtDuration(diff.abs())} ($arrow$pct%)');
-      } else {
-        buf.writeln('  vs last week  (no data)');
-      }
       buf.writeln();
 
       // 투두
@@ -384,14 +263,6 @@ class ReportService {
         buf.writeln();
       }
 
-      // 일별 미니 바 차트
-      buf.writeln('-- DAILY --');
-      for (final d in dates.reversed) {
-        final min = dailyStudyMin[d] ?? 0;
-        final bar = _miniBar(min, 480); // 8시간 기준
-        buf.writeln('  ${d.substring(5)} $bar ${_fmtDuration(min)}');
-      }
-      buf.writeln();
       buf.writeln('=========================');
 
       await TelegramService().sendToMe(buf.toString());
@@ -475,58 +346,6 @@ class ReportService {
     }
   }
 
-  /// study doc에서 StudyTimeRecord 추출
-  StudyTimeRecord? _extractStudyTimeRecord(Map<String, dynamic>? data, String dateStr) {
-    if (data == null) return null;
-    final raw = data['studyTimeRecords'];
-    if (raw is! Map) return null;
-    final dayData = raw[dateStr];
-    if (dayData is! Map) return null;
-    try {
-      return StudyTimeRecord.fromMap(dateStr, Map<String, dynamic>.from(dayData));
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// history에서 StudyTimeRecord 추출
-  StudyTimeRecord? _extractStudyTimeRecordFromHistory(
-      Map<String, Map<String, dynamic>?> historyByMonth, String dateStr) {
-    final month = dateStr.substring(0, 7);
-    final day = dateStr.substring(8, 10);
-    final history = historyByMonth[month];
-    if (history == null) return null;
-    final days = history['days'];
-    if (days is! Map) return null;
-    final dayData = days[day];
-    if (dayData is! Map) return null;
-    final str = dayData['studyTimeRecords'];
-    if (str is! Map) return null;
-    try {
-      return StudyTimeRecord.fromMap(dateStr, Map<String, dynamic>.from(str));
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// history의 studyTime.total에서 분 추출
-  int _extractStudyMinFromHistory(
-      Map<String, Map<String, dynamic>?> historyByMonth, String dateStr) {
-    final month = dateStr.substring(0, 7);
-    final day = dateStr.substring(8, 10);
-    final history = historyByMonth[month];
-    if (history == null) return 0;
-    final days = history['days'];
-    if (days is! Map) return 0;
-    final dayData = days[day];
-    if (dayData is! Map) return 0;
-    final st = dayData['studyTime'];
-    if (st is Map && st['total'] is num) {
-      return (st['total'] as num).toInt();
-    }
-    return 0;
-  }
-
   /// study doc에서 Todo 추출
   Future<TodoDaily?> _extractTodos(Map<String, dynamic>? data, String dateStr) async {
     if (data == null) return null;
@@ -581,22 +400,6 @@ class ReportService {
       return OrderData.fromMap(Map<String, dynamic>.from(raw));
     } catch (_) {
       return null;
-    }
-  }
-
-  /// study doc에서 FocusCycles 추출
-  List<FocusCycle> _extractFocusCycles(Map<String, dynamic>? data, String dateStr) {
-    if (data == null) return [];
-    final raw = data['focusCycles'];
-    if (raw is! Map) return [];
-    final dayData = raw[dateStr];
-    if (dayData is! List) return [];
-    try {
-      return dayData
-          .map((c) => FocusCycle.fromMap(Map<String, dynamic>.from(c as Map)))
-          .toList();
-    } catch (_) {
-      return [];
     }
   }
 
@@ -663,38 +466,14 @@ class ReportService {
     }
   }
 
-  /// 미니 바 차트 (최대 maxMin 기준 8칸)
-  String _miniBar(int minutes, int maxMin) {
-    const barLen = 8;
-    final filled = maxMin > 0
-        ? (minutes / maxMin * barLen).round().clamp(0, barLen)
-        : 0;
-    return '${'#' * filled}${'-' * (barLen - filled)}';
-  }
-
   /// 격려 메시지 선택
-  String _pickEncouragement(
-      String dateStr, TodoDaily? todo, StudyTimeRecord? str) {
-    final effectiveMin = str?.effectiveMinutes ?? 0;
+  String _pickEncouragement(String dateStr, TodoDaily? todo) {
     final todoRate = todo != null && todo.totalCount > 0
         ? todo.completionRate
         : 0.0;
-
-    if (effectiveMin >= 480 && todoRate >= 0.8) {
-      return 'Perfect day. Keep going.';
-    }
-    if (effectiveMin >= 360) {
-      return 'Solid effort today.';
-    }
-    if (effectiveMin >= 240) {
-      return 'Good start. Push harder tomorrow.';
-    }
-    if (todoRate >= 0.8) {
-      return 'Tasks cleared. Well done.';
-    }
-    if (effectiveMin > 0) {
-      return 'Every minute counts. Build on this.';
-    }
+    if (todoRate >= 0.8) return 'Tasks cleared. Well done.';
+    if (todoRate >= 0.5) return 'Solid effort today.';
+    if (todoRate > 0) return 'Every small step counts.';
     return 'Rest well. Tomorrow is a new day.';
   }
 }

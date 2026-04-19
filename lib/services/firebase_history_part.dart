@@ -111,21 +111,6 @@ extension FirebaseHistoryOps on FirebaseService {
     }
   }
 
-  Future<void> appendFocusSessionToHistory(String date, Map<String, dynamic> session) async {
-    final month = date.substring(0, 7);
-    final day = date.substring(8, 10);
-    try {
-      await _db.doc('users/$kUid/history/$month').set({
-        'month': month,
-        'days': {day: {'focusSessions': FieldValue.arrayUnion([session])}},
-        'lastUpdated': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true)).timeout(const Duration(seconds: 10));
-      await LocalCacheService().removeGeneric('history_$month');
-    } catch (e) {
-      debugPrint('[FB] appendFocusSession fail: $e');
-    }
-  }
-
   Future<void> _recalculateMonthSummary(String month) async {
     try {
       final history = await _db.doc('users/$kUid/history/$month')
@@ -157,30 +142,6 @@ extension FirebaseHistoryOps on FirebaseService {
       final day = entry.key;
       if (entry.value is! Map) continue;
       final data = Map<String, dynamic>.from(entry.value as Map);
-
-      final st = data['studyTime'];
-      if (st is Map && st['total'] is num) {
-        final mins = (st['total'] as num).toInt();
-        totalMinutes += mins;
-        activeDays++;
-        if (mins > bestMinutes) { bestMinutes = mins; bestDay = day; }
-        final subjects = st['subjects'];
-        if (subjects is Map) {
-          for (final s in subjects.entries) {
-            subjectTotals[s.key.toString()] = (subjectTotals[s.key.toString()] ?? 0) + (s.value as num).toInt();
-          }
-        }
-      }
-
-      final str = data['studyTimeRecords'];
-      if (st == null && str is Map) {
-        final mins = (str['effectiveMinutes'] as num?)?.toInt() ?? 0;
-        if (mins > 0) {
-          totalMinutes += mins;
-          activeDays++;
-          if (mins > bestMinutes) { bestMinutes = mins; bestDay = day; }
-        }
-      }
 
       final t = data['todos'];
       if (t is List) {
@@ -249,23 +210,12 @@ extension FirebaseHistoryOps on FirebaseService {
         final historyDays = <String, Map<String, dynamic>>{};
         final archiveData = entry.value;
         final trMap = archiveData['timeRecords'] as Map?;
-        final strMap = archiveData['studyTimeRecords'] as Map?;
-        final fcMap = archiveData['focusCycles'] as Map?;
         final todosMap = archiveData['todos'] as Map?;
-        for (final dateKey in {...?trMap?.keys, ...?strMap?.keys, ...?fcMap?.keys, ...?todosMap?.keys}) {
+        for (final dateKey in {...?trMap?.keys, ...?todosMap?.keys}) {
           if (dateKey.toString().length < 10) continue;
           final day = dateKey.toString().substring(8, 10);
           historyDays.putIfAbsent(day, () => {});
           if (trMap?[dateKey] != null) historyDays[day]!['timeRecords'] = trMap![dateKey];
-          if (strMap?[dateKey] != null) {
-            historyDays[day]!['studyTimeRecords'] = strMap![dateKey];
-            final str = strMap[dateKey];
-            if (str is Map) {
-              final effMin = (str['effectiveMinutes'] as num?)?.toInt() ?? 0;
-              historyDays[day]!['studyTime'] = {'total': effMin, 'subjects': {}};
-            }
-          }
-          if (fcMap?[dateKey] != null) historyDays[day]!['focusSessions'] = fcMap![dateKey];
           if (todosMap?[dateKey] != null) {
             final td = todosMap![dateKey];
             if (td is Map) historyDays[day]!['todos'] = td['items'] ?? [];
@@ -444,7 +394,6 @@ extension FirebaseHistoryOps on FirebaseService {
         final newToday = <String, dynamic>{
           'date': currentDate,
           'timeRecords': <String, dynamic>{},
-          'studyTime': {'total': 0, 'subjects': <String, dynamic>{}},
           'todos': <Map<String, dynamic>>[],
           'orderData': todayData['orderData'] ?? {},
           'lastModified': DateTime.now().millisecondsSinceEpoch,

@@ -44,7 +44,6 @@ function getConfig() {
     accessId: process.env.TUYA_ACCESS_ID || "",
     accessSecret: process.env.TUYA_ACCESS_SECRET || "",
     deviceId: process.env.TUYA_DEVICE_ID || "",
-    mmwaveId: process.env.TUYA_MMWAVE_DEVICE_ID || "",
     plug16aId: process.env.TUYA_PLUG_16A_DEVICE_ID || "",
   };
 }
@@ -126,16 +125,6 @@ async function getDeviceEventLogs(accessId, accessSecret, token, deviceId, start
   const result = data.result || {};
   return result.logs || result.list || [];
 }
-
-// ═══ 거리 중앙값 필터 (노이즈 제거) ═══
-function medianOf(arr) {
-  if (!arr || arr.length === 0) return null;
-  const sorted = [...arr].sort((a, b) => a - b);
-  return sorted[Math.floor(sorted.length / 2)];
-}
-
-// ═══ 침대/책상 임계값 (Firestore iot.config.bedThresholdCm 오버라이드 가능) ═══
-const DEFAULT_BED_THRESHOLD = 220; // cm (침대 ~150, 책상 300+)
 
 // ═══ Tuya POST 명령 전송 (소켓 ON/OFF 등) ═══
 async function sendTuyaCommand(accessId, accessSecret, token, deviceId, commands) {
@@ -226,16 +215,11 @@ async function pollDoorLogic() {
   const iotData = doc.exists ? doc.data() : {};
   const currentDoor = iotData.door || {};
   const iotConfig = iotData.config || {};
-  const bedThreshold = iotConfig.bedThresholdCm || DEFAULT_BED_THRESHOLD;
 
-  // ═══ Tuya API 실패 시 → Firestore fallback (battery_manager가 쓴 데이터) ═══
   const isOpen = doorContactState; // null이면 도어센서 못 읽은 것
-  const mmPresence = iotConfig.mmwave_presence || null; // battery_manager가 로컬 폴링→Firestore
-  const mmDistance = Number(iotConfig.mmwave_distance) || 0;
 
-  // 도어센서 못 읽었으면 도어 업데이트 스킵
   if (isOpen === null && !tuyaApiOk) {
-    console.log("Door sensor unavailable, mmWave-only mode. presence=" + mmPresence);
+    console.log("Door sensor unavailable.");
   }
 
   const stateChanged = isOpen !== null &&
@@ -328,126 +312,14 @@ async function pollDoorLogic() {
   let wakeTime = null;
   const doorMerged = {...currentDoor, ...doorUpdate};
   if (doorMerged.openedToday) {
-    // 도어센서 기반 기상
     wakeTime = await checkWakeAndNotify(doc, doorMerged.firstOpenTime);
-  }
-  // ★ mmWave fallback 기상: 도어센서 못 읽고, mmWave가 재실 감지하면 기상 시도
-  if (!wakeTime && isOpen === null && mmPresence && mmPresence !== "none") {
-    console.log("mmWave wake fallback — presence=" + mmPresence);
-    wakeTime = await checkWakeAndNotify(doc, null);
   }
 
   // ═══ 외출 20분 확정 체크 ═══
   let outingTime = null;
   outingTime = await checkMovementPending(doc);
 
-  // ═══ mmWave presence 폴링 (Tuya API 또는 Firestore fallback) ═══
-  let sleepTime = null;
-  const {mmwaveId} = getConfig();
-  if (mmwaveId) {
-    let presenceState = null;
-    let targetDist = null;
-
-    if (tuyaApiOk && token) {
-      try {
-        const mmStatus = await getDeviceStatus(accessId, accessSecret, token, mmwaveId);
-        for (const s of mmStatus) {
-          if (s.code === "presence_state") presenceState = s.value;
-          if (s.code === "target_dis_closest") targetDist = s.value;
-        }
-      } catch (e) {
-        console.warn("mmWave Tuya API failed:", e.message);
-      }
-    }
-
-    // ★ Firestore fallback: battery_manager.py가 로컬 폴링한 데이터
-    if (!presenceState && mmPresence) {
-      presenceState = mmPresence;
-      targetDist = mmDistance;
-      console.log("mmWave using Firestore fallback: " + presenceState + " " + targetDist + "cm");
-    }
-
-    if (presenceState) {
-
-      const prevPresence = iotData.presence || {};
-      const presenceUpdate = {
-        state: presenceState,
-        distance: targetDist,
-        lastPolled: admin.firestore.FieldValue.serverTimestamp(),
-        sensorId: "mmwave_room",
-      };
-
-      // ═══ 거리 중앙값 필터 (5개 롤링 윈도우) ═══
-      const prevHistory = prevPresence.distHistory || [];
-      const newHistory = targetDist !== null
-        ? [...prevHistory, targetDist].slice(-5) : prevHistory;
-      presenceUpdate.distHistory = newHistory;
-      const filteredDist = medianOf(newHistory);
-      presenceUpdate.filteredDistance = filteredDist;
-
-      // ═══ zone 판별: 필터된 거리 + configurable 임계값 ═══
-      const zoneDist = filteredDist !== null ? filteredDist : targetDist;
-      const inBed = presenceState === "peaceful" && zoneDist !== null && zoneDist >= bedThreshold;
-
-      // stationarySince 추적 — peaceful + 침대 zone (220cm+)
-      if (inBed) {
-        const prevInBed = prevPresence.state === "peaceful"
-          && (prevPresence.filteredDistance || prevPresence.distance) !== undefined
-          && (prevPresence.filteredDistance || prevPresence.distance) >= bedThreshold;
-        if (!prevPresence.stationarySince || !prevInBed) {
-          presenceUpdate.stationarySince = admin.firestore.FieldValue.serverTimestamp();
-        }
-      } else {
-        presenceUpdate.stationarySince = null;
-      }
-
-      // noneSince 추적
-      if (presenceState === "none") {
-        if (!prevPresence.noneSince || prevPresence.state !== "none") {
-          presenceUpdate.noneSince = admin.firestore.FieldValue.serverTimestamp();
-        }
-      } else {
-        presenceUpdate.noneSince = null;
-      }
-
-      await todayRef.set({presence: presenceUpdate}, {merge: true});
-
-      // ═══ bedTime 가드 + 수면 zone 가드 읽기 ═══
-      const todayDoc2 = await db.doc("users/" + UID + "/data/today").get();
-      const todayTr2 = (todayDoc2.exists ? todayDoc2.data() : {}).timeRecords || {};
-      const hasBedTime = !!(todayTr2.bedTime || todayTr2[kstStudyDate()]?.bedTime);
-      const kstH = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours();
-      const isNightTime = kstH >= 23 || kstH < 7;
-
-      // ★ 수면 보호: bedTime 기록됨 OR (야간 + 침대 zone) → 전등 자동화 억제
-      const sleepGuard = hasBedTime || (isNightTime && inBed);
-
-      // ═══ 방 비움 5분 → 전등 OFF ═══
-      if (presenceState === "none" && !hasBedTime) {
-        const ns = prevPresence.noneSince;
-        if (ns && ns.toDate) {
-          const noneMin = (Date.now() - ns.toDate().getTime()) / (1000 * 60);
-          if (noneMin >= 5) {
-            setLight(false);
-            console.log("Room empty 5min → light OFF");
-          }
-        }
-      }
-
-      // ═══ 방 복귀 → 전등 ON (수면 보호 적용) ═══
-      if (prevPresence.state === "none" && presenceState !== "none" && !sleepGuard) {
-        if (kstH >= 18 || kstH < 7) {
-          setLight(true);
-          console.log("Room entry → light ON");
-        }
-      }
-
-      // ═══ 취침 자동 감지 (필터된 거리 사용) ═══
-      sleepTime = await checkSleepByPresence(doc, presenceState, prevPresence, zoneDist, bedThreshold);
-    } // end if (presenceState)
-  } // end if (mmwaveId)
-
-  return {success: true, isOpen, stateChanged, wakeTime, outingTime, sleepTime, raw: statusArr};
+  return {success: true, isOpen, stateChanged, wakeTime, outingTime, raw: statusArr};
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -658,150 +530,6 @@ async function checkMovementPending(iotDoc) {
   return outTimeStr;
 }
 
-// ═══════════════════════════════════════════════════════════
-//  취침 자동 감지 — mmWave presence 기반
-//  peaceful + ≤200cm + 23~07시 + 30분 연속 → 취침 확정
-// ═══════════════════════════════════════════════════════════
-
-// ★ AUDIT FIX: CF-03 — TODO: 날짜 귀속 로직 4단계 fallback (~70줄) 간소화 검토
-async function checkSleepByPresence(iotDoc, presenceState, prevPresence, zoneDist, bedThreshold) {
-  const thresh = bedThreshold || DEFAULT_BED_THRESHOLD;
-  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  const kstHour = kstNow.getUTCHours();
-  const kstMin = kstNow.getUTCMinutes();
-
-  // 시간 조건: 23~07시
-  if (kstHour >= 7 && kstHour < 23) return null;
-
-  // presence 조건: thresh(220cm) 이상 = 침대, 미만 = 책상
-  // softMargin(80%): 176cm~220cm = soft zone (45분), 220cm+ = 침대 (30분), 176cm 미만 = 차단
-  const softMargin = Math.round(thresh * 0.8);
-  if (presenceState !== "peaceful" || zoneDist === null || zoneDist < softMargin) {
-    if (kstMin % 10 === 0) {
-      console.log("Sleep gate2: state=" + presenceState + " dist=" + zoneDist + " thresh=" + thresh + " softMargin=" + softMargin);
-    }
-    return null;
-  }
-  const requiredMin = zoneDist >= thresh ? 30 : 45; // 침대=30분, soft zone=45분
-
-  // Phase D: today doc is primary, study doc as legacy fallback
-  const todayDoc2 = await db.doc("users/" + UID + "/data/today").get();
-  const todayData2 = todayDoc2.exists ? todayDoc2.data() : {};
-  const todayTr2 = todayData2.timeRecords || {};
-
-  // Legacy: study doc for multi-day lookback
-  const studyDoc = await db.doc("users/" + UID + "/data/study").get();
-  const studyData = studyDoc.exists ? studyDoc.data() : {};
-  const allTr = studyData.timeRecords || {};
-
-  const sleepDateStr = kstStudyDate(kstNow);
-  let targetDate = null;
-
-  // 1) today doc (primary) — flat 구조
-  if (todayTr2.wake && !todayTr2.bedTime && todayData2.date === sleepDateStr) {
-    targetDate = sleepDateStr;
-  }
-
-  // 2) study doc fallback (legacy read)
-  if (!targetDate) {
-    const rec = allTr[sleepDateStr];
-    if (rec && rec.wake && !rec.bedTime) {
-      targetDate = sleepDateStr;
-    }
-  }
-
-  // 4) 4AM 경계 넘긴 경우: 직전 study date 1개만 확인 (cascade 방지)
-  if (!targetDate) {
-    const parts = sleepDateStr.split("-");
-    const prevDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-    prevDate.setDate(prevDate.getDate() - 1);
-    const prevStr = prevDate.getFullYear() + "-" +
-      String(prevDate.getMonth() + 1).padStart(2, "0") + "-" +
-      String(prevDate.getDate()).padStart(2, "0");
-    const prevRec = allTr[prevStr];
-    if (prevRec && prevRec.wake && !prevRec.bedTime) {
-      targetDate = prevStr;
-    }
-    // prev도 flat fallback
-    if (!targetDate && allTr.wake && !allTr.bedTime && todayData2.date === prevStr) {
-      targetDate = prevStr;
-    }
-  }
-
-  if (!targetDate) {
-    if (kstMin % 10 === 0) {
-      console.log("Sleep gate3: " + sleepDateStr + " wake=" + (rec?.wake || allTr.wake || "none") + " bed=" + (rec?.bedTime || allTr.bedTime || "none"));
-    }
-    return null;
-  }
-
-  // ★ 화면 상태 체크: lastScreenOn이 30분 이내면 스킵 (폰 사용 중)
-  const iotSnap = iotDoc.exists ? iotDoc.data() : {};
-  const phone = iotSnap.phone || {};
-  if (phone.lastScreenOn && phone.lastScreenOn.toDate) {
-    const screenMin = (Date.now() - phone.lastScreenOn.toDate().getTime()) / (1000 * 60);
-    if (screenMin < 30) {
-      console.log("Sleep gate4: screen active " + Math.round(screenMin) + "min ago");
-      return null;
-    }
-  }
-
-  // stationarySince 30분 경과 확인
-  const since = prevPresence.stationarySince;
-  if (!since || !since.toDate) {
-    console.log("Sleep gate5: no stationarySince");
-    return null;
-  }
-  const sinceTime = since.toDate();
-  const elapsedMin = (Date.now() - sinceTime.getTime()) / (1000 * 60);
-  if (elapsedMin < requiredMin) {
-    if (kstMin % 10 === 0) {
-      console.log("Sleep gate5: stationary " + Math.round(elapsedMin) + "min (need " + requiredMin + ")");
-    }
-    return null;
-  }
-
-  // ═══ 취침 확정 ═══
-  const dateStr = targetDate;
-  const timeStr = String(kstHour).padStart(2, "0") + ":" + String(kstMin).padStart(2, "0");
-
-  // 1. 전등 OFF
-  setLight(false);
-
-  // 2. Phase D: today doc only (single source of truth)
-  const todayRef = db.doc("users/" + UID + "/data/today");
-  await todayRef.update({"timeRecords.bedTime": timeStr, "date": dateStr})
-    .catch(() => todayRef.set({timeRecords: {bedTime: timeStr}, date: dateStr}, {merge: true}));
-
-  // 3. stationarySince 리셋 (재감지 방지)
-  await db.doc("users/" + UID + "/data/iot").update({"presence.stationarySince": null});
-
-  // 4. 텔레그램
-  const msg = "🛏️ 자동 취침 " + timeStr;
-  await Promise.all([
-    axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
-      {chat_id: MY_CHAT_ID, text: msg}).catch(() => {}),
-    axios.post("https://api.telegram.org/bot" + GF_BOT_TOKEN + "/sendMessage",
-      {chat_id: GF_CHAT_ID, text: msg}).catch(() => {}),
-  ]);
-
-  // 5. FCM → 앱 sleeping 전환
-  const iotData = iotDoc.exists ? iotDoc.data() : {};
-  if (iotData.fcmToken) {
-    try {
-      await admin.messaging().send({
-        token: iotData.fcmToken,
-        data: {type: "sleep", time: timeStr},
-        notification: {title: "🛏️ 취침", body: "자동 취침 " + timeStr},
-        android: {priority: "high", notification: {channelId: "cheonhong_sleep"}},
-      });
-    } catch (e) { console.error("FCM sleep error:", e.message); }
-  }
-
-  console.log("Sleep recorded:", timeStr);
-  return timeStr;
-}
-
 // ★ AUDIT FIX: CF-01 — TODO: 폴링 간격을 상태에 따라 동적 조절 (야간 5분, 주간 2분) 또는 Tuya Webhook 전환
 // Scheduled: every 1 minute
 exports.pollDoorSensor = functions.pubsub
@@ -835,29 +563,6 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       const numVal = Number(value);
       await db.doc("users/" + UID + "/data/iot").set(
         {config: {[key]: isNaN(numVal) ? value : numVal}}, {merge: true});
-
-      // ★ mmWave 재실 감지 → 귀가 자동 판정 (OwnTracks 백업)
-      // battery_manager가 mmwave_presence를 peaceful/motion으로 보내면 = 집에 있음
-      if (key === "mmwave_presence" && (value === "peaceful" || value === "motion")) {
-        const iotSnap = await db.doc("users/" + UID + "/data/iot").get();
-        const mv = (iotSnap.exists ? iotSnap.data() : {}).movement || {};
-        // 현재 외출 상태인데 mmWave가 재실 감지 → 귀가
-        if (mv.type !== "home") {
-          const date = kstStudyDate();
-          const now = new Date();
-          const timeStr = now.toLocaleTimeString("ko-KR", {timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false});
-          await Promise.all([
-            db.doc("users/" + UID + "/data/iot").update({
-              "movement.type": "home", "movement.pending": false,
-              "movement.returnedAtLocal": timeStr,
-              "movement.detectedBy": "mmwave",
-              "movement.date": date,
-            }),
-            db.doc("users/" + UID + "/data/today").update({"timeRecords.returnHome": timeStr}).catch(() => {}),
-          ]);
-          console.log("mmWave 귀가 감지: " + timeStr);
-        }
-      }
 
       res.status(200).json({ok: true, key, value: isNaN(numVal) ? value : numVal});
       return;
@@ -1410,7 +1115,9 @@ exports.onIotWrite = functions.firestore
     }
 
     // ── 귀가 감지: movement.type → "home" ──
-    if (mvAfter.type === "home" && mvBefore.type !== "home") {
+    // cf_rollover 가 강제로 home 으로 reset 한 경우는 진짜 귀가가 아니므로 스킵
+    if (mvAfter.type === "home" && mvBefore.type !== "home"
+        && mvAfter.resetBy !== "cf_rollover") {
       await handleReturnHome(mvAfter, after);
     }
 
@@ -2039,7 +1746,7 @@ const AI_TOOLS = [
   },
   {
     name: "iot_status",
-    description: "IoT 센서 전체 상태 조회 — 도어센서, mmWave, 전등, 위치",
+    description: "IoT 센서 전체 상태 조회 — 도어센서, 전등, 위치",
     input_schema: {type: "object", properties: {}, required: []},
   },
   {
@@ -2048,7 +1755,7 @@ const AI_TOOLS = [
     input_schema: {
       type: "object",
       properties: {
-        device: {type: "string", enum: ["door", "mmwave", "plug_16a", "plug_20a"], description: "조회할 기기"},
+        device: {type: "string", enum: ["door", "plug_16a", "plug_20a"], description: "조회할 기기"},
       },
       required: ["device"],
     },
@@ -2090,7 +1797,6 @@ tool 호출이 필요하면 반드시 tool을 사용해. 일반 대화도 가능
 
 IoT 기기:
 - 도어센서(door): 방문 열림/닫힘
-- mmWave(mmwave): 존재감지 (none=비어있음, presence=움직임, peaceful=정지), distance=거리cm
 - 16A 소켓(plug_16a): 방 전등(천장) ON/OFF
 - 20A 소켓(plug_20a): 책상 스탠드 ON/OFF
 
@@ -2253,14 +1959,10 @@ async function executeTool(name, input) {
     const iotDoc = await db.doc("users/" + UID + "/data/iot").get();
     const iot = iotDoc.exists ? iotDoc.data() : {};
     const door = iot.door || {};
-    const presence = iot.presence || {};
     const movement = iot.movement || {};
 
     let status = "🏠 IoT 상태\n";
     status += "🚪 도어: " + (door.state || "?") + (door.openedToday ? " (오늘 열림)" : "") + "\n";
-    status += "📡 mmWave: " + (presence.state || "?");
-    if (presence.distance != null) status += " " + presence.distance + "cm";
-    status += "\n";
     status += "💡 전등: Firestore에 없음 (query_sensor로 실시간 조회)\n";
     if (movement.type) status += "🚶 이동: " + movement.type + "\n";
     return status;
@@ -2269,7 +1971,6 @@ async function executeTool(name, input) {
   if (name === "query_sensor") {
     const deviceMap = {
       door: process.env.TUYA_DEVICE_ID,
-      mmwave: process.env.TUYA_MMWAVE_DEVICE_ID,
       plug_16a: process.env.TUYA_PLUG_16A_DEVICE_ID,
       plug_20a: "ebeaff0f5a69754067yfdv",
     };
@@ -2280,7 +1981,7 @@ async function executeTool(name, input) {
     const token = await getTuyaToken(accessId, accessSecret);
     const statusArr = await getDeviceStatus(accessId, accessSecret, token, did);
 
-    const labels = {door: "🚪 도어센서", mmwave: "📡 mmWave", plug_16a: "💡 16A 소켓(전등)", plug_20a: "🔌 20A 소켓"};
+    const labels = {door: "🚪 도어센서", plug_16a: "💡 16A 소켓(전등)", plug_20a: "🔌 20A 소켓"};
     let result = labels[input.device] + " 실시간:\n";
     for (const s of statusArr) {
       result += "  " + s.code + ": " + s.value + "\n";
@@ -2297,7 +1998,6 @@ async function executeTool(name, input) {
     const tr = today.timeRecords || {};
     const iot = iotDoc.exists ? iotDoc.data() : {};
     const door = iot.door || {};
-    const presence = iot.presence || {};
 
     let report = "🔍 오늘 기록 감사\n\n";
 
@@ -2346,7 +2046,6 @@ async function executeTool(name, input) {
     // 3. IoT 상태
     report += "\n🏠 IoT 현재:\n";
     report += "  🚪 문: " + (door.state || "?") + " (첫열림: " + (door.firstOpenTime || "없음") + ")\n";
-    report += "  📡 mmWave: " + (presence.state || "?") + " " + (presence.filteredDistance || presence.distance || "?") + "cm\n";
 
     if (issues.length > 0) {
       report += "\n⚠️ 이상 감지 " + issues.length + "건:\n" + issues.join("\n");
@@ -2488,109 +2187,6 @@ exports.dailySensorReport = functions.pubsub
   .schedule("0 23 * * *")
   .timeZone("Asia/Seoul")
   .onRun(async () => { return null; });
-    try {
-      const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
-      const yesterday = kstStudyDate(new Date(kstNow.getTime() - 24 * 60 * 60 * 1000));
-      const today = kstStudyDate(kstNow);
-
-      // Phase D: today doc + history for yesterday
-      const [iotDoc, todayDoc] = await Promise.all([
-        db.doc("users/" + UID + "/data/iot").get(),
-        db.doc("users/" + UID + "/data/today").get(),
-      ]);
-
-      const iotData = iotDoc.exists ? iotDoc.data() : {};
-      const todayData = todayDoc.exists ? todayDoc.data() : {};
-
-      // yesterday: history fallback
-      let yTr = {};
-      try {
-        const yParts = yesterday.split("-");
-        const yMonthKey = yParts[0] + "-" + yParts[1];
-        const yDayKey = yParts[2];
-        const histDoc = await db.doc("users/" + UID + "/history/" + yMonthKey).get();
-        if (histDoc.exists) {
-          const days = histDoc.data().days || {};
-          yTr = (days[yDayKey] || {}).timeRecords || {};
-        }
-      } catch (_) {}
-      const tTr = todayData.timeRecords || {};
-      const presence = iotData.presence || {};
-      const door = iotData.door || {};
-      const phone = iotData.phone || {};
-      const config = iotData.config || {};
-
-      // ═══ 보고서 작성 ═══
-      const lines = [];
-      lines.push("📊 일일 센서 보고 (" + today + " 08:00)");
-      lines.push("━━━━━━━━━━━━━━━━━━");
-
-      // 1. 어제 타임라인
-      lines.push("");
-      lines.push("📅 어제 (" + yesterday + "):");
-      lines.push("  기상: " + (yTr.wake || "❌ 미기록"));
-      if (yTr.outing) lines.push("  외출: " + yTr.outing);
-      if (yTr.returnHome) lines.push("  귀가: " + yTr.returnHome);
-      if (yTr.noOuting) lines.push("  외출: 🏠 홈데이");
-      lines.push("  취침: " + (yTr.bedTime || "❌ 미기록"));
-
-      if (!yTr.bedTime) {
-        lines.push("  ⚠️ 취침 자동감지 실패!");
-      }
-
-      // 2. 오늘 현재
-      lines.push("");
-      lines.push("📌 오늘 (" + today + "):");
-      lines.push("  기상: " + (tTr.wake || "아직 미기록"));
-
-      // 3. 센서 상태
-      lines.push("");
-      lines.push("🔧 센서 상태:");
-      lines.push("  mmWave: " + (presence.state || "unknown"));
-      lines.push("  거리: " + (presence.filteredDistance || presence.distance || 0) + "cm");
-      lines.push("  문: " + (door.state || "unknown"));
-
-      // 4. 설정값
-      lines.push("");
-      lines.push("⚙️ 설정:");
-      lines.push("  bedThreshold: " + (config.bedThresholdCm || DEFAULT_BED_THRESHOLD) + "cm");
-
-      // 5. 이상 감지
-      const anomalies = [];
-      if (!yTr.wake) anomalies.push("어제 기상 미기록");
-      if (!yTr.bedTime) anomalies.push("어제 취침 미기록");
-      if (presence.state === "none" && !door.isOpen) {
-        if (presence.noneSince && presence.noneSince.toDate) {
-          const noneHours = (Date.now() - presence.noneSince.toDate().getTime()) / 3600000;
-          if (noneHours > 12) anomalies.push("mmWave none " + Math.round(noneHours) + "시간 (센서 점검)");
-        }
-      }
-      if (phone.lastScreenOn && phone.lastScreenOn.toDate) {
-        const screenHours = (Date.now() - phone.lastScreenOn.toDate().getTime()) / 3600000;
-        if (screenHours > 24) anomalies.push("폰 화면 " + Math.round(screenHours) + "시간 전 (BixbyListener 점검)");
-      }
-
-      if (anomalies.length > 0) {
-        lines.push("");
-        lines.push("🚨 이상 감지:");
-        for (const a of anomalies) lines.push("  • " + a);
-      } else {
-        lines.push("");
-        lines.push("✅ 이상 없음");
-      }
-
-      const msg = lines.join("\n");
-      await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
-        {chat_id: MY_CHAT_ID, text: msg}).catch(() => {});
-
-      console.log("Daily sensor report sent");
-    } catch (err) {
-      console.error("dailySensorReport error:", err.message);
-      await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
-        {chat_id: MY_CHAT_ID, text: "⚠️ 센서 보고 에러: " + err.message}).catch(() => {});
-    }
-    return null;
-  });
 
 // ═══════════════════════════════════════════════════════════
 //  🌤️ 매일 아침 7시 날씨 예보 → 텔레그램
@@ -2636,52 +2232,10 @@ exports.dailyWeatherForecast = functions.pubsub
   });
 
 // ═══════════════════════════════════════════════════════════
-//  🔋 배터리 안전장치 — heartbeat 15분 끊기면 충전 ON
-//  매 5분 실행, PC 크래시/셧다운 대비
+//  🔋 (DEPRECATED 2026-04-15) batteryWatchdog 제거
+//  배경: battery_manager 전면 폐기 + Lenovo Vantage 관리 이관.
+//  heartbeat 공급원이 없으므로 watchdog은 오탐만 발생 → 삭제.
 // ═══════════════════════════════════════════════════════════
-
-exports.batteryWatchdog = functions.pubsub
-  .schedule("every 5 minutes")
-  .timeZone("Asia/Seoul")
-  .onRun(async () => {
-    try {
-      const doc = await db.doc("users/" + UID + "/data/iot").get();
-      const config = (doc.exists ? doc.data() : {}).config || {};
-      const lastBeat = Number(config.batteryHeartbeat || 0);
-      const pct = Number(config.batteryPercent || 50);
-      const plugOn = config.batteryPlugOn;
-
-      if (!lastBeat) return null; // heartbeat 없으면 무시 (매니저 미실행)
-
-      const elapsed = (Date.now() / 1000) - lastBeat;
-      const deadMin = Math.round(elapsed / 60);
-
-      // 15분 이상 heartbeat 없고, 플러그가 OFF 상태면 → 안전 충전 ON
-      if (elapsed > 15 * 60 && plugOn === "false") {
-        console.log("Battery watchdog: no heartbeat " + deadMin + "min, pct=" + pct + "% → forcing charge ON");
-
-        // 20A 플러그 ON
-        const {accessId, accessSecret} = getConfig();
-        const deskPlugId = "ebeaff0f5a69754067yfdv";
-        const token = await getTuyaToken(accessId, accessSecret);
-        await sendTuyaCommand(accessId, accessSecret, token, deskPlugId,
-          [{code: "switch_1", value: true}]);
-
-        // 상태 기록
-        await db.doc("users/" + UID + "/data/iot").set(
-          {config: {batteryPlugOn: "true"}}, {merge: true});
-
-        const msg = "🔋 안전장치 발동 — PC heartbeat " + deadMin + "분 끊김, 충전 강제 ON (" + pct + "%)";
-        await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
-          {chat_id: MY_CHAT_ID, text: msg}).catch(() => {});
-
-        console.log("Battery watchdog: charge forced ON");
-      }
-    } catch (err) {
-      console.error("batteryWatchdog error:", err.message);
-    }
-    return null;
-  });
 
 // ═══════════════════════════════════════════════════════════
 //  🔄 일일 롤오버 — 매일 04:10 KST
@@ -2839,7 +2393,11 @@ async function resetIotDoc(todayKey, log) {
   }
 
   if (changed) {
-    await iotRef.set(iotUpdate, {merge: true});
+    // update() atomically replaces the nested `movement`/`activity` maps entirely,
+    // whereas set({merge:true}) merges nested maps field-by-field and would leave
+    // stale subfields (studyingSince, leftAtLocal, returnedAtLocal, ...) alive.
+    await iotRef.update(iotUpdate);
+    log.push("iot movement/activity atomically replaced");
   } else {
     log.push("iot doc already current — no reset needed");
   }

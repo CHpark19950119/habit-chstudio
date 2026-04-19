@@ -128,55 +128,6 @@ extension FirebaseDataOps on FirebaseService {
     });
   }
 
-  // ── NFC tags/events ──
-
-  Future<void> saveNfcTags(List<NfcTagConfig> tags) async {
-    final data = {'tags': tags.map((t) => t.toMap()).toList()};
-    await _db.doc(_nfcTagsDoc).set({
-      ...data,
-      '_updatedAt': FieldValue.serverTimestamp(),
-    });
-    LocalCacheService().saveGeneric('nfcTags', data);
-  }
-
-  Future<List<NfcTagConfig>> getNfcTags() async {
-    final data = await _cachedDocGet('nfcTags', _nfcTagsDoc);
-    if (data == null) return [];
-    final raw = data['tags'] as List<dynamic>?;
-    if (raw == null) return [];
-    return raw.map((t) => NfcTagConfig.fromMap(t as Map<String, dynamic>)).toList();
-  }
-
-  Future<void> saveNfcEvent(String date, NfcEvent event) async {
-    await _db.collection(_nfcEventsCol).doc(date).set({
-      'date': date,
-      'events': FieldValue.arrayUnion([event.toMap()]),
-      '_updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-    await LocalCacheService().removeGeneric('nfcEvents_$date');
-  }
-
-  Future<List<NfcEvent>> getNfcEvents(String date) async {
-    final data = await _cachedDocGet('nfcEvents_$date', '$_nfcEventsCol/$date');
-    if (data == null) return [];
-    final raw = data['events'] as List<dynamic>?;
-    if (raw == null) return [];
-    return raw.map((e) {
-      final m = Map<String, dynamic>.from(e as Map);
-      return NfcEvent(
-        id: m['id'] ?? '',
-        date: m['date'] ?? '',
-        timestamp: m['timestamp'] ?? '',
-        role: ActionType.values.firstWhere(
-          (r) => r.name == (m['role'] ?? 'wake'),
-          orElse: () => ActionType.wake,
-        ),
-        tagName: m['tagName'] ?? '',
-        action: m['action'] as String?,
-      );
-    }).toList();
-  }
-
   // ── Memos ──
 
   Future<void> saveMemo(Memo memo) async {
@@ -221,38 +172,6 @@ extension FirebaseDataOps on FirebaseService {
           });
           return memos;
         });
-  }
-
-  // ── Progress goals ──
-
-  Future<List<ProgressGoal>> getProgressGoals() async {
-    final data = await getStudyData();
-    if (data == null || data[_progressGoalsField] == null) return [];
-    final raw = data[_progressGoalsField] as List<dynamic>;
-    return raw
-        .map((g) => ProgressGoal.fromMap(Map<String, dynamic>.from(g as Map)))
-        .toList();
-  }
-
-  Future<void> saveProgressGoals(List<ProgressGoal> goals) async {
-    final goalsList = goals.map((g) => g.toMap()).toList();
-    _studyCache ??= {};
-    _studyCache![_progressGoalsField] = goalsList;
-    _studyCacheTime = DateTime.now();
-    FirestoreWriteQueue().enqueue(_studyDoc, {
-      _progressGoalsField: goalsList,
-    });
-  }
-
-  Stream<List<ProgressGoal>> watchProgressGoals() {
-    return watchStudyData().map((snap) {
-      final data = snap.data();
-      if (data == null || data[_progressGoalsField] == null) return [];
-      final raw = data[_progressGoalsField] as List<dynamic>;
-      return raw
-          .map((g) => ProgressGoal.fromMap(Map<String, dynamic>.from(g as Map)))
-          .toList();
-    });
   }
 
   // ── Daily diary ──

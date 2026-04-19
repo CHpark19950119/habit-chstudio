@@ -327,16 +327,13 @@ extension _HomeTodoSection on _HomeScreenState {
                           decorationColor: _textMuted.withValues(alpha: 0.5),
                         ),
                         maxLines: 2, overflow: TextOverflow.ellipsis),
-                    if (item.type != null || item.subject != null || item.priority != null || item.estimatedMinutes != null) ...[
+                    if (item.type != null || item.priority != null || item.estimatedMinutes != null) ...[
                       const SizedBox(height: 4),
                       Wrap(spacing: 4, runSpacing: 2, children: [
                         if (item.type != null)
                           _todoBadge(
                             TodoItem.types[item.type!] ?? item.type!,
                             _dk ? const Color(0xFF60A5FA) : const Color(0xFF2563EB)),
-                        if (item.subject != null)
-                          _todoBadge(item.subject!, _dk
-                            ? BotanicalColors.lanternGold : BotanicalColors.primary),
                         if (item.priority != null)
                           _todoBadge(
                             TodoItem.priorityLabels[item.priority!] ?? item.priority!,
@@ -525,7 +522,6 @@ extension _HomeTodoSection on _HomeScreenState {
   /// Todo 아이템 수정 시트
   void _editTodoItem(TodoItem item) async {
     final controller = TextEditingController(text: item.title);
-    _editSubject = item.subject;
     _editPriority = item.priority;
     _editMinutes = item.estimatedMinutes;
     _editType = item.type;
@@ -573,26 +569,6 @@ extension _HomeTodoSection on _HomeScreenState {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: sel ? acc.withValues(alpha: 0.4) : sub.withValues(alpha: 0.2))),
                   child: Text(TodoItem.types[k]!, style: TextStyle(fontSize: 11,
-                    fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                    color: sel ? acc : sub))),
-              );
-            }).toList()),
-            const SizedBox(height: 14),
-            // ── 과목 ──
-            Align(alignment: Alignment.centerLeft,
-              child: Text('과목', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: sub))),
-            const SizedBox(height: 6),
-            Wrap(spacing: 6, runSpacing: 6, children: TodoItem.subjects.map((s) {
-              final sel = _editSubject == s;
-              return GestureDetector(
-                onTap: () => setS(() => _editSubject = sel ? null : s),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: sel ? acc.withValues(alpha: 0.12) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: sel ? acc.withValues(alpha: 0.4) : sub.withValues(alpha: 0.2))),
-                  child: Text(s, style: TextStyle(fontSize: 11,
                     fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
                     color: sel ? acc : sub))),
               );
@@ -665,7 +641,6 @@ extension _HomeTodoSection on _HomeScreenState {
       items: todos.items.map((t) =>
         t.id == item.id ? t.copyWith(
           title: title,
-          subject: _editSubject, clearSubject: _editSubject == null,
           priority: _editPriority, clearPriority: _editPriority == null,
           estimatedMinutes: _editMinutes, clearEstimatedMinutes: _editMinutes == null,
           type: _editType, clearType: _editType == null,

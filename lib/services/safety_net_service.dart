@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/study_date_utils.dart';
+import '../utils/date_utils.dart';
 import '../models/iot_models.dart';
 import 'routine_service.dart';
 import '../models/models.dart' show ActionType, TimeRecord;
@@ -22,14 +22,13 @@ enum SafetyCheck {
   wakeMiss,           // idle + (문 열림 OR 9시 이후)
   outingMiss,         // not outing + GPS 집 밖
   returnMiss,         // outing + GPS 집 안
-  mealMiss,           // studying + 식사 미기록 + 4시간 경과
+  mealMiss,           // 식사 미기록
   abnormalData,       // 시간 순서 이상
   stayLocation,       // outing + still (체류) → 어디에 있어?
   // ── v2: 분기 이벤트 ──
   homeDayConfirm,     // awake + 외출 없음 + 180분+ → 홈데이 확인
   autoWakeConfirm,    // 자동 기상 직후 사후 확인
-  studyEndConfirm,    // studying + 4시간+ → 아직 공부 중?
-  lateMealReminder,   // studying + 마지막 식사/공부 시작 5시간+ → 밥 먹었어?
+  lateMealReminder,   // 마지막 식사 이후 장시간 → 밥 먹었어?
 }
 
 /// ═══════════════════════════════════════════════════════════
@@ -64,7 +63,6 @@ class SafetyNetService {
     SafetyCheck.stayLocation: 8006,
     SafetyCheck.homeDayConfirm: 8007,
     SafetyCheck.autoWakeConfirm: 8008,
-    SafetyCheck.studyEndConfirm: 8009,
     SafetyCheck.lateMealReminder: 8010,
   };
 
@@ -81,8 +79,6 @@ class SafetyNetService {
   static const String _actionConfirmHomeDay = 'safety_confirm_homeday';
   static const String _actionConfirmAutoWake = 'safety_confirm_autowake';
   static const String _actionDenyAutoWake = 'safety_deny_autowake';
-  static const String _actionStudyEndDone = 'safety_study_end_done';
-  static const String _actionStudyEndContinue = 'safety_study_end_continue';
   static const String _actionConfirmLateMeal = 'safety_confirm_latemeal';
 
   bool get enabled => _enabled;
@@ -165,12 +161,6 @@ class SafetyNetService {
       case _actionDenyAutoWake:
         _handleAutoWakeRollback();
         break;
-      case _actionStudyEndDone:
-        DayService().triggerAction(ActionType.study); // studying 토글 → 종료
-        break;
-      case _actionStudyEndContinue:
-        // 30분 쿨다운 (자동 적용)
-        break;
       case _actionConfirmLateMeal:
         DayService().triggerAction(ActionType.meal);
         break;
@@ -247,7 +237,7 @@ class SafetyNetService {
     }
 
     // ── 4. 식사 미기록 ──
-    if (routine.state == DayState.studying && !MealService().isMealing) {
+    if (!MealService().isMealing) {
       await _checkMealMiss(todayKey, now, preloadedRecords: preloadedRecords);
     }
 
@@ -259,13 +249,8 @@ class SafetyNetService {
       await _checkHomeDayConfirm(todayKey, now);
     }
 
-    // ── 8. 장시간 공부 체크 (studyEndConfirm) ──
-    if (routine.state == DayState.studying) {
-      await _checkStudyEndConfirm(todayKey, now);
-    }
-
-    // ── 9. 식사 리마인더 (lateMealReminder) — 기존 mealMiss 보강 ──
-    if (routine.state == DayState.studying && !MealService().isMealing) {
+    // ── 9. 식사 리마인더 (lateMealReminder) ──
+    if (!MealService().isMealing) {
       await _checkLateMealReminder(todayKey, now, preloadedRecords: preloadedRecords);
     }
 
@@ -285,19 +270,19 @@ class SafetyNetService {
       final records = preloadedRecords ?? await FirebaseService().getTimeRecords()
           .timeout(const Duration(seconds: 5));
       final tr = records[todayKey];
-      if (tr == null || tr.study == null) return;
+      if (tr == null || tr.wake == null) return;
 
       // 오늘 식사 기록 있으면 스킵
       if (tr.meals.isNotEmpty) return;
 
-      // 공부 시작 후 4시간 경과?
-      final studyParts = tr.study!.split(':');
-      final studyMin = int.parse(studyParts[0]) * 60 + int.parse(studyParts[1]);
+      // 기상 후 6시간 경과 + 현재 12시 이후?
+      final wakeParts = tr.wake!.split(':');
+      final wakeMin = int.parse(wakeParts[0]) * 60 + int.parse(wakeParts[1]);
       final nowMin = now.hour * 60 + now.minute;
-      if (nowMin - studyMin >= 240) {
+      if (nowMin - wakeMin >= 360 && now.hour >= 12) {
         _maybeAlert(SafetyCheck.mealMiss, todayKey,
             title: '밥 먹었어?',
-            body: '공부 시작(${tr.study})부터 4시간 넘었어요',
+            body: '기상(${tr.wake})부터 6시간 넘었어요',
             confirmActionId: _actionConfirmMeal);
       }
     } catch (_) {}
@@ -317,12 +302,10 @@ class SafetyNetService {
       }
 
       final wake = toMin(tr.wake);
-      final study = toMin(tr.study);
       final outing = toMin(tr.outing);
       final ret = toMin(tr.returnHome);
 
       bool abnormal = false;
-      if (study != null && wake != null && study < wake) abnormal = true;
       if (ret != null && outing != null && ret < outing) abnormal = true;
       if (outing != null && wake != null && outing < wake) abnormal = true;
 
@@ -372,40 +355,18 @@ class SafetyNetService {
         denyLabel: '아니야');
   }
 
-  /// A3. 장시간 공부 체크 — studying + 4시간+ + studyEnd 없음
-  Future<void> _checkStudyEndConfirm(String todayKey, DateTime now) async {
-    try {
-      final records = await FirebaseService().getTimeRecords()
-          .timeout(const Duration(seconds: 5));
-      final tr = records[todayKey];
-      if (tr == null || tr.study == null || tr.studyEnd != null) return;
-
-      final studyParts = tr.study!.split(':');
-      final studyMin = int.parse(studyParts[0]) * 60 + int.parse(studyParts[1]);
-      final nowMin = now.hour * 60 + now.minute;
-      if (nowMin - studyMin < 240) return; // 4시간 미경과
-
-      _maybeAlert(SafetyCheck.studyEndConfirm, todayKey,
-          title: '아직 공부 중이야?',
-          body: '공부 시작(${tr.study})부터 4시간 넘었어',
-          confirmActionId: _actionStudyEndDone,
-          denyActionId: _actionStudyEndContinue,
-          denyLabel: '하는 중');
-    } catch (_) {}
-  }
-
-  /// A4. 식사 리마인더 — studying + 마지막 식사/공부시작 5시간+
+  /// A4. 식사 리마인더 — 마지막 식사/기상 5시간+
   // ★ AUDIT FIX: P-02 — preloadedRecords 파라미터 추가
   Future<void> _checkLateMealReminder(String todayKey, DateTime now, {Map<String, TimeRecord>? preloadedRecords}) async {
     try {
       final records = preloadedRecords ?? await FirebaseService().getTimeRecords()
           .timeout(const Duration(seconds: 5));
       final tr = records[todayKey];
-      if (tr == null || tr.study == null) return;
+      if (tr == null || tr.wake == null) return;
 
       final nowMin = now.hour * 60 + now.minute;
 
-      // 기준 시점: 마지막 식사 종료 or 공부 시작
+      // 기준 시점: 마지막 식사 종료 or 기상
       int baseMin;
       if (tr.meals.isNotEmpty) {
         final lastMeal = tr.meals.last;
@@ -413,7 +374,7 @@ class SafetyNetService {
         final parts = ref.split(':');
         baseMin = int.parse(parts[0]) * 60 + int.parse(parts[1]);
       } else {
-        final parts = tr.study!.split(':');
+        final parts = tr.wake!.split(':');
         baseMin = int.parse(parts[0]) * 60 + int.parse(parts[1]);
       }
 
@@ -421,7 +382,7 @@ class SafetyNetService {
 
       _maybeAlert(SafetyCheck.lateMealReminder, todayKey,
           title: '밥 먹었어?',
-          body: '마지막 식사/공부시작부터 5시간 넘었어',
+          body: '마지막 식사/기상부터 5시간 넘었어',
           confirmActionId: _actionConfirmLateMeal);
     } catch (_) {}
   }
@@ -496,7 +457,6 @@ class SafetyNetService {
   static bool _triggerConditionMet(String trigger, TimeRecord tr) {
     switch (trigger) {
       case 'wake': return tr.wake != null;
-      case 'study': return tr.study != null;
       case 'outing': return tr.outing != null;
       case 'meal': return tr.meals.isNotEmpty;
       case 'sleep': return tr.bedTime != null;

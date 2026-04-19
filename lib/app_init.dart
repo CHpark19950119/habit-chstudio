@@ -6,12 +6,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 
 import 'services/firebase_service.dart';
-import 'services/focus_service.dart';
 import 'services/local_cache_service.dart';
 import 'services/day_service.dart';
 import 'services/door_sensor_service.dart';
 import 'services/report_service.dart';
 import 'services/wake_service.dart';
+import 'services/sleep_service.dart';
 import 'services/widget_render_service.dart';
 import 'services/fcm_service.dart';
 import 'services/safety_net_service.dart';
@@ -45,13 +45,7 @@ class AppInit {
 
     // ── Phase 2: 서비스 초기화 (병렬, 개별 try-catch) — rollover와 동시 진행 ──
     await Future.wait([
-      FocusService().initialize().timeout(const Duration(seconds: 10)).catchError((_) {}),
       DayService().initialize().timeout(const Duration(seconds: 10)).catchError((_) {}),
-    ]);
-
-    // ── Phase 3: 상태 복원 (병렬, 개별 try-catch) ──
-    await Future.wait([
-      FocusService().restoreState().timeout(const Duration(seconds: 8)).catchError((_) => false),
     ]);
 
     // ★ rollover 완료 대기 (센서 서비스가 today doc에 의존)
@@ -66,6 +60,8 @@ class AppInit {
     await Future.wait([
       WakeService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
       FcmService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
+      // SleepService — 기본 disabled, 사용자가 설정 화면에서 토글하면 Health Connect 연동
+      SleepService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
     ]);
 
     // ── Phase 4c: 안전망 서비스 ──

@@ -7,13 +7,12 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
-import '../utils/study_date_utils.dart';
+import '../utils/date_utils.dart';
 import '../utils/map_utils.dart'; // ★ AUDIT FIX: P-03 — 통합 유틸
 import 'local_cache_service.dart';
 import 'write_queue_service.dart';
 import '../app_init.dart';
 
-part 'firebase_study_part.dart';
 part 'firebase_history_part.dart';
 part 'firebase_data_part.dart';
 
@@ -23,24 +22,17 @@ part 'firebase_data_part.dart';
 
 // Document paths
 const String _studyDoc = kStudyDoc;
-const String _liveFocusDoc = kLiveFocusDoc;
 const String _todayDocPath = kTodayDoc;
 const String _locationHistoryCol = 'users/$kUid/locationHistory';
 const String _behaviorTimelineCol = 'users/$kUid/behaviorTimeline';
-const String _nfcTagsDoc = 'users/$kUid/settings/nfcTags';
-const String _nfcEventsCol = 'users/$kUid/nfcEvents';
 const String _memosCol = 'users/$kUid/memos';
 const String _diaryCol = 'users/$kUid/dailyDiary';
 
 // Field names in study doc
 const String _timeRecordsField = 'timeRecords';
-const String _studyTimeRecordsField = 'studyTimeRecords';
-const String _focusCyclesField = 'focusCycles';
-const String _progressGoalsField = 'progressGoals';
 const String _restDaysField = 'restDays';
-const String _customTasksField = 'customStudyTasks';
 const _cacheTtl = Duration(minutes: 2);
-const _archiveFields = ['timeRecords', 'studyTimeRecords', 'focusCycles', 'todos'];
+const _archiveFields = ['timeRecords', 'todos'];
 const _cfBaseUrl = 'https://us-central1-cheonhong-studio.cloudfunctions.net/checkDoorManual';
 const _cfTimeout = Duration(seconds: 5);
 
@@ -403,4 +395,42 @@ class FirebaseService {
     LocalCacheService().saveGeneric('today', _todayCache!);
     FirestoreWriteQueue().enqueue(_todayDocPath, {field: value});
   }
+
+  // ═══ TimeRecords (daily-life: wake/outing/meal/sleep) ═══
+
+  Future<Map<String, TimeRecord>> getTimeRecords() async {
+    final data = await getStudyData();
+    if (data == null || data[_timeRecordsField] == null) return {};
+    final raw = data[_timeRecordsField] as Map<String, dynamic>;
+    final result = <String, TimeRecord>{};
+    for (final entry in raw.entries) {
+      if (entry.value is Map) {
+        result[entry.key] = TimeRecord.fromMap(
+            entry.key, Map<String, dynamic>.from(entry.value as Map));
+      }
+    }
+    return result;
+  }
+
+  Future<void> updateTimeRecord(String date, TimeRecord record) async {
+    LocalCacheService().markWrite();
+    final map = record.toMap();
+    _studyCache ??= {};
+    (_studyCache!.putIfAbsent(_timeRecordsField, () => <String, dynamic>{})
+        as Map)[date] = map;
+    _studyCacheTime = DateTime.now();
+    LocalCacheService().updateStudyField('$_timeRecordsField.$date', map);
+    FirestoreWriteQueue().enqueue(_studyDoc, {'$_timeRecordsField.$date': map});
+    // Dual-write to today doc
+    final todayKey = StudyDateUtils.todayKey();
+    if (date == todayKey) {
+      _todayCache ??= {};
+      (_todayCache!.putIfAbsent('timeRecords', () => <String, dynamic>{})
+          as Map).addAll(map);
+      _todayCacheTime = DateTime.now();
+      LocalCacheService().saveGeneric('today', _todayCache!);
+      FirestoreWriteQueue().enqueue(_todayDocPath, {'timeRecords': map});
+    }
+  }
+
 }

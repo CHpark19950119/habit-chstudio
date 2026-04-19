@@ -25,7 +25,7 @@ android {
 
     defaultConfig {
         applicationId = "com.cheonhong.cheonhong_studio"
-        minSdk = 24
+        minSdk = 26  // Health Connect 요구사항 (2026-04-19, 갤럭시 a15 는 33+)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

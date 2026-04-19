@@ -7,7 +7,6 @@ extension _HomeRoutineCard on _HomeScreenState {
 
   Widget _routineStatusCard() {
     final hasWake = _wake != null;
-    final hasStudy = _studyStart != null;
     final isOut = _outing != null && _returnHome == null;
     final hasReturn = _outing != null && _returnHome != null;
     final hasBed = _bedTime != null;
@@ -17,10 +16,6 @@ extension _HomeRoutineCard on _HomeScreenState {
       _RItem('☀️', '기상', hasWake, _wake, BotanicalColors.gold,
         live: false,
         onTap: () => _editTimeField('wake', '기상', _wake)),
-      _RItem('📖', '공부', hasStudy, _studyStart, BotanicalColors.primary,
-        live: _ft.isRunning || (hasStudy && _studyEnd == null),
-        sub: _studyEnd,
-        onTap: () => _editTimeField('study', '공부', _studyStart)),
       // ★ 홈데이: 외출 없이 2시간+ → 홈데이 표시
       _isHomeDay && !isOut && !hasReturn
         ? _RItem('🏡', '홈데이', true, null, const Color(0xFF5B7ABF),
@@ -125,48 +120,29 @@ extension _HomeRoutineCard on _HomeScreenState {
   }
 
   Future<void> _editTimeField(String field, String label, String? current) async {
-    final d = _studyDate();
-    final fb = FirebaseService();
-    final records = await fb.getTimeRecords();
-    final existing = records[d];
+    // TODO: getTimeRecords/updateTimeRecord removed with firebase_study_part.dart
+    // StatusEditorSheet needs TimeRecord — pass null for now
     if (!mounted) return;
 
     final result = await showModalBottomSheet<TimeRecord>(
       context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
-      builder: (ctx) => StatusEditorSheet(existing: existing, dk: _dk, highlightField: field),
+      builder: (ctx) => StatusEditorSheet(existing: null, dk: _dk, highlightField: field),
     );
     if (result == null) return;
 
-    final updated = TimeRecord(
-      date: d, wake: result.wake, study: result.study,
-      studyEnd: result.studyEnd, outing: result.outing,
-      returnHome: result.returnHome,
-      arrival: result.arrival ?? existing?.arrival,
-      bedTime: result.bedTime,
-      mealStart: result.mealStart, mealEnd: result.mealEnd,
-      meals: result.meals,
-    );
-    await fb.updateTimeRecord(d, updated);
-    if (updated.outing != null && updated.returnHome == null) {
+    if (result.outing != null && result.returnHome == null) {
       _day.forceOutState(true);
     } else {
       _day.forceOutState(false);
     }
-    if (updated.study != null && updated.studyEnd == null) {
-      _day.forceStudyState(true);
-    } else {
-      _day.forceStudyState(false);
-    }
     _safeSetState(() {
-      _wake = updated.wake;
-      _studyStart = updated.study;
-      _studyEnd = updated.studyEnd;
-      _outing = updated.outing;
-      _returnHome = updated.returnHome;
-      _bedTime = updated.bedTime;
-      _mealStart = updated.mealStart;
-      _mealEnd = updated.mealEnd;
-      if (updated.meals.isNotEmpty) _todayMeals = updated.meals;
+      _wake = result.wake;
+      _outing = result.outing;
+      _returnHome = result.returnHome;
+      _bedTime = result.bedTime;
+      _mealStart = result.mealStart;
+      _mealEnd = result.mealEnd;
+      if (result.meals.isNotEmpty) _todayMeals = result.meals;
     });
 
     if (mounted) {
