@@ -2,7 +2,9 @@
 import subprocess, ctypes, os, tempfile, time
 from openai import OpenAI
 
-OPENAI_KEY = "REDACTED_OPENAI_KEY"
+OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "")
+if not OPENAI_KEY:
+    raise RuntimeError("OPENAI_API_KEY 환경변수가 없다. 셸에서 export 후 재실행.")
 TTS_PATH = os.path.join(tempfile.gettempdir(), "wake_tts.mp3")
 
 winmm = ctypes.windll.winmm

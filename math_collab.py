@@ -2,12 +2,14 @@
 수학 협업 도구 — o3 풀이 + Claude 설명/첨삭
 사용법: python math_collab.py "문제 텍스트"
 """
-import sys, io, json
+import os, sys, io, json
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 from openai import OpenAI
 
-OPENAI_KEY = "REDACTED_OPENAI_KEY"
+OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "")
+if not OPENAI_KEY:
+    raise RuntimeError("OPENAI_API_KEY 환경변수가 없다. 셸에서 export 후 재실행.")
 
 def solve_with_o3(problem: str) -> str:
     """o3-mini로 수학 문제 풀이"""
