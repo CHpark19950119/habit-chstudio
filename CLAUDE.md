@@ -105,7 +105,7 @@
 - `cheonhong://app?tab=N` → 탭 전환 (0홈/1Todo/2포커스/3기록/4진행도/5캘린더)
 
 ## 폰 원격 제어 (Tailscale ADB)
-- PC: `100.67.227.107`, 폰: `100.104.65.71:5555`
+- PC: `100.102.110.112` (chpark-v15, 2026-04-16 갱신 — 구 `100.67.227.107` desktop-daaapor offline), 폰: `100.104.65.71:5555`
 - `adb connect 100.104.65.71:5555` → USB 없이 원격 ADB
 - 잠금해제: `adb shell input keyevent WAKEUP` → 스와이프 → `input text 0119` → ENTER
 - GPS 확인: `adb shell dumpsys location | grep "last location"`

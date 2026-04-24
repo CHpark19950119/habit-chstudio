@@ -1,0 +1,79 @@
+{
+  "version": "v4.1",
+  "lastUpdated": "2026-04-24T19:39:00+09:00",
+  "exam": {
+    "name": "7급 외무영사직",
+    "date": "2026-07-18",
+    "dDay": "D-85",
+    "target": "합격",
+    "reference": {
+      "2025_외영_점수": 90.66,
+      "2025_외영_합격선": 93.33,
+      "2025_외영_격차": -2.67,
+      "2026_5급_점수": 71.66,
+      "2026_5급_과목": {"언논": 85, "자해": 65, "상판": 65, "헌법": 64}
+    }
+  },
+  "phaseShiftPlan": {
+    "name": "14일 위상전진 v4",
+    "startDate": "2026-04-25",
+    "endDate": "2026-05-07",
+    "today": "2026-04-24",
+    "currentDay": "D0",
+    "phase1": {
+      "range": "D1~D7",
+      "goal": "기상 정렬 + 광노출 + 수면 압력 복원",
+      "wake_target": "08:30",
+      "bed_target": "01:30",
+      "study_target_hours": 4
+    },
+    "phase2": {
+      "range": "D8~D14",
+      "goal": "공부 밀도 증가 + 위상 정착",
+      "wake_target": "07:30",
+      "bed_target": "00:00",
+      "study_target_hours": 6
+    },
+    "final": {
+      "range": "D15+",
+      "goal": "완성형 — 7시취침 10시기상 공부 8시간",
+      "wake_target": "07:00",
+      "bed_target": "23:00",
+      "study_target_hours": 8,
+      "note": "7월 1차 시험 대비"
+    }
+  },
+  "mediaDetox": {
+    "name": "Media Detox 4단계",
+    "currentStage": 0,
+    "stages": [
+      {"no": 1, "start": "2026-04-25", "end": "2026-05-07", "goal": "숏폼·추천피드 OFF, 시청 30분/일"},
+      {"no": 2, "start": "2026-05-08", "end": "2026-06-06", "goal": "YouTube 평일 완전 OFF, 주말 1h"},
+      {"no": 3, "start": "2026-06-07", "end": "2026-08-05", "goal": "YouTube 상시 OFF, 집중 차단"},
+      {"no": 4, "start": "2026-08-06", "end": null, "goal": "수동 영상 시청 원천 제거"}
+    ]
+  },
+  "subjectAllocation": {
+    "logic": "2025 외영 -2.67점, 2026 5급 자해·상판·헌법 약점",
+    "weights": {
+      "자해": {"priority": 1, "hours_per_day": 1.5, "style": "기출 40문제 타이머 + 오답 1줄"},
+      "상판": {"priority": 2, "hours_per_day": 1.5, "style": "자해와 교차 배치, 유형 블록 금지"},
+      "헌법": {"priority": 3, "hours_per_day": 1.0, "style": "인출 카드 + 월 2회 복습 + 단권화"},
+      "언논": {"priority": 4, "hours_per_day": 0.5, "style": "유지 · 주 3회 1h"}
+    }
+  },
+  "todayBlocks": [
+    {"time": "18:00~19:00", "type": "study", "subject": "워크북", "status": "done", "note": "60분+중간졸음"},
+    {"time": "19:30~19:55", "type": "study", "subject": "헌법 단권화", "status": "in_progress", "target_min": 25},
+    {"time": "19:55~", "type": "free", "note": "게임 or 취침 선택 (취침 1h 전 종료 · Stage 1 D-1 수면보호)"}
+  ],
+  "diet": {
+    "breakfast": "녹두닭죽 (4일치 주문됨)",
+    "drink": "녹차(세작) — 사이다 전환",
+    "note": "단백질 아침 확보"
+  },
+  "cravingManagement": {
+    "lol": {"status": "removed_2026-04-23_03:00", "note": "완전 제거 유지"},
+    "porn": {"stage": "Stage 1 D-1", "note": "Urge-Surfing 프로토콜 적용"}
+  }
+}

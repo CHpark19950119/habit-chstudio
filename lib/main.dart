@@ -1,65 +1,14 @@
+// DAILY (CHSTUDIO) — 일상 · 수면 · 심리 · life_logs 관리
+// scratch 재작성 2026-04-24 23:30 · 합의 28 Phase 8
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'firebase_options.dart';
+import 'app/app.dart';
 
-import 'theme/botanical_theme.dart';
-import 'screens/splash_screen.dart';
-import 'services/fcm_service.dart';
-import 'services/firebase_service.dart';
-
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  FirebaseMessaging.onBackgroundMessage(onFcmBackgroundMessage);
-  await Hive.initFlutter();
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-  ));
-  runApp(const CheonhongApp());
-}
-
-class CheonhongApp extends StatefulWidget {
-  const CheonhongApp({super.key});
-
-  @override
-  State<CheonhongApp> createState() => _CheonhongAppState();
-}
-
-class _CheonhongAppState extends State<CheonhongApp>
-    with WidgetsBindingObserver {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      FirebaseService().checkDayRollover()
-          .timeout(const Duration(seconds: 5))
-          .catchError((_) {});
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'CHEONHONG STUDIO',
-      debugShowCheckedModeBanner: false,
-      theme: BotanicalTheme.light(),
-      themeMode: ThemeMode.light,
-      home: const SplashScreen(),
-    );
-  }
+  await initializeDateFormatting('ko_KR', null);
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  runApp(const DailyApp());
 }

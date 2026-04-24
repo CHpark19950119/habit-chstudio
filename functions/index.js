@@ -686,7 +686,10 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       // history/YYYY-MM 지원
       const histReadMatch = docName.match(/^history\/(\d{4}-\d{2})$/);
       if (histReadMatch) allowed[docName] = "history/" + histReadMatch[1];
-      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot|history/YYYY-MM"}); return; }
+      // life_logs/YYYY-MM-DD 지원 (합의 26)
+      const llReadMatch = docName.match(/^life_logs\/(\d{4}-\d{2}-\d{2})$/);
+      if (llReadMatch) allowed[docName] = "life_logs/" + llReadMatch[1];
+      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot|history/YYYY-MM|life_logs/YYYY-MM-DD"}); return; }
       const snap = await db.doc("users/" + UID + "/" + allowed[docName]).get();
       if (!snap.exists) { res.status(200).json({}); return; }
       if (!field) { res.status(200).json(snap.data()); return; }
@@ -713,7 +716,10 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       // history/YYYY-MM 지원
       const histMatch = docName.match(/^history\/(\d{4}-\d{2})$/);
       if (histMatch) allowed[docName] = "history/" + histMatch[1];
-      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot|history/YYYY-MM"}); return; }
+      // life_logs/YYYY-MM-DD 지원 (HB 세션 기입 전용 · 2026-04-24 합의 26)
+      const llMatch = docName.match(/^life_logs\/(\d{4}-\d{2}-\d{2})$/);
+      if (llMatch) allowed[docName] = "life_logs/" + llMatch[1];
+      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot|history/YYYY-MM|life_logs/YYYY-MM-DD"}); return; }
 
       // 타입 자동 변환 (__DELETE__ → FieldValue.delete())
       let parsed;
@@ -735,13 +741,49 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
         res.status(200).json({ok: true, doc: docName, mode: "set"});
         return;
       }
-      // dot-notation → Firestore update (중첩 필드 지원)
-      await docRef.update({[field]: parsed});
+      // dot-notation → Firestore set merge (중첩 필드 지원 + doc 부재 시 자동 생성)
+      await docRef.set({[field]: parsed}, {merge: true});
 
       // Phase D: dual-write removed. today doc is single source of truth.
       // study doc mirror removed (2026-04-03)
 
       res.status(200).json({ok: true, doc: docName, field, value: rawValue === "__DELETE__" ? "__DELETED__" : parsed});
+      return;
+    }
+
+    // ═══ life_logs 배열 필드 append ═══ (합의 28 · 2026-04-24)
+    // ?q=append&doc=life_logs/2026-04-24&field=study&value={"time":"18:00",...}
+    // value 는 JSON object/array. 기존 배열에 arrayUnion 으로 추가.
+    // set+merge 의 배열 덮어쓰기 문제 해결 + dedup.
+    if (req.query.q === "append") {
+      const docName = req.query.doc || "";
+      const field = req.query.field;
+      const rawValue = req.query.value;
+      if (!field) { res.status(400).json({error: "field required"}); return; }
+      if (!rawValue) { res.status(400).json({error: "value required (JSON)"}); return; }
+
+      // doc 화이트리스트 (write 와 동일)
+      const allowed = {today: "data/today", study: "data/study", iot: "data/iot"};
+      const histMatch = docName.match(/^history\/(\d{4}-\d{2})$/);
+      if (histMatch) allowed[docName] = "history/" + histMatch[1];
+      const llMatch = docName.match(/^life_logs\/(\d{4}-\d{2}-\d{2})$/);
+      if (llMatch) allowed[docName] = "life_logs/" + llMatch[1];
+      if (!allowed[docName]) {
+        res.status(400).json({error: "doc must be today|study|iot|history/YYYY-MM|life_logs/YYYY-MM-DD"});
+        return;
+      }
+
+      let entry;
+      try { entry = JSON.parse(rawValue); }
+      catch (e) { res.status(400).json({error: "value must be valid JSON: " + e.message}); return; }
+
+      const docRef = db.doc("users/" + UID + "/" + allowed[docName]);
+      const elements = Array.isArray(entry) ? entry : [entry];
+      await docRef.set(
+        {[field]: admin.firestore.FieldValue.arrayUnion(...elements)},
+        {merge: true}
+      );
+      res.status(200).json({ok: true, doc: docName, field, appended: elements.length});
       return;
     }
 

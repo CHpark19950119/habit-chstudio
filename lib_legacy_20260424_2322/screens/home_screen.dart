@@ -25,6 +25,8 @@ import '../services/local_cache_service.dart';
 import '../utils/date_utils.dart';
 import 'package:app_links/app_links.dart';
 import '../data/sleep_protocol.dart';
+// import 'home_life_logs_panel.dart';  // HQ 검수 대기 (합의 28)
+// import 'home_today_plan_card.dart';   // HQ 검수 대기 (합의 28)
 
 part 'home_daily_log.dart';
 part 'home_routine_card.dart';
@@ -861,11 +863,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           // ═══ TODAY ═══
           _staggered(3, _dashSectionHeader('TODAY')),
           const SizedBox(height: 6),
+          // HomeTodayPlanCard — 디자인 검수 전 일시 제거 (2026-04-24 21:54, 합의 28)
           _staggered(3, _orderPortalChip()),
           const SizedBox(height: 12),
 
           // ═══ LOG ═══
           _staggered(4, _locationSummaryCard()),
+          const SizedBox(height: 10),
+
+          // HomeLifeLogsPanel — 디자인 검수 전 일시 제거 (2026-04-24 21:54)
           const SizedBox(height: 20),
         ],
       ),

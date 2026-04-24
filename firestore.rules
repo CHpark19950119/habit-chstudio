@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// cheonhong-studio (DAILY / CHSTUDIO) Firestore security rules
+// 합의 28 (2026-04-24) — HB 관리 / user scoped access
+//
+// 현 상태 (v1): auth 미도입. 임시로 사용자 문서 경로만 허용.
+// v2 (Firebase Auth 도입 후): request.auth 기반 strict rules 로 교체.
+//
+// 주의: 이 파일은 로컬 버전일 뿐, Firebase Console 에 배포되어야 실제 적용됨.
+// 배포: firebase deploy --only firestore:rules (functions/ 와 분리 관리)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 사용자 데이터 (현 사용자 UID = sJ8Pxusw9gR0tNR44RhkIge7OiG2 = 'cheonhong')
+    match /users/{uid}/{document=**} {
+      allow read, write: if uid == 'sJ8Pxusw9gR0tNR44RhkIge7OiG2';
+    }
+
+    // 그 외는 차단
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
