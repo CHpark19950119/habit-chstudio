@@ -204,17 +204,173 @@ class _DayDetail extends StatelessWidget {
             children: [
               Text(DateFormat('M월 d일 EEEE', 'ko').format(date),
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: DailyPalette.ink)),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               if (data.isEmpty)
                 const Text('기록 없음', style: TextStyle(fontSize: 12, color: DailyPalette.ash))
               else
-                ..._rows(data),
+                ..._sections(data),
             ],
           ),
         );
       },
     );
   }
+
+  List<Widget> _sections(Map<String, dynamic> data) {
+    final out = <Widget>[];
+
+    // ── 수면 카테고리 ──
+    final sleepRows = <Widget>[];
+    if (data['wake'] is Map) {
+      final w = data['wake'] as Map;
+      sleepRows.add(_row('기상', '${w['time'] ?? '—'}${w['note'] != null ? ' · ${w['note']}' : ''}'));
+    }
+    if (data['sleep'] is Map) {
+      final s = data['sleep'] as Map;
+      sleepRows.add(_row('취침', '${s['time'] ?? '—'}${s['note'] != null ? ' · ${s['note']}' : ''}'));
+    }
+    if (data['oversleep'] is Map) {
+      final o = data['oversleep'] as Map;
+      sleepRows.add(_row('늦잠', '${o['actual_wake'] ?? ''} (계획 ${o['planned_wake'] ?? ''}, +${o['deviation_min'] ?? ''}분)'));
+    }
+    if (data['nap'] is List) {
+      for (final n in (data['nap'] as List).whereType<Map>()) {
+        sleepRows.add(_row('낮잠 ${n['time'] ?? ''}',
+            '~${n['wake_time'] ?? ''} (${n['duration_min'] ?? ''}분)${n['note'] != null ? ' · ${n['note']}' : ''}'));
+      }
+    }
+    if (sleepRows.isNotEmpty) out.add(_section('🛏️ 수면', sleepRows));
+
+    // ── 식사 ──
+    final mealRows = <Widget>[];
+    if (data['meals'] is List) {
+      for (final m in (data['meals'] as List).whereType<Map>()) {
+        final start = m['start'] ?? m['time'] ?? '';
+        final end = m['end'];
+        final menu = m['menu']?.toString() ?? '';
+        mealRows.add(_row('${start}${end != null ? '~$end' : ''}',
+            '$menu${m['note'] != null ? ' · ${m['note']}' : ''}'));
+      }
+    }
+    if (mealRows.isNotEmpty) out.add(_section('🍽️ 식사', mealRows));
+
+    // ── 외출·이동 ──
+    final outRows = <Widget>[];
+    if (data['outing'] is List) {
+      for (final o in (data['outing'] as List).whereType<Map>()) {
+        final t = o['time'] ?? '';
+        final ret = o['returnHome'];
+        final dest = o['destination'] ?? '';
+        outRows.add(_row('${t}${ret != null ? '~$ret' : ''}',
+            '$dest${o['mode'] != null ? ' · ${o['mode']}' : ''}${o['note'] != null ? ' · ${o['note']}' : ''}'));
+      }
+    }
+    if (outRows.isNotEmpty) out.add(_section('🚶 외출', outRows));
+
+    // ── 공부·이벤트 ──
+    final studyRows = <Widget>[];
+    if (data['study'] is List) {
+      for (final s in (data['study'] as List).whereType<Map>()) {
+        studyRows.add(_row(s['time']?.toString() ?? '',
+            '${s['subject'] ?? ''} · ${s['duration_min'] ?? ''}분 ${s['note'] ?? ''}'));
+      }
+    }
+    if (data['events'] is List) {
+      for (final e in (data['events'] as List).whereType<Map>()) {
+        final tag = e['tag']?.toString() ?? '';
+        // 공부 관련 events 만 이 섹션
+        if (tag.contains('study') || tag == 'focus' || tag == 'break_start' || tag == 'plan') {
+          studyRows.add(_row('${e['time'] ?? ''} [$tag]', e['note']?.toString() ?? ''));
+        }
+      }
+    }
+    if (data['exam_answers'] is Map) {
+      final ea = data['exam_answers'] as Map;
+      studyRows.add(_row('답안 ${ea['submitted_at'] ?? ''}',
+          '${ea['exam'] ?? ''} · ${ea['answer_str'] ?? ''} (graded=${ea['graded']})'));
+    }
+    if (studyRows.isNotEmpty) out.add(_section('📖 공부·시험', studyRows));
+
+    // ── 미디어 ──
+    final mediaRows = <Widget>[];
+    if (data['media'] is List) {
+      for (final m in (data['media'] as List).whereType<Map>()) {
+        mediaRows.add(_row('${m['type'] ?? ''}',
+            '${m['duration_min'] ?? ''}분 (${m['start'] ?? ''}~${m['end'] ?? ''})${m['note'] != null ? ' · ${m['note']}' : ''}'));
+      }
+    }
+    if (mediaRows.isNotEmpty) out.add(_section('📺 미디어', mediaRows));
+
+    // ── 결제 ──
+    final payRows = <Widget>[];
+    if (data['payments'] is List) {
+      for (final p in (data['payments'] as List).whereType<Map>()) {
+        payRows.add(_row('${p['time'] ?? ''}',
+            '${p['place'] ?? ''} ${p['amount'] ?? ''}원 · ${p['service'] ?? ''}${p['note'] != null ? ' · ${p['note']}' : ''}'));
+      }
+    }
+    if (payRows.isNotEmpty) out.add(_section('💳 결제', payRows));
+
+    // ── 할일 ──
+    final todoRows = <Widget>[];
+    if (data['todos'] is List) {
+      for (final t in (data['todos'] as List).whereType<Map>()) {
+        todoRows.add(_row('${t['priority'] ?? '—'}',
+            '${t['task'] ?? ''}${t['from'] != null ? ' (${t['from']})' : ''}'));
+      }
+    }
+    if (todoRows.isNotEmpty) out.add(_section('📋 할일', todoRows));
+
+    // ── 배변 ──
+    final bowelRows = <Widget>[];
+    if (data['bowel'] is List) {
+      for (final b in (data['bowel'] as List).whereType<Map>()) {
+        bowelRows.add(_row('${b['time'] ?? ''}', b['status']?.toString() ?? ''));
+      }
+    }
+    if (bowelRows.isNotEmpty) out.add(_section('🚽 배변', bowelRows));
+
+    // ── HB 작업 events ──
+    final hbRows = <Widget>[];
+    if (data['events_hb'] is List) {
+      for (final e in (data['events_hb'] as List).whereType<Map>()) {
+        hbRows.add(_row('${e['time'] ?? ''} [${e['tag'] ?? ''}]', e['note']?.toString() ?? ''));
+      }
+    }
+    if (hbRows.isNotEmpty) out.add(_section('🤖 HB 작업', hbRows));
+
+    // ── 심리 ──
+    if (data['psych'] is Map) {
+      final p = data['psych'] as Map;
+      out.add(_section('🧠 심리', [_row('—', p.entries.map((e) => '${e.key}=${e.value}').join(' · '))]));
+    }
+
+    // ── 일반 events (위 섹션 미매칭) ──
+    final etcRows = <Widget>[];
+    if (data['events'] is List) {
+      for (final e in (data['events'] as List).whereType<Map>()) {
+        final tag = e['tag']?.toString() ?? '';
+        if (!(tag.contains('study') || tag == 'focus' || tag == 'break_start' || tag == 'plan' || tag.startsWith('meal') || tag.startsWith('hygiene'))) {
+          etcRows.add(_row('${e['time'] ?? ''} [$tag]', e['note']?.toString() ?? ''));
+        }
+      }
+    }
+    if (etcRows.isNotEmpty) out.add(_section('📌 기타', etcRows));
+
+    return out;
+  }
+
+  Widget _section(String title, List<Widget> rows) => Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: DailyPalette.gold)),
+            const SizedBox(height: 6),
+            ...rows,
+          ],
+        ),
+      );
 
   List<Widget> _rows(Map<String, dynamic> data) {
     final widgets = <Widget>[];

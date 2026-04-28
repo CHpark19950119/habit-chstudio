@@ -10,6 +10,7 @@ import '../widgets/craving_card.dart';
 import '../widgets/life_logs_summary.dart';
 import '../widgets/meals_card.dart';
 import '../widgets/toggle_status_card.dart';
+import '../widgets/phase_goal_card.dart';
 
 /// DAILY 오늘 탭 — TODO 체크리스트 중심
 /// 상단: 날짜 + 오늘의 순서 (checkable)
@@ -29,6 +30,9 @@ class TodayPage extends StatelessWidget {
             children: const [
               _Header(),
               SizedBox(height: DailySpace.lg),
+              // Phase + 목표 (사용자 23:31 요청)
+              PhaseGoalCard(),
+              SizedBox(height: DailySpace.md),
               // ★ 핵심 — 오늘의 순서 체크리스트
               RoutineChecklist(),
               SizedBox(height: DailySpace.lg),
