@@ -7,10 +7,7 @@ import '../widgets/phase_goal_card.dart';
 import '../widgets/sleep_card.dart';
 import '../widgets/phase_sleep_card.dart';
 import '../widgets/sleep_plan_overview.dart';
-import '../widgets/media_detox_card.dart';
 import '../widgets/craving_card.dart';
-import '../widgets/meals_card.dart';
-import '../widgets/toggle_status_card.dart';
 import '../widgets/life_logs_summary.dart';
 
 /// 계획 탭 — 1차/2차 D-day · 수면 위상 · Detox · 토글 · 누적 통계
@@ -43,15 +40,8 @@ class PlanPage extends StatelessWidget {
             const SizedBox(height: DailySpace.md),
             const SleepPlanOverview(),
             const SizedBox(height: DailySpace.md),
-            // Detox · 갈망
-            const MediaDetoxCard(),
-            const SizedBox(height: DailySpace.md),
+            // 갈망·기분 (Media Detox 카드 사용자 17:24 삭제 / Toggle 카드 17:24 삭제 / Meals 카드 통합)
             const CravingCard(),
-            const SizedBox(height: DailySpace.md),
-            // 식사 · 생활 토글
-            const MealsCard(),
-            const SizedBox(height: DailySpace.md),
-            const ToggleStatusCard(),
             const SizedBox(height: DailySpace.md),
             const LifeLogsSummary(),
             const SizedBox(height: DailySpace.md),
@@ -453,6 +443,8 @@ class _Routine14 extends StatelessWidget {
   }
 }
 
+/// 수면 위상 14일 — sleep bar 시각화 (트렌디·깔끔, 사용자 17:24 지시).
+/// 24h timeline X축 + 취침~기상 sleep window 가로 bar.
 class _SleepPhase14 extends StatelessWidget {
   const _SleepPhase14();
   @override
@@ -468,12 +460,17 @@ class _SleepPhase14 extends StatelessWidget {
           .where(FieldPath.documentId, isLessThanOrEqualTo: endKey)
           .snapshots(),
       builder: (ctx, snap) {
-        final wake = <String, String>{}, sleep = <String, String>{};
+        final wakeMap = <String, double>{}, sleepMap = <String, double>{};
         for (final d in snap.data?.docs ?? []) {
           final m = d.data();
-          if (m['wake'] is Map && m['wake']['time'] is String) wake[d.id] = m['wake']['time'];
-          if (m['sleep'] is Map && m['sleep']['time'] is String) sleep[d.id] = m['sleep']['time'];
+          if (m['wake'] is Map && m['wake']['time'] is String) {
+            wakeMap[d.id] = _toHourFrac(m['wake']['time']);
+          }
+          if (m['sleep'] is Map && m['sleep']['time'] is String) {
+            sleepMap[d.id] = _toHourFrac(m['sleep']['time']);
+          }
         }
+
         return Container(
           padding: const EdgeInsets.all(DailySpace.lg),
           decoration: BoxDecoration(
@@ -486,45 +483,41 @@ class _SleepPhase14 extends StatelessWidget {
             children: [
               Row(
                 children: const [
-                  Icon(Icons.bedtime, size: 18, color: DailyPalette.primary),
+                  Icon(Icons.bedtime_rounded, size: 18, color: DailyPalette.primary),
                   SizedBox(width: 6),
                   Text('수면 위상 14일', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: DailyPalette.ink)),
+                  Spacer(),
+                  Text('취침→기상 사이 어두운 bar', style: TextStyle(fontSize: 9, color: DailyPalette.ash)),
                 ],
               ),
               const SizedBox(height: DailySpace.md),
+              // 24h hour markers
+              _hourAxis(),
+              const SizedBox(height: 4),
               ...List.generate(14, (i) {
                 final d = start.add(Duration(days: i));
                 final key = DateFormat('yyyy-MM-dd').format(d);
-                final w = wake[key] ?? '—';
-                final s = sleep[key] ?? '—';
                 final isToday = i == 13;
+                // 취침 = 어제 sleep[d-1] (그 날 wake → 다음 날 wake 사이 sleep 의 *시작*)
+                // 단순화: sleep[d-1] = 그 날 밤 취침, wake[d] = 그 날 아침 기상.
+                final prevKey = DateFormat('yyyy-MM-dd').format(d.subtract(const Duration(days: 1)));
+                final bedHour = sleepMap[prevKey];
+                final wakeHour = wakeMap[key];
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  padding: const EdgeInsets.symmetric(vertical: 1),
                   child: Row(
                     children: [
                       SizedBox(
-                        width: 50,
-                        child: Text(DateFormat('M/d EEE', 'ko').format(d),
+                        width: 46,
+                        child: Text(DateFormat('M/d E', 'ko').format(d),
                             style: TextStyle(
                               fontSize: 10,
                               color: isToday ? DailyPalette.primary : DailyPalette.ash,
                               fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
                             )),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            const Icon(Icons.wb_sunny, size: 12, color: DailyPalette.gold),
-                            const SizedBox(width: 3),
-                            Text(w, style: const TextStyle(fontSize: 11, color: DailyPalette.ink)),
-                            const Spacer(),
-                            const Icon(Icons.nightlight_round, size: 12, color: DailyPalette.slate),
-                            const SizedBox(width: 3),
-                            Text(s, style: const TextStyle(fontSize: 11, color: DailyPalette.ink)),
-                          ],
-                        ),
-                      ),
+                      const SizedBox(width: 6),
+                      Expanded(child: _bar(bedHour, wakeHour, isToday)),
                     ],
                   ),
                 );
@@ -533,6 +526,104 @@ class _SleepPhase14 extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  static double _toHourFrac(String t) {
+    // "01:30+1" = 다음날 1.5시
+    final parts = t.split('+');
+    final next = parts.length > 1;
+    final hm = parts[0].split(':');
+    final h = double.tryParse(hm[0]) ?? 0;
+    final m = hm.length > 1 ? (double.tryParse(hm[1]) ?? 0) : 0;
+    return h + m / 60 + (next ? 24 : 0);
+  }
+
+  Widget _hourAxis() {
+    return SizedBox(
+      height: 12,
+      child: Row(
+        children: [
+          const SizedBox(width: 52),
+          Expanded(
+            child: Stack(
+              children: List.generate(7, (i) {
+                final hour = i * 4;
+                return Positioned(
+                  left: (hour / 24) * 1000.0 / 1000 * 0,  // 정확한 left 계산은 LayoutBuilder 필요
+                  child: const SizedBox.shrink(),
+                );
+              })..addAll([
+                LayoutBuilder(builder: (ctx, c) {
+                  return SizedBox(
+                    width: c.maxWidth, height: 12,
+                    child: Stack(children: List.generate(7, (i) {
+                      final hour = i * 4;
+                      return Positioned(
+                        left: (hour / 24) * c.maxWidth - 6,
+                        child: Text('$hour시',
+                            style: const TextStyle(fontSize: 8, color: DailyPalette.ash)),
+                      );
+                    })),
+                  );
+                }),
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _bar(double? bedHour, double? wakeHour, bool isToday) {
+    return LayoutBuilder(builder: (ctx, c) {
+      final w = c.maxWidth;
+      // 24시간 = w 픽셀.
+      // bedHour = 전날 취침. 기준: 전날 18시 ~ 그날 18시 윈도우 (또는 단순 그날 0~24).
+      // 여기선 그날 0~24h 을 X축으로 하되, bedHour 가 0~6 또는 21~30 이면 그래프에 표현.
+      final segments = <Widget>[];
+      // sleep bar: bedHour 가 어제 저녁 (예: 23~28h normalized). bedHour 의 시각 = wake 까지.
+      if (bedHour != null && wakeHour != null) {
+        // bedHour 를 그날 시각으로 normalize: 24 이상이면 그대로, 미만이면 그대로
+        // 단순화: bed = bedHour mod 24; 그날 새벽 wake 까지 = 0~wake. 그 전 = bed~24.
+        double bedNorm = bedHour;
+        if (bedNorm >= 24) bedNorm -= 24;
+        // 새벽 sleep (bedNorm < wake) = single bar bedNorm~wake
+        // 또는 전날 늦게 자서 bedNorm > wake = 두 bar (bedNorm~24, 0~wake)
+        if (bedNorm < wakeHour) {
+          segments.add(_seg(bedNorm / 24, (wakeHour - bedNorm) / 24, w));
+        } else {
+          segments.add(_seg(0, wakeHour / 24, w));
+          segments.add(_seg(bedNorm / 24, (24 - bedNorm) / 24, w));
+        }
+      } else if (wakeHour != null) {
+        // wake 만 있음 = wake 점만
+        segments.add(_seg(wakeHour / 24 - 0.005, 0.01, w, color: DailyPalette.gold));
+      }
+
+      return Container(
+        height: 14,
+        decoration: BoxDecoration(
+          color: DailyPalette.paper,
+          borderRadius: BorderRadius.circular(3),
+          border: Border.all(color: isToday ? DailyPalette.primary : DailyPalette.line, width: isToday ? 1.2 : 0.8),
+        ),
+        child: Stack(children: segments),
+      );
+    });
+  }
+
+  Widget _seg(double leftFrac, double widthFrac, double totalW, {Color? color}) {
+    return Positioned(
+      left: leftFrac * totalW,
+      child: Container(
+        height: 12,
+        width: (widthFrac * totalW).clamp(2.0, totalW),
+        decoration: BoxDecoration(
+          color: color ?? DailyPalette.primary.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
     );
   }
 }
