@@ -147,6 +147,38 @@ class RoutineService {
     );
   }
 
+  /// 단일 step done=true 마킹 (HB AutoRecordService 자동 체크용 · 2026-04-28 14:10).
+  /// 이미 done 이면 skip.
+  static Future<void> markDone(String stepId, {String? note}) async {
+    final ref = _ref(today());
+    final snap = await ref.get();
+    final now = DateFormat('HH:mm').format(DateTime.now());
+
+    List<RoutineStep> current;
+    if (snap.exists && snap.data()?['steps'] is List) {
+      current = (snap.data()!['steps'] as List)
+          .whereType<Map>()
+          .map((m) => RoutineStep.fromMap(m))
+          .toList();
+    } else {
+      current = defaultRoutine();
+    }
+
+    bool changed = false;
+    final updated = current.map((s) {
+      if (s.id != stepId || s.done) return s;
+      changed = true;
+      return s.copyWith(done: true, doneAt: now, note: note);
+    }).toList();
+
+    if (!changed) return;
+    await ref.set({
+      'date': today(),
+      'steps': updated.map((s) => s.toMap()).toList(),
+      'updatedAt': DateTime.now().toIso8601String(),
+    }, SetOptions(merge: true));
+  }
+
   /// 최초 생성 · 기본 루틴 seed
   static Future<void> seedIfMissing() async {
     final doc = await _ref(today()).get();
