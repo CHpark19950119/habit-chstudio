@@ -2,19 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../theme/theme.dart';
 import '../widgets/routine_checklist.dart';
-import '../widgets/sleep_card.dart';
-import '../widgets/phase_sleep_card.dart';
-import '../widgets/sleep_plan_overview.dart';
-import '../widgets/media_detox_card.dart';
-import '../widgets/craving_card.dart';
-import '../widgets/life_logs_summary.dart';
-import '../widgets/meals_card.dart';
-import '../widgets/toggle_status_card.dart';
 import '../widgets/phase_goal_card.dart';
+import '../widgets/today_timeline.dart';
 
-/// DAILY 오늘 탭 — TODO 체크리스트 중심
-/// 상단: 날짜 + 오늘의 순서 (checkable)
-/// 하단: 수면·Phase·Detox·Craving 요약 (소형)
+/// DAILY 오늘 탭 — 사용자 지시 (2026-04-28 16:58) 간결화.
+/// 그날 일정 (timeline) + 그날 순서 (Phase routine) 만 표시.
+/// 구체 카드 (Sleep/Detox/Craving/Meals/Toggle/LifeLogsSummary 등) = 계획 탭으로 이관.
 class TodayPage extends StatelessWidget {
   const TodayPage({super.key});
 
@@ -30,29 +23,14 @@ class TodayPage extends StatelessWidget {
             children: const [
               _Header(),
               SizedBox(height: DailySpace.lg),
-              // Phase + 목표 (사용자 23:31 요청)
+              // Phase + 시험 D-day 한 줄 badge
               PhaseGoalCard(),
               SizedBox(height: DailySpace.md),
-              // ★ 핵심 — 오늘의 순서 체크리스트
+              // 오늘의 순서 (Phase 기반 routine checklist)
               RoutineChecklist(),
-              SizedBox(height: DailySpace.lg),
-              // 진행 토글 (외출/식사 — 사용자 + HB 양방향)
-              ToggleStatusCard(),
               SizedBox(height: DailySpace.md),
-              // 상황 요약 (작게)
-              SleepCard(),
-              SizedBox(height: DailySpace.md),
-              PhaseSleepCard(),
-              SizedBox(height: DailySpace.md),
-              SleepPlanOverview(),
-              SizedBox(height: DailySpace.md),
-              MediaDetoxCard(),
-              SizedBox(height: DailySpace.md),
-              CravingCard(),
-              SizedBox(height: DailySpace.md),
-              MealsCard(),
-              SizedBox(height: DailySpace.md),
-              LifeLogsSummary(),
+              // 오늘 일정 (시간순 timeline)
+              TodayTimeline(),
             ],
           ),
         ),
