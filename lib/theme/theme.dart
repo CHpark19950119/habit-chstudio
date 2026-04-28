@@ -38,6 +38,7 @@ class DailySpace {
 ThemeData buildDailyTheme() {
   return ThemeData(
     useMaterial3: true,
+    fontFamily: 'Pretendard',
     colorScheme: ColorScheme.fromSeed(
       seedColor: DailyPalette.primary,
       primary: DailyPalette.primary,
@@ -48,9 +49,9 @@ ThemeData buildDailyTheme() {
     textTheme: const TextTheme(
       titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: DailyPalette.ink, height: 1.25),
       titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DailyPalette.ink),
-      bodyLarge: TextStyle(fontSize: 14, color: DailyPalette.ink, height: 1.4),
-      bodyMedium: TextStyle(fontSize: 13, color: DailyPalette.slate, height: 1.4),
-      labelSmall: TextStyle(fontSize: 11, color: DailyPalette.ash, letterSpacing: 0.2),
+      bodyLarge: TextStyle(fontSize: 15, color: DailyPalette.ink, height: 1.4),
+      bodyMedium: TextStyle(fontSize: 14, color: DailyPalette.slate, height: 1.4),
+      labelSmall: TextStyle(fontSize: 12, color: DailyPalette.ash, letterSpacing: 0.2),
     ),
     cardTheme: const CardThemeData(
       color: DailyPalette.card,
