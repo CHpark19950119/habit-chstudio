@@ -1,5 +1,6 @@
-// DAILY 오늘 탭 — 상품급 전면개편 (사용자 지시 2026-04-28 23:18).
-// Hero (날짜·Phase·D-day) + Quick stats + 오늘의 순서 + 오늘 일정.
+// DAILY 오늘 탭 — 일상 dashboard (사용자 명시 2026-05-01 14:32 = 공부 관련 전부 제거).
+// Hero (날짜 + 수면 위상 + 오늘 취침 권고) + Quick stats + 오늘의 순서 + 오늘 일정.
+// STUDY 도메인 (D-day·Phase·plan v6.x) = ST 앱에서 별도 표시.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -41,18 +42,27 @@ class TodayPage extends StatelessWidget {
   }
 }
 
-/// Hero · v12 luminous bento (cream/bronze gradient + warm glow + bronze gradient text).
-/// 사용자 명시 (2026-05-01 02:08): DAILY 디자인 전면 v12 적용.
+/// Hero · v12 luminous bento + 수면 위상 중심 (사용자 명시 2026-05-01 14:32 · 공부 도메인 제거).
 class _HeroToday extends StatelessWidget {
   const _HeroToday();
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final exam = DateTime(2026, 7, 18);
-    final dDay = exam.difference(DateTime(now.year, now.month, now.day)).inDays;
-    final phase1Start = DateTime(2026, 4, 25);
-    final phaseDay = now.difference(phase1Start).inDays + 1;
+    // 수면 위상 사다리 = plan v6.2 정합 (-30분/일 · D9 02:30 → D16 23:00)
+    final phase1Start = DateTime(2026, 4, 23); // D1
+    final dn = now.difference(DateTime(phase1Start.year, phase1Start.month, phase1Start.day)).inDays + 1;
+    String sleepTarget;
+    if (dn <= 9) {sleepTarget = '02:30';}
+    else if (dn == 10) {sleepTarget = '02:00';}
+    else if (dn == 11) {sleepTarget = '01:30';}
+    else if (dn == 12) {sleepTarget = '01:00';}
+    else if (dn == 13) {sleepTarget = '00:30';}
+    else if (dn == 14) {sleepTarget = '00:00';}
+    else if (dn == 15) {sleepTarget = '23:30';}
+    else {sleepTarget = '23:00';}
+    final wakeTarget = '+8h 후';
+    final dayLabel = DateFormat('M.d EEEE', 'ko').format(now);
 
     return Container(
       width: double.infinity,
@@ -99,11 +109,16 @@ class _HeroToday extends StatelessWidget {
                       border: Border.all(color: DailyV12.bronze.withValues(alpha: 0.55)),
                     ),
                     child: Text(
-                      'Phase 1 · D$phaseDay/14',
+                      '오늘 $dayLabel',
                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: DailyV12.bronzeDeep, letterSpacing: 0.4),
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '수면 위상 정진',
+                style: TextStyle(fontSize: 14, color: DailyV12.bronzeDeep, fontWeight: FontWeight.w800, letterSpacing: 0.5),
               ),
               const SizedBox(height: 10),
               Row(
@@ -117,28 +132,35 @@ class _HeroToday extends StatelessWidget {
                     ).createShader(rect),
                     blendMode: BlendMode.srcIn,
                     child: Text(
-                      'D-$dDay',
+                      sleepTarget,
                       style: const TextStyle(
-                        fontSize: 80, fontWeight: FontWeight.w900,
-                        height: 0.95, letterSpacing: -3.2,
+                        fontSize: 64, fontWeight: FontWeight.w900,
+                        height: 0.95, letterSpacing: -2.4,
                         color: Colors.white,
                       ),
                     ),
                   ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 10, bottom: 12),
+                    child: Text(
+                      '취침 목표',
+                      style: TextStyle(fontSize: 14, color: DailyV12.ink3, fontWeight: FontWeight.w700),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
-                phaseDay <= 7 ? '오늘 취침/기상 = 08:30 / 01:30' : '오늘 취침/기상 = 07:30 / 23:30',
+                '기상 = 취침 $wakeTarget · 광노출 산책 30m',
                 style: const TextStyle(fontSize: 13, color: DailyV12.ink2, height: 1.5, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 18),
               Wrap(
                 spacing: 8, runSpacing: 8,
                 children: [
-                  _badge('Phase 1', DailyV12.bronzeDeep),
-                  _badge('시험 D-$dDay', DailyV12.bronze),
-                  _badge('plan v6.2', DailyV12.ink2),
+                  _badge('일상', DailyV12.bronzeDeep),
+                  _badge('수면·식사·routine', DailyV12.bronze),
+                  _badge('학업 = ST 앱', DailyV12.ink3),
                 ],
               ),
             ],

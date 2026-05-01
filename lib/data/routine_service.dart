@@ -78,14 +78,15 @@ class RoutineStepWithBlock extends RoutineStep {
   });
 }
 
-/// 기본 일상 루틴 — 6 단계 압축 (사용자 피드백 00:19 "11개 너무 길다")
-/// 아침: 기상·샤워 / 낮: 식사·공부 / 저녁: 공부·식사 / 밤: 취침준비
+/// 기본 일상 루틴 — 일상 단계 (공부 step 제거 · 사용자 명시 2026-05-01 14:32 도메인 분리)
+/// 학업 routine = ST 앱 담당. DAILY = 수면·식사·산책·routine 만.
 List<RoutineStep> defaultRoutine() => const [
       RoutineStepWithBlock(id: 'morning_routine', label: '기상 · 샤워 · 아침', icon: '🌅', block: RoutineBlock.morning),
       RoutineStepWithBlock(id: 'walk', label: '산책 · 광노출', icon: '🚶', block: RoutineBlock.morning),
-      RoutineStepWithBlock(id: 'workbook', label: '워크북', icon: '📓', block: RoutineBlock.afternoon),
-      RoutineStepWithBlock(id: 'study', label: '공부 (자해·상판·헌법)', icon: '📖', block: RoutineBlock.afternoon),
-      RoutineStepWithBlock(id: 'dinner_review', label: '저녁 · 복습', icon: '🍲', block: RoutineBlock.evening),
+      RoutineStepWithBlock(id: 'lunch', label: '점심', icon: '🍱', block: RoutineBlock.afternoon),
+      RoutineStepWithBlock(id: 'afternoon_break', label: '오후 휴식', icon: '☕', block: RoutineBlock.afternoon),
+      RoutineStepWithBlock(id: 'dinner', label: '저녁 식사', icon: '🍲', block: RoutineBlock.evening),
+      RoutineStepWithBlock(id: 'evening_walk', label: '저녁 산책', icon: '🌆', block: RoutineBlock.evening),
       RoutineStepWithBlock(id: 'wind_down', label: '취침 준비 · 화면 OFF', icon: '🛏️', block: RoutineBlock.night),
     ];
 

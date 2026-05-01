@@ -4,9 +4,7 @@ import 'package:intl/intl.dart';
 import '../../app/app.dart';
 import '../../theme/theme.dart';
 import '../widgets/common.dart';
-import '../widgets/phase_goal_card.dart';
 import '../widgets/sleep_card.dart';
-import '../widgets/phase_sleep_card.dart';
 import '../widgets/sleep_plan_overview.dart';
 import '../widgets/craving_card.dart';
 import '../widgets/life_logs_summary.dart';
@@ -16,7 +14,6 @@ class PlanPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       body: SafeArea(
         child: ListView(
@@ -24,25 +21,13 @@ class PlanPage extends StatelessWidget {
           children: [
             const HeroCard(
               title: '계획',
-              subtitle: '시험 D-day · 수면 위상 · 누적 통계',
+              subtitle: '수면 위상 · 갈망 · 생활 누적',
               icon: Icons.flag_outlined,
             ),
-            const SizedBox(height: DailySpace.lg),
-            SectionHeader(title: '시험 D-day', accent: DailyPalette.error),
-            const SizedBox(height: DailySpace.sm),
-            const _ExamDDayCard(),
-            const SizedBox(height: DailySpace.lg),
-            SectionHeader(title: 'Phase · 목표', accent: theme.colorScheme.primary),
-            const SizedBox(height: DailySpace.sm),
-            const PhaseGoalCard(),
-            const SizedBox(height: DailySpace.md),
-            const _PhaseCard(),
             const SizedBox(height: DailySpace.lg),
             SectionHeader(title: '수면 위상', accent: DailyPalette.sleep),
             const SizedBox(height: DailySpace.sm),
             const SleepCard(),
-            const SizedBox(height: DailySpace.md),
-            const PhaseSleepCard(),
             const SizedBox(height: DailySpace.md),
             const SleepPlanOverview(),
             const SizedBox(height: DailySpace.lg),
@@ -66,63 +51,6 @@ class PlanPage extends StatelessWidget {
   }
 }
 
-class _ExamDDayCard extends StatelessWidget {
-  const _ExamDDayCard();
-  @override
-  Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final exam1 = DateTime(2026, 7, 18); // PSAT
-    final exam2 = DateTime(2026, 9, 19); // 전공 (헌법·국제법·국제정치학)
-    final exam3 = DateTime(2026, 11, 23); // 면접 시작
-    final d1 = exam1.difference(DateTime(today.year, today.month, today.day)).inDays;
-    final d2 = exam2.difference(DateTime(today.year, today.month, today.day)).inDays;
-    final d3 = exam3.difference(DateTime(today.year, today.month, today.day)).inDays;
-    return Container(
-      padding: const EdgeInsets.all(DailySpace.lg),
-      decoration: BoxDecoration(
-        color: DailyPalette.card,
-        borderRadius: BorderRadius.circular(DailySpace.radiusL),
-        border: Border.all(color: DailyPalette.gold, width: 1.2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('7급 외무영사직 시험', style: TextStyle(fontSize: 13, color: DailyPalette.slate, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 10),
-          _row('1차 PSAT', '2026-07-18 (토)', '언어논리·자료해석·상황판단', d1, DailyPalette.error),
-          const SizedBox(height: 8),
-          _row('2차 전공', '2026-09-19 (토)', '헌법·국제법·국제정치학', d2, DailyPalette.gold),
-          const SizedBox(height: 8),
-          _row('3차 면접', '2026-11-23~26', '자기기술서·토론·PT', d3, DailyPalette.primary),
-        ],
-      ),
-    );
-  }
-
-  Widget _row(String label, String date, String subjects, int dDay, Color color) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
-          child: Text('D-$dDay', style: TextStyle(fontSize: 14, color: color, fontWeight: FontWeight.w800)),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('$label · $date', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DailyPalette.ink)),
-              Text(subjects, style: const TextStyle(fontSize: 10, color: DailyPalette.ash)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _DomainNote extends StatelessWidget {
   const _DomainNote();
   @override
@@ -142,53 +70,6 @@ class _DomainNote extends StatelessWidget {
             child: Text(
               '공부 진도는 STUDY 앱에서 확인. 데일리 앱은 일상(수면·루틴·식사) 만 다룬다.',
               style: TextStyle(fontSize: 11, color: DailyPalette.slate, height: 1.4),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PhaseCard extends StatelessWidget {
-  const _PhaseCard();
-  @override
-  Widget build(BuildContext context) {
-    final start = DateTime(2026, 4, 25);
-    final today = DateTime.now();
-    final day = today.difference(DateTime(start.year, start.month, start.day)).inDays + 1;
-    final phaseName = day <= 7 ? 'Phase 1 (위상 전진)' : day <= 14 ? 'Phase 2 (밀도 증가)' : '완성형 (8h/일)';
-    final progress = day <= 14 ? day / 14.0 : 1.0;
-    return Container(
-      padding: const EdgeInsets.all(DailySpace.lg),
-      decoration: BoxDecoration(
-        color: DailyPalette.card,
-        borderRadius: BorderRadius.circular(DailySpace.radiusL),
-        border: Border.all(color: DailyPalette.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.trending_up, size: 18, color: DailyPalette.primary),
-              const SizedBox(width: 6),
-              const Text('수면 위상 전진 14일', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: DailyPalette.ink)),
-              const Spacer(),
-              Text('Day $day / 14',
-                  style: const TextStyle(fontSize: 11, color: DailyPalette.ash, fontWeight: FontWeight.w700)),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(phaseName, style: const TextStyle(fontSize: 13, color: DailyPalette.slate, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progress.clamp(0.0, 1.0),
-              minHeight: 8,
-              backgroundColor: DailyPalette.line,
-              valueColor: const AlwaysStoppedAnimation<Color>(DailyPalette.primary),
             ),
           ),
         ],
