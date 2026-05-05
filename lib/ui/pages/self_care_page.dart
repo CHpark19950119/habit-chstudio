@@ -1,5 +1,5 @@
-// DAILY · self_care 페이지 v13.2 — 코드 전면 재작성 (사용자 5/5 15:27 명시)
-// 목표: 회색 영역 X / 모든 widget 명시적 background / 단순 SingleChildScrollView.
+// DAILY · self_care v14.0 — 쿨웜 파스텔 믹스 (사용자 5/6 00:38 명시).
+// header lilac→peach gradient · today count card · method chips (lilac selected) · coral add button.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -43,33 +43,27 @@ class _SelfCarePageState extends State<SelfCarePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: DailyPalette.paper,
-      child: Scaffold(
-        backgroundColor: DailyPalette.paper,
-        appBar: AppBar(
-          backgroundColor: DailyPalette.paper,
-          elevation: 0,
-          title: const Text('self_care · v13.3'),
-        ),
-        body: SafeArea(
-          child: Container(
-            color: DailyPalette.paper,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildTodayCount(),
-                  const SizedBox(height: 24),
-                  _buildMethodSection(),
-                  const SizedBox(height: 24),
-                  _buildAddButton(),
-                  const SizedBox(height: 28),
-                  _buildRecentSection(),
-                ],
-              ),
-            ),
+    return Scaffold(
+      backgroundColor: DailyV14.bg,
+      appBar: AppBar(
+        backgroundColor: DailyV14.bg,
+        elevation: 0,
+        title: const Text('self_care · v14'),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTodayCount(),
+              const SizedBox(height: 20),
+              _buildMethodSection(),
+              const SizedBox(height: 20),
+              _buildAddButton(),
+              const SizedBox(height: 24),
+              _buildRecentSection(),
+            ],
           ),
         ),
       ),
@@ -88,20 +82,24 @@ class _SelfCarePageState extends State<SelfCarePage> {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: DailyPalette.goldSurface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: DailyPalette.gold.withValues(alpha: 0.3)),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [DailyV14.lilacSoft, DailyV14.peachSoft],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: DailyV14.line),
           ),
           child: Row(
             children: [
               Text(_today.substring(5),
-                  style: const TextStyle(fontSize: 17, color: Color(0xFF8A857C))),
+                  style: const TextStyle(fontSize: 16, color: DailyV14.ink2, fontWeight: FontWeight.w500)),
               const Spacer(),
               Text('$count회',
                   style: const TextStyle(
                     fontSize: 30,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFFC8975B),
+                    color: DailyV14.lilacInk,
                   )),
             ],
           ),
@@ -115,7 +113,7 @@ class _SelfCarePageState extends State<SelfCarePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('방법',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF8A857C))),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: DailyV14.ink2)),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
@@ -138,10 +136,10 @@ class _SelfCarePageState extends State<SelfCarePage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? DailyPalette.goldSurface : DailyPalette.paper,
-          borderRadius: BorderRadius.circular(20),
+          color: selected ? DailyV14.lilacSoft : DailyV14.card,
+          borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? DailyPalette.gold : DailyPalette.line,
+            color: selected ? DailyV14.lilac : DailyV14.line,
             width: selected ? 2 : 1,
           ),
         ),
@@ -149,13 +147,13 @@ class _SelfCarePageState extends State<SelfCarePage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (selected) ...[
-              const Icon(Icons.check, size: 16, color: Color(0xFFC8975B)),
+              const Icon(Icons.check, size: 16, color: DailyV14.lilacInk),
               const SizedBox(width: 4),
             ],
             Text(label,
                 style: TextStyle(
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: const Color(0xFF2C2A26),
+                  color: selected ? DailyV14.lilacInk : DailyV14.ink,
                 )),
           ],
         ),
@@ -166,17 +164,35 @@ class _SelfCarePageState extends State<SelfCarePage> {
   Widget _buildAddButton() {
     return SizedBox(
       width: double.infinity,
-      height: 60,
-      child: ElevatedButton.icon(
-        onPressed: _saving ? null : _add,
-        icon: const Icon(Icons.add, size: 22),
-        label: Text(_saving ? '저장 중...' : '+ 기록 추가',
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: DailyPalette.gold,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 0,
+      height: 58,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [DailyV14.coral, DailyV14.peach],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: DailyV14.coral.withValues(alpha: 0.3),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: ElevatedButton.icon(
+          onPressed: _saving ? null : _add,
+          icon: const Icon(Icons.add, size: 22),
+          label: Text(_saving ? '저장 중...' : '+ 기록 추가',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            elevation: 0,
+            shadowColor: Colors.transparent,
+          ),
         ),
       ),
     );
@@ -190,11 +206,9 @@ class _SelfCarePageState extends State<SelfCarePage> {
           .limit(50)
           .snapshots(),
       builder: (ctx, snap) {
-        // 명시적 connection state 처리
         final waiting = snap.connectionState == ConnectionState.waiting;
         final hasError = snap.hasError;
         final allDocs = snap.data?.docs ?? [];
-        // method 필드 있는 docs만 (이전 schema 무시)
         final docs = allDocs.where((d) {
           final m = (d.data() as Map<String, dynamic>)['method'];
           return m != null && m.toString().isNotEmpty;
@@ -206,10 +220,10 @@ class _SelfCarePageState extends State<SelfCarePage> {
             Row(
               children: [
                 const Text('최근 기록',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF8A857C))),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: DailyV14.ink2)),
                 const Spacer(),
                 Text('총 ${docs.length}건',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
+                    style: const TextStyle(fontSize: 12, color: DailyV14.ink3)),
               ],
             ),
             const SizedBox(height: 10),
@@ -217,39 +231,37 @@ class _SelfCarePageState extends State<SelfCarePage> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(40),
-                color: DailyPalette.paper,
                 alignment: Alignment.center,
                 child: const SizedBox(
                   width: 22, height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: DailyV14.coral),
                 ),
               )
             else if (hasError)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
-                color: DailyPalette.paper,
                 child: Text('오류: ${snap.error}',
-                    style: const TextStyle(color: Color(0xFFB05A5A))),
+                    style: const TextStyle(color: DailyV14.error)),
               )
             else if (docs.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
                 decoration: BoxDecoration(
-                  color: DailyPalette.paper,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: DailyPalette.line),
+                  color: DailyV14.card,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: DailyV14.line),
                 ),
                 child: const Column(
                   children: [
-                    Icon(Icons.inbox_outlined, size: 40, color: Color(0xFFE8E2D4)),
+                    Icon(Icons.inbox_outlined, size: 40, color: DailyV14.ink4),
                     SizedBox(height: 10),
                     Text('아직 기록 없음',
-                        style: TextStyle(fontSize: 15, color: Color(0xFF8A857C), fontWeight: FontWeight.w500)),
+                        style: TextStyle(fontSize: 15, color: DailyV14.ink3, fontWeight: FontWeight.w500)),
                     SizedBox(height: 4),
                     Text('위 + 기록 추가 버튼으로 등재',
-                        style: TextStyle(fontSize: 12, color: Color(0xFFB8B2A6))),
+                        style: TextStyle(fontSize: 12, color: DailyV14.ink4)),
                   ],
                 ),
               )
@@ -257,16 +269,16 @@ class _SelfCarePageState extends State<SelfCarePage> {
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: DailyPalette.paper,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: DailyPalette.line),
+                  color: DailyV14.card,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: DailyV14.line),
                 ),
                 child: Column(
                   children: [
                     for (var i = 0; i < docs.length; i++) ...[
                       _recordRow(docs[i]),
                       if (i < docs.length - 1)
-                        Container(height: 1, color: DailyPalette.line),
+                        Container(height: 1, color: DailyV14.line),
                     ],
                   ],
                 ),
@@ -279,7 +291,6 @@ class _SelfCarePageState extends State<SelfCarePage> {
 
   Widget _recordRow(QueryDocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
-    // ts 안전 처리 (Timestamp / String / null 모두 허용)
     final tsRaw = d['ts'];
     DateTime? dt;
     if (tsRaw is Timestamp) {
@@ -287,28 +298,36 @@ class _SelfCarePageState extends State<SelfCarePage> {
     } else if (tsRaw is String) {
       dt = DateTime.tryParse(tsRaw);
     }
-    // ts 없으면 date 필드 폴백
     if (dt == null && d['date'] is String) {
       dt = DateTime.tryParse('${d['date']}T12:00:00');
     }
     final timeStr = dt != null ? DateFormat('MM/dd HH:mm').format(dt) : '-';
     final method = d['method']?.toString() ?? '?';
-    return Container(
-      color: DailyPalette.paper,
+
+    // method 별 색상 구분 (warm: M·MV / cool: V·partner)
+    final methodColor = switch (method) {
+      'M' => (DailyV14.peachSoft, DailyV14.coral),
+      'MV' => (DailyV14.apricotSoft, DailyV14.goldDeep),
+      'V' => (DailyV14.skySoft, DailyV14.info),
+      'partner' => (DailyV14.lilacSoft, DailyV14.lilacInk),
+      _ => (DailyV14.cardSoft, DailyV14.ink3),
+    };
+
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
           Container(
-            width: 44,
+            width: 48,
             height: 36,
             decoration: BoxDecoration(
-              color: DailyPalette.goldSurface,
-              borderRadius: BorderRadius.circular(8),
+              color: methodColor.$1,
+              borderRadius: BorderRadius.circular(10),
             ),
             alignment: Alignment.center,
             child: Text(method,
                 style: TextStyle(
-                  color: DailyPalette.gold,
+                  color: methodColor.$2,
                   fontWeight: FontWeight.w800,
                   fontSize: method.length > 2 ? 11 : 14,
                 )),
@@ -316,10 +335,10 @@ class _SelfCarePageState extends State<SelfCarePage> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(timeStr,
-                style: const TextStyle(fontSize: 14, color: Color(0xFF2C2A26))),
+                style: const TextStyle(fontSize: 14, color: DailyV14.ink, fontFamily: 'monospace')),
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline, size: 20, color: Color(0xFF8A857C)),
+            icon: const Icon(Icons.delete_outline, size: 20, color: DailyV14.ink3),
             onPressed: () => doc.reference.delete(),
           ),
         ],

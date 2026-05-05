@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>DAILY v14 — 쿨웜 파스텔 믹스</title>
+<style>
+:root {
+  --bg: #FAF6F0;
+  --card: #FFFFFF;
+  --cardSoft: #F6F0E5;
+  --line: #EDE3D2;
+  --ink: #2A2A35;
+  --ink2: #55525E;
+  --ink3: #8A8590;
+  --peach: #F5BEA8;
+  --peachSoft: #FDE8DD;
+  --coral: #E89A85;
+  --apricot: #F2C597;
+  --apricotSoft: #FAEAD0;
+  --mint: #9DCEC0;
+  --mintSoft: #DFF0EA;
+  --sky: #B0C8E0;
+  --skySoft: #E0EBF4;
+  --lilac: #C5B5DD;
+  --lilacSoft: #EBE4F2;
+  --gold: #D4A053;
+  --goldSoft: #F7E8C8;
+  --goldDeep: #A67226;
+}
+* { box-sizing: border-box; }
+body { font-family: 'Pretendard', -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--ink); margin: 0; padding: 24px; }
+h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin: 0 0 6px; }
+.sub { color: var(--ink3); font-size: 13px; margin-bottom: 24px; }
+.swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 28px; }
+.sw { aspect-ratio: 1; border-radius: 14px; display: flex; flex-direction: column; justify-content: flex-end; padding: 10px; font-size: 10px; color: var(--ink); border: 1px solid var(--line); font-weight: 600; }
+.mockup { background: var(--bg); padding: 20px; border-radius: 28px; max-width: 380px; margin: 0 auto; border: 1px solid var(--line); }
+.header { background: linear-gradient(135deg, var(--peachSoft), var(--skySoft) 60%, var(--lilacSoft)); border-radius: 18px; padding: 18px; border: 1px solid var(--line); margin-bottom: 14px; }
+.header .date { color: var(--ink2); font-size: 13px; }
+.header .dday { font-size: 28px; font-weight: 800; color: var(--goldDeep); margin-top: 2px; display: inline-block; }
+.header .week { color: var(--ink); font-weight: 600; margin-left: 10px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px; margin-bottom: 12px; }
+.card h3 { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: var(--ink); }
+.timeChips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.chip { padding: 12px 6px; border-radius: 14px; text-align: center; border: 1px solid var(--line); }
+.chip.filled.wake { background: var(--apricotSoft); border-color: var(--apricot); }
+.chip.filled.outing { background: var(--mintSoft); border-color: var(--mint); }
+.chip.filled.return { background: var(--lilacSoft); border-color: var(--lilac); }
+.chip .lbl { font-size: 11px; color: var(--ink3); font-weight: 600; }
+.chip .val { font-size: 17px; font-weight: 800; margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+.chip.filled.wake .val { color: var(--coral); }
+.chip.filled.outing .val { color: #5A9D8A; }
+.chip.filled.return .val { color: #7A65A8; }
+.chip.empty .val { color: var(--ink3); }
+.row { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: none; }
+.box { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--ink3); }
+.box.checked { background: var(--mint); border-color: var(--mint); }
+.time { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--goldDeep); font-weight: 700; width: 50px; }
+.icon { font-size: 18px; }
+.lbl2 { flex: 1; font-size: 14px; color: var(--ink2); }
+.fab { background: linear-gradient(135deg, var(--coral), var(--peach)); color: white; border-radius: 30px; padding: 14px 22px; display: inline-block; font-weight: 700; box-shadow: 0 4px 12px rgba(232,154,133,0.35); }
+.method-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.mc { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); font-size: 13px; font-weight: 500; color: var(--ink); }
+.mc.sel { background: var(--lilacSoft); border-color: var(--lilac); color: #6A4F9E; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>DAILY v14 · 쿨웜 파스텔 믹스</h1>
+<div class="sub">cool (mint·sky·lilac) + warm (peach·coral·apricot·gold) — 세련 / 부드러움 / 카테고리별 색상 구분</div>
+
+<div class="swatches">
+  <div class="sw" style="background: var(--peachSoft);">peach soft<br>FDE8DD</div>
+  <div class="sw" style="background: var(--peach);">peach<br>F5BEA8</div>
+  <div class="sw" style="background: var(--coral); color: white;">coral<br>E89A85</div>
+  <div class="sw" style="background: var(--apricotSoft);">apricot soft<br>FAEAD0</div>
+  <div class="sw" style="background: var(--apricot);">apricot<br>F2C597</div>
+  <div class="sw" style="background: var(--gold); color: white;">gold<br>D4A053</div>
+
+  <div class="sw" style="background: var(--mintSoft);">mint soft<br>DFF0EA</div>
+  <div class="sw" style="background: var(--mint);">mint<br>9DCEC0</div>
+  <div class="sw" style="background: var(--skySoft);">sky soft<br>E0EBF4</div>
+  <div class="sw" style="background: var(--sky);">sky<br>B0C8E0</div>
+  <div class="sw" style="background: var(--lilacSoft);">lilac soft<br>EBE4F2</div>
+  <div class="sw" style="background: var(--lilac);">lilac<br>C5B5DD</div>
+</div>
+
+<div class="mockup">
+  <div class="header">
+    <div class="date">2026년 5월 6일 (수)</div>
+    <span class="dday">D-73</span><span class="week">· W1 적응기</span>
+  </div>
+
+  <div class="card">
+    <h3>오늘 동선</h3>
+    <div class="timeChips">
+      <div class="chip filled wake">
+        <div class="lbl">🌅 기상</div>
+        <div class="val">14:04</div>
+      </div>
+      <div class="chip filled outing">
+        <div class="lbl">🚪 외출</div>
+        <div class="val">14:43</div>
+      </div>
+      <div class="chip filled return">
+        <div class="lbl">🏠 귀가</div>
+        <div class="val">23:37</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>오늘의 계획 <span style="float:right; color:var(--coral); font-weight:700;">3 / 11</span></h3>
+    <div class="row"><div class="box checked"></div><div class="time">06:30</div><div class="icon">🌅</div><div class="lbl2" style="text-decoration:line-through; color:var(--ink3)">기상 + 광노출 5분</div></div>
+    <div class="row"><div class="box checked"></div><div class="time">06:50</div><div class="icon">🍚</div><div class="lbl2" style="text-decoration:line-through; color:var(--ink3)">아침 30분</div></div>
+    <div class="row"><div class="box checked"></div><div class="time">07:30</div><div class="icon">📚</div><div class="lbl2" style="text-decoration:line-through; color:var(--ink3)">T1 deliberate 4h</div></div>
+    <div class="row"><div class="box"></div><div class="time">12:30</div><div class="icon">🍱</div><div class="lbl2">점심 + 산책</div></div>
+    <div class="row"><div class="box"></div><div class="time">13:00</div><div class="icon">📖</div><div class="lbl2">T2 review 4h</div></div>
+    <div class="row"><div class="box"></div><div class="time">17:00</div><div class="icon">🤸</div><div class="lbl2">운동 30분</div></div>
+  </div>
+
+  <div style="text-align:right; margin-top: 16px;">
+    <span class="fab">♥ self_care</span>
+  </div>
+
+  <div class="card" style="margin-top: 14px;">
+    <h3>self_care · 방법</h3>
+    <div class="method-chips">
+      <span class="mc sel">✓ M (자위)</span>
+      <span class="mc">MV (영상)</span>
+      <span class="mc">V (영상만)</span>
+      <span class="mc">partner</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

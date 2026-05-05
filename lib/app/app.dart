@@ -12,8 +12,7 @@ class DailyApp extends StatelessWidget {
       title: 'Daily',
       debugShowCheckedModeBanner: false,
       theme: buildDailyTheme(brightness: Brightness.light),
-      darkTheme: buildDailyTheme(brightness: Brightness.dark),
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.light,
       home: const _RootGate(),
     );
   }

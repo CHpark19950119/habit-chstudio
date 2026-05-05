@@ -2921,3 +2921,22 @@ exports.migrateSelfCare = functions.https.onRequest(async (req, res) => {
     res.status(500).json({ok: false, error: err.message});
   }
 });
+
+exports.deleteSelfCare = functions.https.onRequest(async (req, res) => {
+  try {
+    const ids = (req.query.ids || "").split(",").map((s) => s.trim()).filter(Boolean);
+    if (ids.length === 0) { res.status(400).json({error: "ids required"}); return; }
+    const results = [];
+    for (const id of ids) {
+      try {
+        await db.collection(`users/${UID}/self_care_log`).doc(id).delete();
+        results.push({id, ok: true});
+      } catch (e) {
+        results.push({id, ok: false, error: e.message});
+      }
+    }
+    res.json({ok: true, deleted: results.filter((r) => r.ok).length, results});
+  } catch (err) {
+    res.status(500).json({ok: false, error: err.message});
+  }
+});

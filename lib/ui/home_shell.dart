@@ -29,7 +29,7 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: DailyPalette.paper,
+        backgroundColor: DailyV14.bg,
         elevation: 0,
         title: const Text('Daily', style: TextStyle(fontWeight: FontWeight.w600)),
         actions: [
@@ -44,8 +44,8 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _idx,
         onDestinationSelected: (i) => setState(() => _idx = i),
-        backgroundColor: DailyPalette.paper,
-        indicatorColor: DailyPalette.goldSurface,
+        backgroundColor: DailyV14.bg,
+        indicatorColor: DailyV14.peachSoft,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.check_box_outlined), selectedIcon: Icon(Icons.check_box), label: '오늘'),
           NavigationDestination(icon: Icon(Icons.calendar_month_outlined), selectedIcon: Icon(Icons.calendar_month), label: '기록'),

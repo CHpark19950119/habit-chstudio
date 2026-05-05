@@ -113,6 +113,51 @@ class DailyV12Radius {
   static const button = BorderRadius.all(Radius.circular(8));
 }
 
+/// DAILY v14 — 쿨웜 파스텔 믹스 (사용자 5/6 00:38 명시).
+/// cool (mint·sky·lilac) + warm (peach·coral·apricot·gold) — 세련 / 부드러움 / 카테고리 색상 구분.
+class DailyV14 {
+  DailyV14._();
+  // Base
+  static const bg = Color(0xFFFAF6F0);
+  static const card = Color(0xFFFFFFFF);
+  static const cardSoft = Color(0xFFF6F0E5);
+  static const line = Color(0xFFEDE3D2);
+
+  // Ink (cool-tinted dark)
+  static const ink = Color(0xFF2A2A35);
+  static const ink2 = Color(0xFF55525E);
+  static const ink3 = Color(0xFF8A8590);
+  static const ink4 = Color(0xFFB5B0BB);
+
+  // Warm pastel
+  static const peach = Color(0xFFF5BEA8);
+  static const peachSoft = Color(0xFFFDE8DD);
+  static const coral = Color(0xFFE89A85);
+  static const apricot = Color(0xFFF2C597);
+  static const apricotSoft = Color(0xFFFAEAD0);
+
+  // Cool pastel
+  static const mint = Color(0xFF9DCEC0);
+  static const mintSoft = Color(0xFFDFF0EA);
+  static const mintInk = Color(0xFF5A9D8A);
+  static const sky = Color(0xFFB0C8E0);
+  static const skySoft = Color(0xFFE0EBF4);
+  static const lilac = Color(0xFFC5B5DD);
+  static const lilacSoft = Color(0xFFEBE4F2);
+  static const lilacInk = Color(0xFF7A65A8);
+
+  // Brand gold
+  static const gold = Color(0xFFD4A053);
+  static const goldSoft = Color(0xFFF7E8C8);
+  static const goldDeep = Color(0xFFA67226);
+
+  // Status
+  static const success = Color(0xFF7FB89B);
+  static const warn = Color(0xFFE8B956);
+  static const error = Color(0xFFD08075);
+  static const info = Color(0xFF89A8C5);
+}
+
 /// v12 luminous shadow stack — embossed top + 4단 cinematic depth.
 class DailyV12Shadow {
   DailyV12Shadow._();
@@ -187,62 +232,64 @@ const _textThemeDark = TextTheme(
 );
 
 ThemeData buildDailyTheme({Brightness brightness = Brightness.light}) {
-  final isDark = brightness == Brightness.dark;
+  // v14 = light only (사용자 5/6 00:38 쿨웜 파스텔 믹스 명시).
   final scheme = ColorScheme.fromSeed(
-    seedColor: DailyPalette.primary,
-    brightness: brightness,
-    primary: DailyPalette.primary,
-    surface: isDark ? DailyPalette.paperDark : DailyPalette.paper,
-    onSurface: isDark ? DailyPalette.inkDark : DailyPalette.ink,
-    error: DailyPalette.error,
+    seedColor: DailyV14.coral,
+    brightness: Brightness.light,
+    primary: DailyV14.coral,
+    secondary: DailyV14.lilacInk,
+    tertiary: DailyV14.mintInk,
+    surface: DailyV14.bg,
+    onSurface: DailyV14.ink,
+    error: DailyV14.error,
   );
 
   return ThemeData(
     useMaterial3: true,
     fontFamily: 'Pretendard',
-    brightness: brightness,
+    brightness: Brightness.light,
     colorScheme: scheme,
-    scaffoldBackgroundColor: isDark ? DailyPalette.paperDark : DailyPalette.paper,
-    textTheme: isDark ? _textThemeDark : _textThemeLight,
+    scaffoldBackgroundColor: DailyV14.bg,
+    textTheme: _textThemeV14,
     cardTheme: CardThemeData(
-      color: isDark ? DailyPalette.cardDark : DailyPalette.card,
+      color: DailyV14.card,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DailySpace.radiusL)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     ),
-    appBarTheme: AppBarTheme(
-      backgroundColor: isDark ? DailyPalette.paperDark : DailyPalette.paper,
-      foregroundColor: isDark ? DailyPalette.inkDark : DailyPalette.ink,
+    appBarTheme: const AppBarTheme(
+      backgroundColor: DailyV14.bg,
+      foregroundColor: DailyV14.ink,
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: isDark ? DailyPalette.cardDark : DailyPalette.paper,
-      indicatorColor: DailyPalette.goldSurface,
+      backgroundColor: DailyV14.card,
+      indicatorColor: DailyV14.peachSoft,
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         final selected = states.contains(WidgetState.selected);
         return TextStyle(
           fontSize: 11, fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          color: selected ? DailyPalette.primary : (isDark ? DailyPalette.ashDark : DailyPalette.ash),
+          color: selected ? DailyV14.coral : DailyV14.ink3,
         );
       }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         final selected = states.contains(WidgetState.selected);
         return IconThemeData(
           size: 22,
-          color: selected ? DailyPalette.primary : (isDark ? DailyPalette.ashDark : DailyPalette.ash),
+          color: selected ? DailyV14.coral : DailyV14.ink3,
         );
       }),
     ),
-    dividerTheme: DividerThemeData(
-      color: isDark ? DailyPalette.lineDark : DailyPalette.line,
+    dividerTheme: const DividerThemeData(
+      color: DailyV14.line,
       thickness: 0.8,
     ),
     chipTheme: ChipThemeData(
-      backgroundColor: isDark ? DailyPalette.cardDark : DailyPalette.goldSurface,
-      side: BorderSide(color: isDark ? DailyPalette.lineDark : DailyPalette.line),
-      labelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? DailyPalette.inkDark : DailyPalette.ink),
+      backgroundColor: DailyV14.card,
+      side: const BorderSide(color: DailyV14.line),
+      labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: DailyV14.ink),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
     ),
@@ -255,3 +302,19 @@ ThemeData buildDailyTheme({Brightness brightness = Brightness.light}) {
     ),
   );
 }
+
+const _textThemeV14 = TextTheme(
+  displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: DailyV14.ink, height: 1.15, letterSpacing: -0.5),
+  displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: DailyV14.ink, height: 1.2),
+  headlineLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: DailyV14.ink, height: 1.25),
+  headlineMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: DailyV14.ink, height: 1.3),
+  titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: DailyV14.ink, height: 1.3),
+  titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DailyV14.ink, height: 1.4),
+  titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: DailyV14.ink, height: 1.4),
+  bodyLarge: TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: DailyV14.ink, height: 1.5),
+  bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: DailyV14.ink2, height: 1.5),
+  bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: DailyV14.ink2, height: 1.4),
+  labelLarge: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DailyV14.ink, letterSpacing: 0.1),
+  labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: DailyV14.ink2, letterSpacing: 0.2),
+  labelSmall: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: DailyV14.ink3, letterSpacing: 0.2),
+);
