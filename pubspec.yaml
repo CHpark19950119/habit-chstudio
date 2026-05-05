@@ -1,7 +1,7 @@
 name: cheonhong_studio
 description: CHEONHONG STUDIO - Android
 publish_to: 'none'
-version: 10.14.4+5
+version: 10.14.5+6
 
 environment:
   sdk: '>=3.2.0 <4.0.0'

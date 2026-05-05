@@ -1,6 +1,5 @@
-// DAILY 오늘 탭 v13.1 — 사용자 5/5 14:35 명시
-// 매우 단순화: 헤더 + 매일 계획 체크박스 12 항목 + self_care 빠른 기록 FAB.
-// 진도 카드·이관 카드·일정 카드 = 제거. 체크박스만.
+// DAILY 오늘 탭 v13.4 — 사용자 5/6 00:23 명시: timeRecords 3필드 표기 + 누락 시 보정 UI.
+// 헤더 + timeRecords 카드 (기상/외출/귀가) + 매일 계획 체크박스 + self_care FAB.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -28,8 +27,148 @@ class TodayPage extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
           children: const [
             _Header(),
+            SizedBox(height: 16),
+            _TimeRecordsCard(),
             SizedBox(height: 20),
             _RoutineChecklist(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// timeRecords 카드 — 기상·외출·귀가 3필드 표기 + 누락 시 보정.
+/// 사용자 5/6 00:23 명시: 매일 누락 없이 기록.
+class _TimeRecordsCard extends StatelessWidget {
+  const _TimeRecordsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final docRef = FirebaseFirestore.instance.collection('users/$kUid/data').doc('today');
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: docRef.snapshots(),
+      builder: (ctx, snap) {
+        final data = snap.data?.data() as Map<String, dynamic>? ?? {};
+        final tr = (data['timeRecords'] as Map<String, dynamic>? ?? {}).cast<String, dynamic>();
+        final wake = tr['wake']?.toString();
+        final outing = tr['outing']?.toString();
+        final returnHome = tr['returnHome']?.toString();
+
+        return Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: DailyPalette.line),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                  child: Text('오늘 동선',
+                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                ),
+                Row(
+                  children: [
+                    Expanded(child: _TimeChip(label: '기상', icon: '🌅', value: wake, field: 'wake', docRef: docRef)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _TimeChip(label: '외출', icon: '🚪', value: outing, field: 'outing', docRef: docRef)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _TimeChip(label: '귀가', icon: '🏠', value: returnHome, field: 'returnHome', docRef: docRef)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TimeChip extends StatelessWidget {
+  final String label, icon, field;
+  final String? value;
+  final DocumentReference docRef;
+  const _TimeChip({
+    required this.label,
+    required this.icon,
+    required this.value,
+    required this.field,
+    required this.docRef,
+  });
+
+  Future<void> _pick(BuildContext context) async {
+    final now = TimeOfDay.now();
+    final initial = value != null && value!.contains(':')
+        ? TimeOfDay(
+            hour: int.tryParse(value!.split(':')[0]) ?? now.hour,
+            minute: int.tryParse(value!.split(':')[1]) ?? now.minute,
+          )
+        : now;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (ctx, child) => MediaQuery(
+        data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true),
+        child: child!,
+      ),
+    );
+    if (picked == null) return;
+    final hh = picked.hour.toString().padLeft(2, '0');
+    final mm = picked.minute.toString().padLeft(2, '0');
+    final timeStr = '$hh:$mm';
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    await docRef.set({
+      'timeRecords': {field: timeStr},
+      'timeRecords.$today': {field: timeStr},
+    }, SetOptions(merge: true));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final filled = value != null && value!.isNotEmpty;
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _pick(context),
+      onLongPress: filled
+          ? () async {
+              final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+              await docRef.set({
+                'timeRecords': {field: FieldValue.delete()},
+                'timeRecords.$today': {field: FieldValue.delete()},
+              }, SetOptions(merge: true));
+            }
+          : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: filled ? DailyPalette.goldSurface : DailyPalette.paper,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: filled ? DailyPalette.gold.withValues(alpha: 0.3) : DailyPalette.line,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text('$icon $label',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFF8A857C),
+                  fontWeight: FontWeight.w600,
+                )),
+            const SizedBox(height: 6),
+            Text(filled ? value! : '—',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: filled ? DailyPalette.gold : const Color(0xFFB8B2A6),
+                  fontWeight: FontWeight.w800,
+                  fontFamily: 'monospace',
+                )),
           ],
         ),
       ),
