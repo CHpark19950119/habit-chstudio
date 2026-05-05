@@ -2843,3 +2843,81 @@ exports.sleepLog = functions.https.onRequest(async (req, res) => {
     res.status(500).json({ok: false, error: err.message});
   }
 });
+
+// ═══ HB v13.2: self_care_log 옛 schema → 새 schema migration (사용자 5/5 16:14 결재 A) ═══
+exports.migrateSelfCare = functions.https.onRequest(async (req, res) => {
+  try {
+    const dryRun = req.query.dry === "1";
+    const snap = await db.collection(`users/${UID}/self_care_log`).get();
+    let total = 0, converted = 0, skipped = 0, errors = 0;
+    const log = [];
+
+    for (const doc of snap.docs) {
+      total++;
+      const d = doc.data();
+      // 이미 method 필드 있으면 skip
+      if (d.method && typeof d.method === "string" && d.method.length > 0) {
+        skipped++;
+        continue;
+      }
+      // 옛 schema → 새 schema 변환
+      let method = null;
+      const type = d.type ? String(d.type).toUpperCase() : null;
+      const mode = d.mode ? String(d.mode).toLowerCase() : null;
+      const videoRecorded = d.video_recorded === true || d.video === true;
+
+      if (type === "M") {
+        method = videoRecorded ? "MV" : "M";
+      } else if (type === "V") {
+        method = "V";
+      } else if (type === "MV") {
+        method = "MV";
+      } else if (type === "PARTNER" || mode === "partner") {
+        method = "partner";
+      } else if (mode === "el" || mode === "mainstream") {
+        method = "MV"; // 영상 시청 모드 = MV
+      } else if (mode === "imagination") {
+        method = "M"; // 상상 = M
+      } else {
+        method = "M"; // fallback
+      }
+
+      // ts 보정 (없으면 date 필드에서 12:00 KST timestamp 생성)
+      let ts = d.ts;
+      if (!ts && d.date) {
+        const dt = new Date(`${d.date}T03:00:00Z`); // 12:00 KST = 03:00 UTC
+        ts = admin.firestore.Timestamp.fromDate(dt);
+      }
+
+      const update = {method};
+      if (ts && !d.ts) update.ts = ts;
+
+      log.push({id: doc.id, old: {type: d.type, mode: d.mode, video: d.video_recorded}, new: update});
+
+      if (!dryRun) {
+        try {
+          await doc.ref.update(update);
+          converted++;
+        } catch (e) {
+          errors++;
+          log[log.length - 1].error = e.message;
+        }
+      } else {
+        converted++; // dry run = count as preview
+      }
+    }
+
+    res.json({
+      ok: true,
+      dry_run: dryRun,
+      total,
+      converted,
+      skipped,
+      errors,
+      log: log.slice(0, 50),
+    });
+  } catch (err) {
+    console.error("migrateSelfCare error:", err.message);
+    res.status(500).json({ok: false, error: err.message});
+  }
+});

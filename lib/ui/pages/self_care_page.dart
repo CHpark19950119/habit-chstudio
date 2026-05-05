@@ -50,7 +50,7 @@ class _SelfCarePageState extends State<SelfCarePage> {
         appBar: AppBar(
           backgroundColor: DailyPalette.paper,
           elevation: 0,
-          title: const Text('self_care · v13.2'),
+          title: const Text('self_care · v13.3'),
         ),
         body: SafeArea(
           child: Container(
@@ -279,8 +279,19 @@ class _SelfCarePageState extends State<SelfCarePage> {
 
   Widget _recordRow(QueryDocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
-    final ts = d['ts'] as Timestamp?;
-    final timeStr = ts != null ? DateFormat('MM/dd HH:mm').format(ts.toDate()) : '-';
+    // ts 안전 처리 (Timestamp / String / null 모두 허용)
+    final tsRaw = d['ts'];
+    DateTime? dt;
+    if (tsRaw is Timestamp) {
+      dt = tsRaw.toDate();
+    } else if (tsRaw is String) {
+      dt = DateTime.tryParse(tsRaw);
+    }
+    // ts 없으면 date 필드 폴백
+    if (dt == null && d['date'] is String) {
+      dt = DateTime.tryParse('${d['date']}T12:00:00');
+    }
+    final timeStr = dt != null ? DateFormat('MM/dd HH:mm').format(dt) : '-';
     final method = d['method']?.toString() ?? '?';
     return Container(
       color: DailyPalette.paper,
